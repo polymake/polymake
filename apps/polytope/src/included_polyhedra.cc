@@ -18,50 +18,59 @@
 #include "polymake/client.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
+#include "polymake/polytope/contains.h"
 
 namespace polymake { namespace polytope {
 
-template <typename Coord>
-bool included_polyhedra(BigObject p1, BigObject p2, OptionSet options)
+template<typename Coord, typename ConstraintChecker>
+void check_for_constraint_violation(const Matrix<Coord>& constraints, const Matrix<Coord>& generators, ConstraintChecker& check, std::string constraint_type, std::string generator_type)
 {
-   
+   for(const auto& constraint : rows(constraints)){
+      for(const auto& generator : rows(generators)){
+         if(!check(constraint, generator)){
+            cout << constraint_type << " " << constraint << " not satisfied by " << generator_type << " " << generator <<"."<< endl;
+            return;
+         }
+      }
+   }
+}
+
+
+template <typename Coord>
+void find_first_violated_constraint(BigObject p1, BigObject p2)
+{
    std::string generator_type = p1.isa("Polytope") ? "point" : "ray";
-   const bool verbose=options["verbose"];
    const Matrix<Coord> vert=p1.give("RAYS|INPUT_RAYS"), lin=p1.lookup("LINEALITY_SPACE|INPUT_LINEALITY"), ineq=p2.give("FACETS|INEQUALITIES"), eq=p2.lookup("LINEAR_SPAN|EQUATIONS");
 
    const Int dim1 = p1.give("CONE_AMBIENT_DIM");
    const Int dim2 = p2.give("CONE_AMBIENT_DIM");
    if (dim1 != dim2) {
-      if (verbose) cout << "Cones/Polytopes do no live in the same ambient space."<<endl;
+      cout << "Cones/Polytopes do no live in the same ambient space."<<endl;
+      return;
+   }
+
+   auto check_equation = [] (const auto& c, const auto& g) { return c*g == 0; };
+   check_for_constraint_violation(eq, vert, check_equation, "Equation", generator_type);
+   check_for_constraint_violation(eq, lin, check_equation, "Equation", "lineality space generator");
+   
+   auto check_inequality = [] (const auto& c, const auto& g) { return c*g >= 0; };
+   check_for_constraint_violation(ineq, vert, check_inequality, "Inequality", generator_type);
+   check_for_constraint_violation(ineq, lin, check_inequality, "Inequality", "lineality space generator");
+      
+}
+
+template <typename Coord>
+bool included_polyhedra(BigObject p1, BigObject p2, OptionSet options)
+{
+   if(contains<Coord>(p1, p2)){
+      return true;
+   } else {
+      const bool verbose=options["verbose"];
+      if(verbose) find_first_violated_constraint<Coord>(p1, p2);
       return false;
    }
-      
-   for (auto i=entire(rows(eq)); !i.at_end(); ++i) {
-      for (auto j=entire(rows(vert)); !j.at_end(); ++j)
-         if ((*i)*(*j)!=0) {
-            if (verbose) cout << "Equation " << *i << " not satisfied by " << generator_type << " " << *j <<"."<< endl;
-            return false;
-         }
-      for (auto j=entire(rows(lin)); !j.at_end(); ++j)
-         if ((*i)*(*j)!=0) {
-            if (verbose) cout << "Equation " << *i << " not satisfied by " << "lineality space generator " << *j <<"."<< endl;
-            return false;
-         }
-   }
-   for (auto i=entire(rows(ineq)); !i.at_end(); ++i) {
-      for (auto j=entire(rows(vert)); !j.at_end(); ++j)
-         if ((*i)*(*j)<0) {
-            if (verbose) cout << "Inequality " << *i << " not satisfied by " << generator_type << " " << *j <<"."<< endl;
-            return false;
-         }
-      for (auto j=entire(rows(lin)); !j.at_end(); ++j)
-         if ((*i)*(*j)!=0) {
-            if (verbose) cout << "Inequality " << *i << " not satisfied by " << "lineality space generator " << *j <<"."<< endl;
-            return false;
-         }
-   }
-   return true;
 }
+   
 
 UserFunctionTemplate4perl("# @category Comparing"
                           "# @author Sven Herrmann"

@@ -51,34 +51,8 @@ sub header {
    my $title=$self->title || "unnamed";
    my $resources="$Polymake::Resources/threejs";
 
-   my $source = ${$self->geometries}[0]->source;
-   my ($view_point, $view_direction, $view_up, $scale) = $source->transform2view($trans, \%ThreeJS::default::);
-   $view_point = join ", ", @$view_point;
-   $view_direction = join ", ", @$view_direction;
-   $view_up = join ", ", @$view_up;
-
-   my $bgColor = Utils::rgbToHex(@ThreeJS::default::bgColor);
-   my $bgOp = $ThreeJS::default::bgOpacity;
-   my $camera_angle = $ThreeJS::default::fov;
-   my $near = $ThreeJS::default::near_plane;
-   my $far = $ThreeJS::default::far_plane;
-
    my $random_id = int(rand(100000000000));
-
-   my $width_height_start = "";
-   my $width = "document.body.clientWidth - 20";
-   my $height = "document.body.clientHeight - 20";
-
-
-   if ($is_used_in_jupyter) {
-      $width_height_start = <<"%";
-         var box = document.getElementsByClassName( 'output_subarea' )[0];
-         var notebook = document.getElementById( 'notebook_panel' );
-%
-      $width = "box.clientWidth - 25";
-      $height = "notebook.clientHeight * 0.8";
-   }
-
+   my $explodablemodel = "false";
    my $head=<<"%";
 <!--
 polymake for $who
@@ -89,40 +63,50 @@ $title
 
 <html>
    <head>
+      <meta charset=utf-8>
       <title>$title</title>
       <style>
 /*
 // COMMON_CODE_BLOCK_BEGIN
 */
-         html{overflow: scroll;}
-         body { font-family: Arial, Helvetica, sans-serif}
+         html {overflow: scroll;}
          strong{font-size: 18px;}
          canvas { z-index: 8; }
-         input[type='range'] {}
          input[type='radio'] {margin-left:0;}
          input[type='checkbox'] {margin-right:7px; margin-left: 0px; padding-left:0px;}
-         .group{padding-bottom: 40px;}
+         .group{padding-bottom: 15px;}
          .settings * {z-index: 11; }
-         .settings{z-index: 10; margin-left: 30px; display: none; width: 14em; height: 90%; border: solid 1px silver; padding: 2px; overflow-y: scroll; background-color: white }
-         .indented{margin-left: 20px; margin-top: 15px; padding-bottom: 0px;} 
+         .settings{z-index: 10; font-family: Arial, Helvetica, sans-serif; margin-left: 30px; visibility: hidden; width: 14em; height: 96%; border: solid 1px silver; padding: 2px; overflow-y: scroll; box-sizing: border-box; background-color: white; position: absolute;}
+         .indented{margin-left: 20px; margin-top: 10px; padding-bottom: 0px;} 
          .shownObjectsList{overflow: auto; max-width: 150px; max-height: 150px;}
-         .showSettingsButton{display: block; z-index: 12; position: absolute }
-         .hideSettingsButton{display: none; z-index: 12; position: absolute; opacity: 0.5}
-         .resetButton{margin-top: 20px;}
-         button{margin-left: 0;}
+         .showSettingsButton{visibility: visible; z-index: 12; position: absolute }
+         .hideSettingsButton{visibility: hidden; z-index: 12; position: absolute; opacity: 0.5}
+         button{margin-left: 0; margin-top: 10px}
          img{cursor: pointer;}
-         .suboption{padding-top: 30px;}
-         .transparency{display: none;}
-         .labelsCheckbox{margin-top: 10px;}
+         .suboption{padding-top: 15px;}
+         #model$random_id { width: 100%; height: 100%; }
+%
 
+      if ($is_used_in_jupyter) {
+         $head .= <<"%";
+         .threejs_container { width: 100%; height: 75vh;}
+         .settings{max-height: 74vh} 
+%
+      } else {
+         $head .= <<"%";
+         .threejs_container { width: 100%; height: calc(100vh-16px); }
+%
+      }
 
+      $head .= <<"%";
          input[type=range] {
            -webkit-appearance: none;
            padding:0; 
            width:90%; 
            margin-left: auto;
            margin-right: auto;
-           margin-top: 20px;
+           margin-top: 15px;
+           margin-bottom: 15px;
            display: block;	
          }
          input[type=range]:focus {
@@ -209,12 +193,12 @@ $title
 */
 		</style>
    </head>
-
 <body>
-
+   <div class='threejs_container'>
 		<div id='settings_OUTPUTID' class='settings'>
 %
    if (@{$self->geometries}>1) {
+      $explodablemodel = "true";
       $head .= <<"%";
 			<div class=group id='explode_OUTPUTID'>
 				<strong>Explode</strong>
@@ -223,18 +207,7 @@ $title
 				<div class=suboption>Exploding speed</div>
 				<input id='explodingSpeedRange_OUTPUTID' type='range' min=0 max=0.5 step=0.001 value=0.05>
 			</div>
-
-			
-%
-   }
-
-   if ($source->isa("Visual::PlanarNet::Polygons")) {
-      $head .= <<"%";
-			<div class=group id='fold_OUTPUTID'>
-				<strong>Fold</strong>
-				<input id='foldRange_OUTPUTID' type='range' min=0 max=1 step=0.001 value=0>
-			</div>
-
+	
 %
    }
 
@@ -250,23 +223,36 @@ $title
 					<div><input type='checkbox' id='changeRotationX_OUTPUTID'> x-axis</div>
 					<div><input type='checkbox' id='changeRotationY_OUTPUTID'> y-axis</div>
 					<div><input type='checkbox' id='changeRotationZ_OUTPUTID'> z-axis</div>
-					<button id='resetButton_OUTPUTID' class='resetButton' >Reset</button>
+					<button id='resetButton_OUTPUTID'>Reset</button>
 				</div>
 
 				<div class=suboption>Rotation speed</div>
 				<input id='rotationSpeedRange_OUTPUTID' type='range' min=0 max=5 step=0.01 value=2>
-
 			</div>
 
 
 			<div class=group id='display_OUTPUTID'>
 				<strong>Display</strong>
 				<div class=indented>
-					<div id='shownObjectsList_OUTPUTID' class='shownObjectsList'></div>
-					<div class='labelsCheckbox'><input type='checkbox' id='labelsCheckboxInput_OUTPUTID' checked>Labels</div>
+					<div id='shownObjectTypesList_OUTPUTID' class='shownObjectsList'></div>
+				</div>
+				<div class=suboption>Objects</div>
+				<div class=indented>
+				   <div id='shownObjectsList_OUTPUTID' class='shownObjectsList'></div>
 				</div>
 			</div>
-
+         
+         <div class=group id='camera_OUTPUTID'>
+            <strong>Camera</strong>
+            <div class=indented>
+               <form>
+                  <select id="cameraType_OUTPUTID">
+                     <option value='perspective' selected> Perspective<br></option>
+                     <option value='orthographic' > Orthographic<br></option>
+                  </select>
+               </form>
+            </div>
+         </div>
 
 			<div class=group id='svg_OUTPUTID'>
 				<strong>SVG</strong>
@@ -281,285 +267,167 @@ $title
 
 		</div>	<!-- end of settings -->
 %
-                if($is_used_in_jupyter){
-                $head .= <<"%";
-		<img id='hideSettingsButton_OUTPUTID' style="display: none" class='hideSettingsButton' src='/kernelspecs/polymake/close.svg' width=20px">
+   if ($is_used_in_jupyter) {
+      $head .= <<"%";
+		<img id='hideSettingsButton_OUTPUTID' class='hideSettingsButton' src='/kernelspecs/polymake/close.svg' width=20px">
 		<img id='showSettingsButton_OUTPUTID' class='showSettingsButton' src='/kernelspecs/polymake/menu.svg' width=20px">
 %
-              }
-              else
-              {
-              $head .= <<"%";
+   } else {
+         $head .= <<"%";
 		<img id='hideSettingsButton_OUTPUTID' class='hideSettingsButton' src='$resources/js/images/close.svg' width=20px">
 		<img id='showSettingsButton_OUTPUTID' class='showSettingsButton' src='$resources/js/images/menu.svg' width=20px">
 %
-              }
+   }
    $head .= <<"%";
 <div id="model$random_id"></div>
-
+</div>
 %
 
    unless ($is_used_in_jupyter) {
       $head .= "<script src='$resources/js/three.polymake.js'></script>\n";
    }
 
-   $head .= <<"%";
-<script>
-%
+##############################################################################################
+##############################################################################################
 
+   $head .= <<"%";
+   <script>
+%
    if ($is_used_in_jupyter) {
       $head .= <<"%";
-requirejs.config({
-  paths: {
-    three: '/kernelspecs/polymake/three',
-    Detector: '/kernelspecs/polymake/Detector',
-    SVGRenderer: '/kernelspecs/polymake/SVGRenderer',
-    CanvasRenderer: '/kernelspecs/polymake/CanvasRenderer',
-    Projector: '/kernelspecs/polymake/Projector',
-    TrackballControls: '/kernelspecs/polymake/TrackballControls'
-  },
-  shim: {
-    'three':
-    {
-      exports: 'THREE'
-    },
-    'Detector':
-    {
-      deps: [ 'three' ],
-      exports: 'Detector'
-    },
-    'SVGRenderer':
-    {
-      deps: [ 'three' ],
-      exports: 'THREE.SVGRenderer'
-    },
-    'CanvasRenderer':
-    {
-      deps: [ 'three' ],
-      exports: 'THREE.CanvasRenderer'
-    },
-    'Projector':
-    {
-      deps: [ 'three' ],
-      exports: 'THREE.Projector'
-    },
-    'TrackballControls':
-    {
-      deps: [ 'three' ],
-      exports: 'THREE.TrackballControls'
-    }
-  }
-});
-require(['three'],function(THREE){
-    window.THREE = THREE;
-  require(['Detector','SVGRenderer','CanvasRenderer','Projector','TrackballControls'],function(Detector,SVGRenderer,CanvasRenderer,Projector,TrackballControls){
-      THREE.SVGRenderer = SVGRenderer;
-      THREE.CanvasRenderer = CanvasRenderer;
-      THREE.Projector = Projector;
-      THREE.TrackballControls = TrackballControls;
-
-%
-   }
-
-
-   $head .= <<"%";
-// COMMON_CODE_BLOCK_BEGIN
-	var foldable = false;
-%
-   if ($source->isa("Visual::PlanarNet::Polygons")){
-      $head.=<<"%";
-
-		foldable = true;
-
-// rotate point p around axis defined by points p1 and p2 by given angle
-function rotate(p, p1, p2, angle ){   
-   angle = -angle;
-   var x = p.x, y = p.y, z = p.z, 
-   a = p1.x, b = p1.y, c = p1.z, 
-   u = p2.x-p1.x, v = p2.y-p1.y, w = p2.z-p1.z;
-   var result = [];
-   var L = u*u + v*v + w*w;
-   var sqrt = Math.sqrt;
-   var cos = Math.cos;
-   var sin = Math.sin;
-
-   result[0] = ((a*(v*v+w*w)-u*(b*v+c*w-u*x-v*y-w*z))*(1-cos(angle))+L*x*cos(angle)+sqrt(L)*(-c*v+b*w-w*y+v*z)*sin(angle))/L;
-   result[1] = ((b*(u*u+w*w)-v*(a*u+c*w-u*x-v*y-w*z))*(1-cos(angle))+L*y*cos(angle)+sqrt(L)*(c*u-a*w+w*x-u*z)*sin(angle))/L;
-   result[2] = ((c*(u*u+v*v)-w*(a*u+b*v-u*x-v*y-w*z))*(1-cos(angle))+L*z*cos(angle)+sqrt(L)*(-b*u+a*v-v*x+u*y)*sin(angle))/L;
-
-   return result;
-}
-
-var oldScale = 0;
-function fold(event){
-   if (typeof(event) == 'number'){
-      var x = event;
-   }
-   else var x = Number(event.currentTarget.value);
-
-   var scale = x - oldScale;
-
-   for (var j=0; j<axes.length; j++){
-      rotateVertices(j, scale);
-   }
-   update();
-   oldScale += scale;
-   moveToBaryCenter();
-}
-
-function moveToBaryCenter(){
-   controls.target = barycenter();
-}
-
-function barycenter(){
-   var center = new THREE.Vector3(0,0,0);
-   for (var i=0; i<allpoints.length; i++){
-      center.add(allpoints[i].vector);
-   }
-   center.divideScalar(allpoints.length);
-   return center;
-}
-
-function rotateVertices(edge, scale){
-   if (edge < axes.length){
-      for (var j=0; j<subtrees[edge].length; j++){
-         var rotP = rotate(allpoints[subtrees[edge][j]].vector, allpoints[axes[edge][0]].vector,allpoints[axes[edge][1]].vector , scale * (Math.PI - angles[edge]));
-         allpoints[subtrees[edge][j]].set(rotP[0],rotP[1],rotP[2]);
+    requirejs.config({
+      paths: {
+        three: '/kernelspecs/polymake/three',
+        TrackballControls: '/kernelspecs/polymake/TrackballControls',
+        OrbitControls: '/kernelspecs/polymake/OrbitControls',
+        Projector: '/kernelspecs/polymake/Projector',
+        SVGRenderer: '/kernelspecs/polymake/SVGRenderer',
+        WEBGL: '/kernelspecs/polymake/WebGL',
+      },
+      shim: {
+        'three': { exports: 'THREE'},
+        'SVGRenderer': { deps: [ 'three' ], exports: 'THREE.SVGRenderer' },
+        'WEBGL': { deps: [ 'three' ], exports: 'THREE.WEBGL' },
+        'Projector': { deps: [ 'three' ], exports: 'THREE.Projector' },
+        'TrackballControls': { deps: [ 'three' ], exports: 'THREE.TrackballControls' },
+        'OrbitControls': { deps: [ 'three' ], exports: 'THREE.OrbitControls' },
       }
-   }
-}
-
-
-function update(){
-   for (index = 0; index < obj.children.length; ++index) { 
-      if (obj.children[index] instanceof THREE.Line || obj.children[index] instanceof THREE.Mesh) {
-            obj.children[index].geometry.verticesNeedUpdate=true; 
-      } 
-   }
-}
-
+    });
+    
+    require(['three'],function(THREE){
+        window.THREE = THREE;
+      require(['TrackballControls', 'OrbitControls', 'Projector', 'SVGRenderer', 'WEBGL'],
+               function(TrackballControls, OrbitControls, Projector, SVGRenderer, WEBGL) {
+    THREE.TrackballControls = TrackballControls;
+    THREE.OrbitControls = OrbitControls;
+    THREE.Projector = Projector;
+    THREE.SVGRenderer = SVGRenderer;
+    THREE.WEBGL = WEBGL;
 %
    }
+   
+   my $source = ${$self->geometries}[0]->source;
+   my ($view_point, $view_direction, $view_up, $scale) = $source->transform2view($trans, \%ThreeJS::default::);
+   $view_point = join ", ", @$view_point;
+   $view_direction = join ", ", @$view_direction;
+   $view_up = join ", ", @$view_up;
 
+   my $bgColor = Utils::rgbToHex(@ThreeJS::default::bgColor);
+   my $bgOp = $ThreeJS::default::bgOpacity;
+   my $camera_angle = $ThreeJS::default::fov;
+   my $near = $ThreeJS::default::near_plane;
+   my $far = $ThreeJS::default::far_plane;
    $head.=<<"%";
-   var container = document.getElementById( 'model$random_id' );
-   var renderer = Detector.webgl? new THREE.WebGLRenderer({antialias: true}): new THREE.CanvasRenderer({antialias: true});
-	var svgRenderer = new THREE.SVGRenderer({antialias: true});
-   $width_height_start
-   var width = $width;
-   var height = $height;
-   renderer.setSize(width, height);
-   svgRenderer.setSize(width, height);
-   renderer.setClearColor($bgColor, $bgOp);
-   svgRenderer.setClearColor($bgColor, $bgOp);
 
-   container.appendChild(renderer.domElement);
+// COMMON_CODE_BLOCK_BEGIN
 
-   var scene = new THREE.Scene();
-   var camera = new THREE.PerspectiveCamera($camera_angle, width/height, $near, $far);
+const intervalLength = 25; // for automatic animations
+const explodableModel = $explodablemodel; 
+const modelContains = { points: false, pointlabels: false, lines: false, edgelabels: false, faces: false, arrowheads: false };
+const foldables = [];
 
-   var renderid;
+var three = document.getElementById("model$random_id");
+var scene = new THREE.Scene();
+var renderer = new THREE.WebGLRenderer( { antialias: true } );
+var svgRenderer = new THREE.SVGRenderer( { antialias: true } );
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setClearColor($bgColor, $bgOp);
+svgRenderer.setClearColor($bgColor, $bgOp);
+three.appendChild(renderer.domElement);
 
-   camera.position.set($view_point);
-   camera.lookAt($view_direction);
-   camera.up.set($view_up);
+var frustumSize = 4;
+var cameras = [new THREE.PerspectiveCamera($camera_angle, 1, $near, $far), new THREE.OrthographicCamera()];
+cameras.forEach(function(cam) {
+    cam.position.set($view_point);
+    cam.lookAt($view_direction);  
+    cam.up.set($view_up);         
+});
+var controls = [new THREE.TrackballControls(cameras[0], three), new THREE.OrbitControls(cameras[1], three)];
+var camera, control;
 
-   // class to allow move points together with labels and spheres
-   var PMPoint = function (x,y,z) {
-      this.vector = new THREE.Vector3(x,y,z);
-      this.sprite = null;
-      this.sphere = null;
-   }
-   PMPoint.prototype.makelabel = function(label) {
-      this.sprite = textSprite( label );
+controls[0].zoomSpeed = 0.2;
+controls[0].rotateSpeed = 4;
+
+
+// class to allow move points together with labels and spheres
+var PMPoint = function (x,y,z) {
+   this.vector = new THREE.Vector3(x,y,z);
+   this.sprite = null;
+   this.sphere = null;
+}
+PMPoint.prototype.addLabel = function(labelsprite) {
+   this.sprite = labelsprite;
+   this.sprite.position.copy(this.vector);
+}
+PMPoint.prototype.addSphere = function(spheremesh) {
+   this.sphere = spheremesh;
+   this.sphere.position.copy(this.vector);
+}
+PMPoint.prototype.set = function(x,y,z) {
+   this.vector.set(x,y,z);
+   if (this.sprite) {
       this.sprite.position.copy(this.vector);
    }
-   PMPoint.prototype.makesphere = function(radius,material) {
-      this.sphere = new THREE.Mesh(new THREE.SphereGeometry(radius), material);
+   if (this.sphere) {
       this.sphere.position.copy(this.vector);
    }
-
-   PMPoint.prototype.setX = function(x) {
-      this.vector.setX(x);
-      if (this.sprite) {
-         this.sprite.position.setX(x);
-      }
-      if (this.sphere) {
-         this.sphere.position.setX(x);
-      }
-   };
-   PMPoint.prototype.setY = function(y) {
-      this.vector.setY(y);
-      if (this.sprite) {
-         this.sprite.position.setY(y);
-      }
-      if (this.sphere) {
-         this.sphere.position.setY(y);
-      }
-   };
-   PMPoint.prototype.setZ = function(z) {
-      this.vector.setZ(z);
-      if (this.sprite) {
-         this.sprite.position.setZ(z);
-      }
-      if (this.sphere) {
-         this.sphere.position.setZ(z);
-      }
-   };
-   PMPoint.prototype.set = function(x,y,z) {
-      this.vector.set(x,y,z);
-      if (this.sprite) {
-         this.sprite.position.set(x,y,z);
-      }
-      if (this.sphere) {
-         this.sphere.position.set(x,y,z);
-      }
-   };
-   PMPoint.prototype.add = function(o) {
-      if (this.sprite) {
-         o.add(this.sprite);
-      }
-      if (this.sphere) {
-         o.add(this.sphere);
-      }
-   };
-
-
-   var controls = new THREE.TrackballControls(camera, container);
-	controls.zoomSpeed = 0.2;
-	controls.rotateSpeed = 4;
-
-   var all_objects = [];
-   var centroids = [];
+}
+PMPoint.prototype.radius = function() {
+   if (this.sphere) {
+      return this.sphere.geometry.parameters.radius;
+   } else {
+      return 0;
+   }
+};
 %
 
    if ($is_used_in_jupyter) {
       $head.=<<"%";
-   // select the target node
-   var target = document.querySelector('#model$random_id');
+// select the target node
+var target = document.querySelector('#model$random_id');
 
-   // create an observer instance
-   var observer = new MutationObserver(function(mutations) {
-      mutations.forEach(function(mutation) {
-         if (mutation.removedNodes && mutation.removedNodes.length > 0) {
-            cancelAnimationFrame(renderId);
-            observer.disconnect();
-            console.log("cancelled frame "+renderId);
-         }
-      });
-   });
-
-   // configuration of the observer:
-   var config = { childList: true, characterData: true }
-
-   // pass in the target node, as well as the observer options
-   while (target) {
-      if (target.className=="output") {
-         observer.observe(target, config);
-         break;
+// create an observer instance
+var observer = new MutationObserver(function(mutations) {
+   mutations.forEach(function(mutation) {
+      if (mutation.removedNodes && mutation.removedNodes.length > 0) {
+         cancelAnimationFrame(renderId);
+         observer.disconnect();
+         console.log("cancelled frame "+renderId);
       }
-      target = target.parentNode;
+   });
+});
+
+// configuration of the observer:
+var config = { childList: true, characterData: true }
+
+// pass in the target node, as well as the observer options
+while (target) {
+   if (target.className=="output") {
+      observer.observe(target, config);
+      break;
    }
+   target = target.parentNode;
+}
 
 %
    }
@@ -568,32 +436,28 @@ function update(){
 // COMMON_CODE_BLOCK_END
 
 %
-   $head .= '   var objectnames = ["'.join('","',map { $_->name } @{$self->geometries})."\"];\n";
-   if ($source->isa("Visual::PlanarNet::Polygons")) {
-      # extra data for planar net folding
-      $head .= Utils::convertExtraData("axes",$source->Axes) if defined $source->Axes;
-      $head .= Utils::convertExtraData("angles",$source->DihedralAngles) if defined $source->DihedralAngles;
-      $head .= Utils::convertExtraData("subtrees",$source->DependendVertices) if defined $source->DependendVertices;
-      $head .= Utils::convertExtraData("polytoperoot",$source->PolytopeRoot) if defined $source->PolytopeRoot;
-   }
    return $head;
 }
 
 sub trailer {
    local $/;
-   open my $trailer, "$Polymake::Resources/threejs/trailer_string.html" or die $!;
+   open my $trailer, "$Polymake::Resources/threejs/trailer_string.js" or die $!;
    my $trailerstring = <$trailer>;
    if ($is_used_in_jupyter) {
       # insert function closing at the end
-      $trailerstring =~ s#(?=// COMMON_CODE_BLOCK_END)#});});\n#m;
+      $trailerstring .= "\n});});\n";
    }
-   $trailerstring;
+   $trailerstring .= <<"%";
+      </script>
+   </body>
+</html>
+%
 }
 
 sub toString {
    my ($self)=@_;
    my $trans = $self->transform;
-   $self->header($trans) . join("", map { $_->toString($trans) } @{$self->geometries}) . $self->trailer;
+   $self->header($trans) . join("", map { @{$self->geometries}[$_]->toString("obj$_") } (0..@{$self->geometries}-1)) . $self->trailer;
 }
 
 ##############################################################################################
@@ -604,266 +468,152 @@ package ThreeJS::PointSet;
 use Polymake::Struct (
    [ new => '$' ],
    [ '$source' => '#1' ],
-   [ '$name' => '#1 ->Name' ],
+   [ '$name' => '#1->Name' ],
 );
 
-sub newGeometry {
-   my ($self, $var) = @_;
-   return <<"%"
-   var $var = new THREE.Geometry();
-%
-}
-
-sub newCoord {
-   my ($self, $coords) = @_;
-
-   return <<"%"
-   allpoints.push(new PMPoint($coords));
-%
-}
-
-sub newVertex {
-   my ($self, $var, $index) = @_;
-   return <<"%"
-   $var.vertices.push(allpoints[$index].vector);
-%
-}
-
-sub newPoint {
-   my ($self, $var, $size, $index) = @_;
-   my $r = (is_code($size)) ? $size->($index) : $size;
-   return "" unless $r;
-
-   my $radius = $r/50;
-   my $mat = (is_code($self->source->VertexColor)) ? "materials[$index]" : $var."_material";
-   return <<"%"
-   allpoints[$index].makesphere($radius,$mat);
-%
-}
-
-sub newLabel {
-   my ($self, $index, $label) = @_;
-   return <<"%"
-   allpoints[$index].makelabel("$label");
-%
-}
-
-sub newLine {
-   my ($self, $var) = @_;
-   my $mat = $var."_material";
-   return <<"%"
-   obj.add(new THREE.Line($var, $mat));
-
-%
-}
-
-
-sub newMaterial {
-   my ($self, $var, $type) = @_;
-   my $matvar = $var."_material";
-
-   my $material;
-   my @code_props = ();
-   my @type_props;
-   my $number = 0;
-
-   my $text = "   <!-- $type style -->\n";
-
-   if ($type eq "Vertex") {
-      $material = "MeshBasicMaterial";
-      @type_props = ("VertexColor");
-      $number = @{$self->source->Vertices};
-   } elsif ($type eq "Facet") {
-      $material = "MeshBasicMaterial";
-      @type_props = ("FacetColor", "FacetTransparency");
-      $number = @{$self->source->Facets};
-   } elsif ($type eq "Edge") {
-      $material = "LineBasicMaterial";
-      @type_props = ("EdgeColor", "EdgeThickness");
-
-
-      if ($self->source->can("NEdges")) {
-         $number = $self->source->NEdges;
-      } elsif ($self->source->can("n_edges")) {
-         $number = $self->source->n_edges;
-      }
-   } else {
-      # should not happen
-   }
-   my $common_string = $self->find_common_string(\@code_props, \@type_props);
-
-   if (@code_props) {
-#     die "Edge decorations must be constants when using three.js." if $type eq "Edge";
-      if ($type eq "Edge") {
-         return $text . $self->edgeMaterial($matvar, $material, $common_string, \@code_props);
-      }
-      return $text . $self->codeMaterial($matvar, $material, $common_string, \@code_props, $number);
-   } else {
-      $text .= Utils::constantMaterial($matvar, $material, "{".$common_string."}");
-      $text .= "   $matvar.side = THREE.DoubleSide;\n";
-      $text .= "   $matvar.transparent = true;\n";
-      return $text;
-   }
-}
-
-
-
-sub header {
-   return <<"%"
-   var obj = new THREE.Object3D();
-   var allpoints = [];
-%
-}
-
-sub trailer {
-   return <<"%"
-   scene.add(obj);
-   all_objects.push(obj);
-
-%
-}
-
-sub coordsToString {
-   my ($self) = @_;
-   my $text = "";
-
-   my @coords = Utils::pointCoords($self);
-   foreach (@coords) {
-      $text .= $self->newCoord($_);
-   }
-   return $text."\n";
-}
-
-sub pointsToString {
-   my ($self, $var)=@_;
-
-   my $text = $self->coordsToString();
-
-   my $labels = $self->source->VertexLabels;
-
-   if ($self->source->VertexStyle !~ $Visual::hidden_re){
-      my $n = scalar(@{$self->source->Vertices});
-
-      my $thickness = $self->source->VertexThickness || 1;
-
-
-      $text .= $self->newMaterial("points", "Vertex");
-
-      $text .= "\n   <!-- POINTS -->\n";
-
-      my $i = 0;
-      while ($i < $n){
-         $text .= $self->newPoint($var, $thickness, $i++);
-      }
-      if ($labels !~ $Visual::hidden_re && $labels != "") {
-         my $i=-1;
-         while ($i < $n-1){
-            if (defined(my $label = $labels->(++$i))) {
-               $text .= $self->newLabel($i, $label);
-            }
-         }
-      }
-
-      $text .= "\n";
-   }
-
-   $text .= <<"%";
-   for (index = 0; index < allpoints.length; ++index) {
-      allpoints[index].add(obj);
-   }
-%
-
-   return $text;
-}
-
-sub verticesToString {
-   my ($self, $var) = @_; 
-
-   my $text = "";
-
-   my $n = $self->source->Vertices->rows;
-   $text .= "\n   <!-- VERTICES -->\n";
-   foreach (0..$n-1) {
-      $text .= $self->newVertex($var, $_);
-   }
-
-   $text .= <<"%";
-
-   centroids.push(computeCentroid($var));
-
-%
-   return $text;
-}
-
-
-sub toString {
-    my ($self, $trans)=@_;
-    $self->header . $self->pointsToString("points") . $self->trailer;
-}
-
-
-
-sub find_common_string {
-   my ($self, $code_props, $type_props) = @_;
-
-   my $common_string = "";
+sub findCommonProps {
+   my ($self, $code_props, $type_props, $props) = @_;
    foreach (@$type_props) {
       if (is_code($self->source->$_)) {
          push @$code_props, $_;
       } else {
-         $common_string .= Utils::writeDecor($_, $self->source->$_);
+         Utils::decor2prop($_, $self->source->$_,$props);
       }
    }
-   return $common_string;
 }
 
+sub newMaterial {
+   my ($self,$mtype,$type_props,$props,$number)=@_;
+   my @code_props = ();
+   $self->findCommonProps(\@code_props, $type_props, $props);
 
-sub codeMaterial {
-   my ($self, $matvar, $material_type, $common_string, $code_props, $number) = @_;
-
-   my $text = "   var materials = [\n";
-
-   for (my $i=0; $i<$number; ++$i) {
-      $text .= $self->oneCodeMaterial($i, $material_type, $common_string, $code_props);
+   if (@code_props) {
+      my @materialstrings;
+      if ($number=="use_edge_iter") {
+         for (my $e=$self->source->all_edges; $e; ++$e) {
+            foreach (@code_props) {
+               Utils::decor2prop($_, $self->source->$_->($e),$props);
+               push @materialstrings, Utils::materialInstance($mtype,$props);
+            }
+         }
+      } else {
+         for (my $i=0; $i<$number; ++$i) {
+            foreach (@code_props) {
+               Utils::decor2prop($_, $self->source->$_->($i),$props);
+               push @materialstrings, Utils::materialInstance($mtype,$props);
+            }
+         }
+      }
+      return "[".join(",\n", @materialstrings)."]";
+   } else {
+      return Utils::materialInstance($mtype,$props);
    }
+}
 
-   $text .= "   ];\n";
+sub writePointMaterial {
+   my ($self,$objvar)=@_;
+   my $props = { side => "THREE.DoubleSide", transparent => "false"};
+   my $mtype = "MeshBasicMaterial";
+   my @type_props = ("VertexColor");
+   my $string = "   <!-- Vertex style -->\n";
+   my $number = @{$self->source->Vertices};
+   $string .= "$objvar.userData.pointmaterial = ".$self->newMaterial($mtype, \@type_props, $props, $number).";\n";
+   return $string;
+}
 
-   $text .= <<"%";
-   for (index = 0; index < materials.length; ++index) {
-      materials[index].side = THREE.DoubleSide;
+sub writePoints {
+   my ($self,$objvar) = @_;
+   my $string = "";
+   $string .= "$objvar.userData.points = [];\n";
+   my @coords = Utils::pointCoords($self->source->Vertices);
+   foreach (@coords) {
+      $string .= "$objvar.userData.points.push(new PMPoint($_));\n";
    }
+   return $string."\n";
+}
+
+sub writePointRadii {
+   my ($self,$objvar) = @_;
+   my $string = "";
+   my $radii = $self->source->VertexThickness // 1;
+   my $number = @{$self->source->Vertices};
+   if (is_code($radii)) {
+      $string .= "$objvar.userData.pointradii = ".Utils::jsArray(map { $radii->($_)/50 } (0..$number)).";\n";
+   } else {
+      $string .= "$objvar.userData.pointradii = " . $radii/50 . ";\n";   
+   }
+   return $string;
+}
+
+sub writePointLabels {
+   my ($self,$objvar) = @_;
+   my $string = "";
+   my $labels = $self->source->VertexLabels;
+   my $number = @{$self->source->Vertices};
+   my @labels;
+   my $i=-1;
+   while ($i < $number-1){
+      if (defined(my $label = $labels->(++$i))) {
+         $label =~ s/\n/\\n/g;
+         push @labels, '"'.$label.'"';
+      }
+   }
+   $string .= "$objvar.userData.pointlabels = ".Utils::jsArray(@labels).";\n";
+   return $string;
+}
+
+sub writeEdgeMaterial {
+   my ($self,$objvar)=@_;
+   my $props = { transparent => "false", depthTest => "true"};
+   my $mtype = "LineBasicMaterial";
+   my @type_props = ("EdgeColor", "EdgeThickness");
+   my $string = "   <!-- Edge style -->\n";
+   my $number = 0;
+   if ($self->source->can("NEdges")) {
+      $number = $self->source->NEdges;
+   } elsif ($self->source->can("all_edges")) {
+      $number = "use_edge_iter";
+   }
+   $string .= "$objvar.userData.edgematerial = ".$self->newMaterial($mtype, \@type_props, $props, $number).";\n";
+   return $string;
+}
+
+sub headerString {
+   my ($self,$var)=@_;
+   my $string = "var $var = new THREE.Object3D();\n";
+   $string .= "$var.name = \"".$self->name."\";\n";
+   $string .= "$var.userData.explodable = ".$self->source->Explodable.";\n";
+}
+
+sub trailerString {
+   my ($self,$var)=@_;
+   # initializing functions can be found at the beginning of trailer_string.js
+   my $string = <<"%";
+init_object($var);
+scene.add($var);
+
 %
-
-   return $text .= Utils::constantMaterial($matvar, "MeshFaceMaterial", "materials");
 }
 
-sub oneCodeMaterial {
-   my ($self, $index, $material_type, $common_string, $code_props) = @_;
-
-   my $text = "      new THREE.".$material_type."({ ".$common_string;
-
-   foreach (@$code_props) {
-      $text .= Utils::writeDecor($_, $self->source->$_->($index));
+sub toString {
+   # the logic in here is again used for the init_object method in javascript
+   my ($self,$var)=@_;
+   my $string = "";
+   $var //= "obj";
+   $string .= $self->headerString($var);
+   $string .= $self->writePoints($var);
+   if ($self->source->VertexStyle !~ $Visual::hidden_re) {
+      if ($self->source->VertexThickness != 0) {
+         $string .= $self->writePointRadii($var);
+         $string .= $self->writePointMaterial($var);
+      }
+      $string .= $self->writePointLabels($var) unless ($self->source->VertexLabels =~ $Visual::hidden_re || $self->source->VertexLabels == "");
    }
 
-   $text .= "}),\n";
-
-   return $text;
+   $string .= $self->trailerString($var);
+   return $string;
 }
 
-sub edgeMaterial {
-   my ($self, $matvar, $material_type, $common_string, $code_props) = @_;
-
-   my $text = "      var $matvar = new THREE.".$material_type."({ " . $common_string;
-
-   foreach (@$code_props) {
-      $text .= Utils::writeDecor($_, $self->source->$_->(0));
-   }
-   $text .= "});\n";
-
-   return $text;
-}
 
 ##############################################################################################
 #
@@ -874,83 +624,71 @@ use Polymake::Struct (
    [ '@ISA' => 'PointSet' ],
 );
 
-sub newArrowHelper {
-   my ($self, $var, $f, $t, $length, $color, $ahead_length, $ahead_width) = @_;
-   return <<"%"
-   var pointradius = (allpoints[$t].sphere !== null) ? allpoints[$t].sphere.geometry.parameters.radius : 0;
-   var length = allpoints[$t].vector.distanceTo(allpoints[$f].vector) - pointradius;
-   var direction = allpoints[$t].vector.clone()
-   direction.sub(allpoints[$f].vector)
-   direction.normalize();
-   var $var = new THREE.ArrowHelper(direction, allpoints[$f].vector, length, $color, $ahead_length*length, $ahead_width);
-	obj.add($var);
-%
+sub writeEdgeIndices {
+   my ($self,$objvar)=@_;
+   my @allindices;
+   for (my $e=$self->source->all_edges; $e; ++$e) {
+      push @allindices, @$e;
+   }
+   return "$objvar.userData.edgeindices = ".Utils::jsArray(@allindices).";\n";
 }
 
-sub newEdge {
-   my ($self,$var,$edge,$linewidth,$color,$label,$arrow)=@_; 
-   my ($f, $t) = $arrow!=-1 ? @$edge : reverse @$edge;
-   my $length = 1;
-	my $arrowheadlength = $ThreeJS::default::arrowheadlength;
-	my $arrowheadwidth = $ThreeJS::default::arrowheadwidth;
-	my $code = "";
-   if ($arrow) {
-		$code.=$self->newArrowHelper($var, $f, $t, $length, $color, $arrowheadlength, $arrowheadwidth);
-	} else {
-		$code.=$self->newGeometry($var) . $self->newVertex($var, $f) . $self->newVertex($var, $t) . $self->newLine($var);
-	}
-   if (defined($label)) {
-        $code.="var edgelabel = textSprite(\"$label\");\n";  
-        $code.="edgelabel.position.copy(new THREE.Vector3().addVectors(allpoints[$f].vector,new THREE.Vector3().subVectors(allpoints[$t].vector,allpoints[$f].vector).multiplyScalar(0.5)));\n";
-        $code.="obj.add(edgelabel);\n";
-   }
-   return $code;
-}
-
-
-sub linesToString {
-   my ($self, $var)=@_;
-	my $points_thickness = $ThreeJS::default::points_thickness;
-	my $lines_thickness = $ThreeJS::default::lines_thickness;
-# for arrows in directed graphs: keep undef for the same color as the edge
-
-	my $G = $self->source;
-	my $thickness = $G->EdgeThickness // 1;
-   my $style = $G->EdgeStyle;
-   my $labels = $G->EdgeLabels;
-   my $color = $G->EdgeColor;
-   my $static_color; 
-   if (defined($color) && !is_code($color)) {
-      $static_color=$color;
-   }
-   my $arrowstyle=$G->ArrowStyle;
-   my $text ="";
-
-   if ($style !~ $Visual::hidden_re) {
-      $text .= $self->newMaterial($var, "Edge");
-      $text .= "\n   <!-- EDGES -->\n";
-
+sub writeEdgeLabels {
+   my ($self,$objvar)=@_;
+   my $string = "";
+   my $labels = $self->source->EdgeLabels;
+   if (is_code($labels)) {
+      my @alllabels;
       for (my $e=$self->source->all_edges; $e; ++$e) {
-			my $thick = (is_code($thickness)) ? $thickness->($e) : $thickness;
-			my $line_width = $thick * $lines_thickness;
-			my $label = defined($labels) ? $labels->($e) : undef;
-			next unless $line_width || $label;
-			my $col = $static_color // $color->($e) // Visual::get_RGB($Visual::Color::edges);
-			my @col = split ' ', $col;
-			$col = Utils::rgbToHex(@col);
-			my $arrow_dir = is_code($arrowstyle) ? $arrowstyle->($e) : $arrowstyle;      
-			$text .= $self->newEdge($var,$e,$line_width,$col,$label,$arrow_dir);
+         push @alllabels, $labels->($e);
       }
-   }
+      $string .= "$objvar.userData.edgelabels = ".Utils::jsArray(@alllabels).";\n";
+   } else {
+      $string .= "$objvar.userData.edgelabels = ".$labels.";\n";
+   }  
+   return $string;
+}
 
-   return $text;
+sub writeArrows {
+   my ($self,$objvar)=@_;
+   my $string = "";
+   my $arrowstyle = $self->source->ArrowStyle;
+   if (is_code($arrowstyle)) {
+      my @allarrows;
+      for (my $e=$self->source->all_edges; $e; ++$e) {
+         push @allarrows, $arrowstyle->($e);
+      }
+      $string .= "$objvar.userData.arrowstyle = ".Utils::jsArray(@allarrows).";\n";
+   } else {
+      $string .= "$objvar.userData.arrowstyle = ".$arrowstyle.";\n";
+   }  
+   return $string;
 }
 
 sub toString {
-   my ($self, $trans)=@_;
-   $self->header . $self->pointsToString("points") . $self->linesToString("line") . $self->trailer;
+   my ($self,$var)=@_;
+   my $string = "";
+   $var //= "obj";
+   $string .= $self->headerString($var);
+   $string .= $self->writePoints($var);
+   if ($self->source->VertexStyle !~ $Visual::hidden_re) {
+      if ($self->source->VertexThickness != 0) {
+         $string .= $self->writePointRadii($var);
+         $string .= $self->writePointMaterial($var);
+      }
+      $string .= $self->writePointLabels($var) unless ($self->source->VertexLabels =~ $Visual::hidden_re || $self->source->VertexLabels == "");
+   }
+   
+   $string .= $self->writeEdgeIndices($var);
+   if ($self->source->EdgeStyle !~ $Visual::hidden_re) {
+      $string .= $self->writeEdgeMaterial($var);
+      $string .= $self->writeEdgeLabels($var) unless ($self->source->EdgeLabels =~ $Visual::hidden_re || $self->source->EdgeLabels == "");
+      $string .= $self->writeArrows($var) unless ($self->source->ArrowStyle =~ $Visual::hidden_re || $self->source->ArrowStyle == 0);
+   }
+   
+   $string .= $self->trailerString($var);
+   return $string;
 }
-
 
 ##############################################################################################
 #
@@ -961,109 +699,95 @@ use Polymake::Struct (
    [ '@ISA' => 'PointSet' ],
 );
 
+sub writePlanarNetInfo {
+   my ($self,$objvar)=@_;
+   # extra data for planar net folding
+   my $string = "";
+   $string .= Utils::convertExtraData($objvar.".userData.axes",$self->source->Axes) if defined $self->source->Axes;
+   $string .= Utils::convertExtraData($objvar.".userData.angles",$self->source->DihedralAngles) if defined $self->source->DihedralAngles;
+   $string .= Utils::convertExtraData($objvar.".userData.subtrees",$self->source->DependendVertices) if defined $self->source->DependendVertices;
+   $string .= Utils::convertExtraData($objvar.".userData.polytoperoot",$self->source->PolytopeRoot) if defined $self->source->PolytopeRoot;
+   
+   $string .= "$objvar.userData.oldscale = 0;\n";
+   $string .= "foldables.push($objvar);\n";
+   return $string;
+}
 
-sub newFace {
-   my ($self, $var, $indices, $facet, $facet_color) = @_;
-   my $m_index = 0;
-   if (is_code($facet_color) || is_code($self->source->FacetTransparency)) {
-      $m_index = $facet;
+sub writeEdgeIndices {
+   my ($self,$objvar)=@_;
+   my $string = "";
+   my $g = graph::graph_from_cycles($self->source->Facets);
+   my @allindices;
+   foreach my $e (@{$g->EDGES}) {
+      push @allindices, @$e;
    }
-   return <<"%"
-   $var.faces.push(new THREE.Face3($indices, undefined, undefined, $m_index));
-%
+   $string .= "$objvar.userData.edgeindices = ".Utils::jsArray(@allindices).";\n";
+   return $string;
 }
 
 
-sub facesToString {
-    my ($self, $trans, $var)=@_;
+sub writeFacetIndices {
+   my ($self,$objvar)=@_;
+   my $string = "";
+   $string .= "$objvar.userData.facets = ".Utils::jsArray(map { Utils::jsArray(@$_) } @{$self->source->Facets}).";\n";
+   return $string;
+}
 
-    my $text = "";
-
-   ### FACETS
-   my $facets = new Array<Array<Int>>($self->source->Facets);
-
-   if ($self->source->FacetStyle !~ $Visual::hidden_re){
-      $text .= $self->newGeometry($var);
-      $text .= $self->verticesToString($var);
-
-      $text .= $self->newMaterial($var, "Facet");
-
-
-      # draw facets
-      $text .= "\n   <!-- FACETS --> \n";  
-      my $facet_color = $self->source->FacetColor;
-      for (my $facet = 0; $facet<@$facets; ++$facet) {
-         # triangulate the facet
-         for (my $triangle = 0; $triangle<@{$facets->[$facet]}-2; ++$triangle) {
-            my @vs = @{$facets->[$facet]}[0, $triangle+1, $triangle+2];
-            $text .= $self->newFace($var, join(", ", @vs), $facet, $facet_color);
-         }
-         $text.="\n";
-      }
-
-      my $mat = $var."_material";
-      $text .= <<"%"
-
-   $var.computeFaceNormals();
-   $var.computeVertexNormals();
-
-   var object = new THREE.Mesh($var, $mat);
-   obj.add(object);
-
-%
-   }
-
-
-
-
-   ## EDGES
-   if ($self->source->EdgeStyle !~ $Visual::hidden_re){
-      $var = "line";
-
-      $text .= $self->newMaterial($var, "Edge");
-
-      # draw edges
-      $text .= "\n   <!-- EDGES --> \n";  
-
-      for (my $facet = 0; $facet<@$facets; ++$facet) {
-         $text .= $self->newGeometry($var);
-
-         foreach (@{$facets->[$facet]}) {
-            $text .= $self->newVertex($var,$_);
-         }
-         # first vertex again
-         $text .= $self->newVertex($var, $facets->[$facet]->[0]);
-         $text .= $self->newLine($var);
-      }
-   }
-
-
+sub writeFacetMaterial {
+   my ($self,$objvar)=@_;
+   my $props = { side => "THREE.DoubleSide", transparent => "true", depthFunc => "THREE.LessDepth", polygonOffset => "true", polygonOffsetFactor => 1, polygonOffsetUnits => 0.5};
+   my $mtype = "MeshBasicMaterial";
+   my @type_props = ("FacetColor", "FacetTransparency");
+   my $text = "   <!-- Facet style -->\n";
+   my $number = @{$self->source->Facets};
+   $text .= "$objvar.userData.facetmaterial = ".$self->newMaterial($mtype, \@type_props, $props, $number).";\n";
    return $text;
 }
 
 sub toString {
-   my ($self, $transform)=@_;
-   return $self->header . $self->pointsToString("points") . $self->facesToString($transform, "faces") . $self->trailer;
+   # the logic in here is used for the init_object method in javascript
+   my ($self,$var)=@_;
+   my $string = "";
+   $var //= "obj";
+   $string .= $self->headerString($var);
+   $string .= $self->writePoints($var);
+   if ($self->source->VertexStyle !~ $Visual::hidden_re) {
+      if ($self->source->VertexThickness != 0) {
+         $string .= $self->writePointRadii($var);
+         $string .= $self->writePointMaterial($var);
+      }
+      $string .= $self->writePointLabels($var) unless ($self->source->VertexLabels =~ $Visual::hidden_re || $self->source->VertexLabels == "");
+   }
+   
+   $string .= $self->writeEdgeIndices($var);
+   if ($self->source->EdgeStyle !~ $Visual::hidden_re) {
+      $string .= $self->writeEdgeMaterial($var);
+   }
+   
+   $string .= $self->writeFacetIndices($var);
+   if ($self->source->FacetStyle !~ $Visual::hidden_re) {
+      $string .= $self->writeFacetMaterial($var);
+   }
+
+   if ($self->source->isa("Visual::PlanarNet::Polygons")) {
+      $string .= $self->writePlanarNetInfo($var);
+   }
+   $string .= $self->trailerString($var);
+   return $string;
 }
+
 
 
 ##############################################################################################
 
 package ThreeJS::Utils;
 
-sub rgbToHex {    
-   my $red=shift;
-   my $green=shift;
-   my $blue=shift;
-   my $hex = sprintf ("0x%2.2X%2.2X%2.2X", $red*255, $green*255, $blue*255);
-   return ($hex);
-}
 
 sub pointCoords {
-   my ($self) = @_;
+   my ($data) = @_;
    my @coords = ();
-   my $d = is_object($self->source->Vertices) ? $self->source->Vertices->cols : 3;
-   foreach (@{$self->source->Vertices}) {
+   my $d = is_object($data) ? $data->cols : 3;
+   foreach (@{$data}) {
       my $point=ref($_) ? Visual::print_coords($_) : "$_".(" 0"x($d-1));
       $point =~ s/\s+/, /g;
       if ($d == 2) {
@@ -1077,46 +801,53 @@ sub pointCoords {
    return @coords;
 }
 
+sub rgbToHex {    
+	my ($red,$green,$blue) = @_;
+   my $hex = sprintf ("0x%2.2X%2.2X%2.2X", $red*255, $green*255, $blue*255);
+   return ($hex);
+}
 
-sub writeDecor {
-   my ($name, $value) = @_;
+sub jsArray {
+   "[".join(", ", @_)."]";
+}
+
+
+sub materialInstance {
+   my ($material_type, $attr) = @_;
+   return "new THREE.$material_type( " . hash2string($attr) . " )";
+}
+
+sub decor2prop {
+   my ($name, $value, $props) = @_;
 
    if ($name =~ "Color") {
-      return "color: " . Utils::rgbToHex(@$value) . ", ";
+      $props->{color} = Utils::rgbToHex(@$value);
    }
 
    if ($name eq "FacetTransparency") {
       my $opacity = defined($value) ? 1-$value : 1;
-      if ($opacity > 0.5) {
-         return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: true, depthTest: true, ";
-      } else {
-         return "transparent: true, opacity: $opacity, side: THREE.DoubleSide , depthWrite: false, depthTest: false, ";
-      }
+      $props->{opacity} = $opacity;
    }
 
    if ($name eq "EdgeThickness") {
       my $width = $value || 1.5;
-      return "linewidth: $width, ";
+      $props->{linewidth} = $width;
    }
 }
 
-
-sub constantMaterial {
-   my ($matvar, $material_type, $material_string) = @_;
-
-   return << "%";
-   var $matvar = new THREE.$material_type ( $material_string );
-
-%
+sub hash2string {
+   my ($hash) = @_;
+   return "{ ".join(", ", map { "$_: $hash->{$_}" } sort keys %$hash)." }"; 
 }
 
 sub convertExtraData {
-   my ($name,$data) = @_;
-   return "   var $name = [". join(",\n      ", map {ref $_ eq "ARRAY" ? "[".join(",",@$_)."]" : $_ } @$data)."];\n\n";
+   my ($var,$data) = @_;
+   return "$var = [". join(",\n      ", map {ref $_ eq "ARRAY" ? "[".join(",",@$_)."]" : $_ } @$data)."];\n\n";
 
 }
 
 1
+
 
 # Local Variables:
 # mode: perl

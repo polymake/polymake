@@ -1,3 +1,30 @@
+=== polymake 4.2 ===
+
+-- general --
+  * adjust c++ version check for compilers with incomplete c++17 support
+
+-- common --
+  * fix bug in back() of Bitset
+  * implement p-adic valuation of rational numbers (via flint)
+  * fix bug in normalization of QuadraticExtension
+
+-- fan --
+  * fix bug in HyperplaneArrangement when hyperplane is parallel to facet of
+    SUPPORT cone
+
+-- polytope --
+  * fix bug in included_polyhedra for empty polyhedra
+  * various ball containment functions for polytopes added: contains_ball,
+    contained_in_ball, minimal_ball, maximal_ball
+  * refactor containment checks
+
+-- topaz --
+  * documentation enhanced, several examples added
+  * implement function to compute broken circuit complex of a matroid
+
+-- tropical --
+  * refactor functions for computing tropical Pluecker vectors
+
 === polymake 4.1 ===
 
 -- general --

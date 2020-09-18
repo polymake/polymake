@@ -20,7 +20,7 @@
 #include "polymake/Rational.h"
 #include "polymake/Array.h"
 #include "polymake/Map.h"
-#include "polymake/common/primes.h"
+#include "polymake/common/factorization.h"
 
 namespace polymake { namespace common {
 
@@ -43,11 +43,11 @@ Map<Rational, Rational> sum_of_square_roots_naive(const Array<Rational>& a)
          ++multiplicity;
          ++a2;
       } 
-      const std::pair<primes::number_t, primes::number_t> // a2 could be at_end(), so use a1
-         ir_sqrt_num = primes::integer_and_radical_of_sqrt(numerator(*a1)), 
-         ir_sqrt_den = primes::integer_and_radical_of_sqrt(denominator(*a1));
-      coefficient_of_sqrt[Rational(ir_sqrt_num.second, ir_sqrt_den.second)] += 
-         multiplicity * Rational(ir_sqrt_num.first, ir_sqrt_den.first);
+      const std::pair<Integer, Integer> // a2 could be at_end(), so use a1
+         ir_sqrt_num = pm::flint::factor_out_squares(numerator(*a1)), 
+         ir_sqrt_den = pm::flint::factor_out_squares(denominator(*a1));
+      coefficient_of_sqrt[Rational(ir_sqrt_num.first, ir_sqrt_den.first)] += 
+         multiplicity * Rational(ir_sqrt_num.second, ir_sqrt_den.second);
       a1 = a2; // could both be at_end(); that's ok
    }
    return coefficient_of_sqrt;

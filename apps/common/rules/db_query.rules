@@ -88,7 +88,9 @@ options %query_options = (
    #  A filter with zero values suppresses the specified properties and allows all others,
    #  while a filter with ones allows the specified properties and suppresses all others.
    #  By default, objects are returned with all properties stored in the database.
-   projection => undef
+   projection => undef,
+   # [complete PolyDB::query(grouped)] Bool return objects as json
+   raw => false
 );
 
 # @category Database Query Operations
@@ -109,7 +111,7 @@ options %cursor_options = (
 # @return PolyDB::Cursor cursor over results
 user_method find ($, %cursor_options) {
    my ($collection, $query, $options) = @_;
-   return $collection->make_cursor($query, $options->{projection})->limit($options->{limit})->skip($options->{skip})->sort($options->{sort_by});
+   return $collection->make_cursor($query, $options->{projection}, $options->{raw})->limit($options->{limit})->skip($options->{skip})->sort($options->{sort_by});
 }
 
 # @category Database Query Operations
@@ -119,7 +121,7 @@ user_method find ($, %cursor_options) {
 # @return Core::BigObject
 user_method find_one ($, \%query_options) {
    my ($collection, $query, $options) = @_;
-   return $collection->find_one_impl($query, $options->{projection}, $options->{sort_by});
+   return $collection->find_one_impl($query, $options->{projection}, $options->{sort_by}, $options->{raw});
 }
 
 # @category Database Query Operations

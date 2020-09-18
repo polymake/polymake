@@ -71,7 +71,7 @@ INCLUDE
 # Connect to a custom server with authentication, prompting for a password input
 # > $otherDB=polyDB("otherdb.my.domain", user=>"myname");
 
-user_function polyDB(;$ { user => undef, password => undef, auth_db => undef }) {
+user_function polyDB(;$ { user => undef, password => undef, auth_db => undef, port => undef, ssl => undef }) {
    new PolyDB::Client(@_);
 }
 

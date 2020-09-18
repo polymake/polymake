@@ -53,7 +53,12 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# The vertex labels are preserved unless the //no_labels// flag is specified.\n"
                   "# @param SimplicialComplex complex"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+		  "# @example The following creates the alexander dual of a particular graph on 5 vertices."
+		  "# > $s = new SimplicialComplex(INPUT_FACES=>[[0, 1], [1, 2], [0, 2], [0, 3], [4]]);"
+		  "# > $t = alexander_dual($s);"
+	 	  "# > print $t -> F_VECTOR;"
+		  "# | 5 10 6", 
                   &alexander_dual, "alexander_dual(SimplicialComplex { no_labels => 0 })");
 } }
 

@@ -151,6 +151,7 @@ user_method VISUAL(%Visual::Polygons::decorations, %geometric_options_linear, {C
                                        NodeStyle => "show",
                                        VertexLabels => \@labels,
                                        EdgeColor => "0 0 0",
+                                       Explodable => 0,
                                       );
    push @cells_visual, $rays_vgraph;
 

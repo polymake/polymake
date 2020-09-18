@@ -75,6 +75,22 @@ class AllCache {
          BigObject& cell(get_cell(signature));
          return cell.give("LINEALITY_SPACE");
       }
+
+      bool facet_belongs_to_support(const Vector<Scalar>& facet) const {
+         Matrix<Scalar> tmp(0, facet.dim());
+         tmp /= facet;
+         for(const auto& f : rows(supportIneq)){
+            if(rank(tmp/f) == 1){
+               return true;
+            }
+         }
+         for(const auto& f : rows(supportEq)){
+            if(rank(tmp/f) == 1){
+               return true;
+            }
+         }
+         return false;
+      }
 };
 
 
@@ -108,14 +124,16 @@ class Node {
       void populate_neighbors(){
          const Matrix<Scalar> F = cache.get_facets(signature);
          for(const auto& f : rows(F)){
-            bool facet_is_hyperplane = false;
-            Set<Int> neighborS = neighbor_signature_from_facet(f, facet_is_hyperplane);
-            if(facet_is_hyperplane){
-               Vector<Scalar> neighborV = signature_to_vertex(hyperplanes, neighborS);
-               if(lex_compare(neighborV, vertex) == 1){
-                  upNeighbors[neighborV] = neighborS;
-               } else {
-                  downNeighbors[neighborV] = neighborS;
+            if(!cache.facet_belongs_to_support(f)){
+               bool facet_is_hyperplane = false;
+               Set<Int> neighborS = neighbor_signature_from_facet(f, facet_is_hyperplane);
+               if(facet_is_hyperplane){
+                  Vector<Scalar> neighborV = signature_to_vertex(hyperplanes, neighborS);
+                  if(lex_compare(neighborV, vertex) == 1){
+                     upNeighbors[neighborV] = neighborS;
+                  } else {
+                     downNeighbors[neighborV] = neighborS;
+                  }
                }
             }
          }

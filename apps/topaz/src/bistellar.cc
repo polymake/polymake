@@ -429,7 +429,11 @@ UserFunction4perl("CREDIT none\n\n"
                   "# @option Int seed"
                   "# @option Bool quiet"
                   "# @option Array<Int> distribution"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following example applies bistellar simplification to the second barycentric subdivision of the boundary of the 4-simplex to recover the boundary of the 4-simplex itself."
+                  "# > $s = iterated_barycentric_subdivision(simplex(4) -> BOUNDARY, 2);"
+                  "# > print bistellar_simplification($s) -> F_VECTOR;"
+                  "# | 5 10 10 5",
                   &bistellar_simplification,"bistellar_simplification(SimplicialComplex { rounds => undef, abs => 0,  obj => undef,  relax => undef, heat => undef, constant => 0, allow_rev_move=> 0, min_n_facets => undef, verbose => undef, seed => undef, quiet => 0, distribution => undef })");
 
 } }

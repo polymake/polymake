@@ -79,9 +79,10 @@ sub new {
 
    try {
       my $client = new MongoDB::MongoClient(host => $host // $default::db_host,
+                                            port => $options->{port} // $default::db_port,
                                             db_name => $options->{auth_db} // $default::db_auth_db,
                                             username => $options->{user}, password => $options->{password},
-                                            ssl => $default::useSSL, socket_timeout_ms => $default::db_socket_timeout,
+                                            ssl => $options->{ssl} // $default::useSSL, socket_timeout_ms => $default::db_socket_timeout,
                                             connect_timeout_ms => $default::db_socket_timeout)
                    // die "Failed to open database connection\n";
       bless($client, $pkg);

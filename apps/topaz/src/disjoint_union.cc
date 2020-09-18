@@ -59,7 +59,11 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# The vertex labels are built from the original labels with a suffix ''_1'' or ''_2'' appended.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following creates the disjoint union of a triangle and an edge."
+                  "# > $s = disjoint_union(simplex(2), simplex(1));"
+                  "# > print $s -> F_VECTOR;"
+                  "# | 5 4 1",
                   &disjoint_union, "disjoint_union(SimplicialComplex SimplicialComplex { no_labels => 0 })");
 
 

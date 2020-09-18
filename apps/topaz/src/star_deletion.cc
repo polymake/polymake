@@ -65,7 +65,12 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# @param Set<Int> face specified by vertex indices."
                   "#  Please use [[labeled_vertices]] if you want to specify the face by vertex labels."
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following removes the star of the vertex 0 from the suspension over a triangle."
+                  "# > $s = suspension(simplex(2) -> BOUNDARY);"
+                  "# > $t = star_deletion($s, [0]);"
+                  "# > print $t -> F_VECTOR;"
+                  "# | 4 5 2",
                   &star_deletion_complex, "star_deletion(SimplicialComplex $ { no_labels => 0 } )");
 } }
 

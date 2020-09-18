@@ -1,5 +1,6 @@
 {"app": "common",
  "inst": [
   {"args": ["perl::Canned<const Set<Int>&>"], "func": "back", "include": ["polymake/Set.h"], "kind": "meth", "sig": "back:M"},
+  {"args": ["perl::Canned<const Bitset&>"], "func": "back", "include": ["polymake/Bitset.h"], "kind": "meth", "sig": "back:M"},
  null ],
 "version": 3}

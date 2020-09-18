@@ -1,0 +1,9 @@
+{"app": "tropical", "embed": "tpluecker.cc",
+ "inst": [
+  {"args": ["Min", "perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "lifted_pluecker", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "lifted_pluecker:T1.X", "tp": 1},
+  {"args": ["Max", "perl::Canned<const Matrix<TropicalNumber<Max, Rational>>&>"], "func": "lifted_pluecker", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "lifted_pluecker:T1.X", "tp": 1},
+  {"args": ["Min", "perl::Canned<const pm::BlockMatrix<mlist<pm::DiagMatrix<pm::SameElementVector<pm::TropicalNumber<pm::Min, pm::Rational> const&>, true> const&, pm::Matrix<pm::TropicalNumber<pm::Min, pm::Rational> > const&>, std::integral_constant<bool, false> >&>"], "func": "tpluecker", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "tpluecker:T1.X", "tp": 1},
+  {"args": ["Min", "perl::Canned<const pm::BlockMatrix<mlist<pm::DiagMatrix<pm::SameElementVector<pm::TropicalNumber<pm::Min, pm::Rational> const&>, true> const&, pm::Matrix<pm::TropicalNumber<pm::Min, pm::Rational> > const&>, std::integral_constant<bool, true> >&>"], "func": "tpluecker", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "tpluecker:T1.X", "tp": 1},
+  {"args": ["Min", "perl::Canned<const Matrix<TropicalNumber<Min, Rational>>&>"], "func": "tpluecker", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "tpluecker:T1.X", "tp": 1},
+ null ],
+"version": 3}

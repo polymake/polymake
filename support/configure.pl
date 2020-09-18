@@ -108,8 +108,9 @@ locate_gmp_and_mpfr_libraries();
 locate_boost_headers();
 locate_permlib();
 
-# there is no independent package for TOSimplex, always pick the bundled headers
-$ExternalHeaders .= " TOSimplex";
+# there is no independent package for TOSimplex and Minimball, always pick the bundled headers
+$ExternalHeaders .= " TOSimplex Miniball";
+
 
 if ($options{prereq} ne ".none.") {
    check_prerequisite_perl_packages();

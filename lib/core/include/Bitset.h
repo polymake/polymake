@@ -536,7 +536,7 @@ public:
 
    Int back() const noexcept
    {
-      return reverse_iterator::first_pos(rep);
+      return iterator::last_pos(rep);
    }
 
    /** Insert an element.

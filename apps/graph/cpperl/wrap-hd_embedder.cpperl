@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void", "void", "void"], "func": "hd_embedder", "include": ["polymake/graph/Decoration.h"], "sig": "hd_embedder:T2.B.x.o", "tp": "2"},
   {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Nonsequential", "void", "void", "void"], "func": "hd_embedder", "include": ["polymake/graph/Decoration.h"], "sig": "hd_embedder:T2.B.x.o", "tp": "2"},
+  {"apps": ["tropical"], "args": ["tropical::CovectorDecoration", "graph::lattice::Nonsequential", "void", "void", "void"], "func": "hd_embedder", "include": ["polymake/graph/Decoration.h", "polymake/tropical/covectors.h"], "sig": "hd_embedder:T2.B.x.o", "tp": 2},
  null ],
 "version": 3}

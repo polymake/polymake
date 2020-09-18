@@ -44,30 +44,12 @@
 
 namespace pm {
 
-namespace flint {
-
-std::pair<Integer, Integer> factor_out_squares(const Integer& n){
-   Map<Integer, Int> factorization(factor(n)), root, coeff;
-   for(const auto& p : factorization){
-      Int ex_curr = p.second;
-      if(ex_curr%2 == 1){
-         root[p.first] = 1;
-         ex_curr--;
-      }
-      if(ex_curr != 0){
-         coeff[p.first] = ex_curr/2;
-      }
-   }
-   return std::make_pair(expand(root), expand(coeff));
-}
-
-}
 
 void reduceQuadratic(Rational& c, Rational& r){
    std::pair <Integer, Integer> num = flint::factor_out_squares(numerator(r));
    std::pair <Integer, Integer> den = flint::factor_out_squares(denominator(r));
-   r = Rational(num.first, den.first);
-   c *= Rational(num.second, den.second);
+   r = Rational(num.first*den.first, 1);
+   c *= Rational(num.second, den.second*den.first);
 }
 
 template < >
@@ -87,7 +69,7 @@ void QuadraticExtension<Rational>::normalize(){
          b_ = zero_value<Rational>();
       else if (is_zero(b_))
          r_ = zero_value<Rational>();
-      else
+      else 
          reduceQuadratic(b_, r_);
       if (r_ == 1){
          a_ = a_ + b_;

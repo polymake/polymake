@@ -25,5 +25,7 @@
   {"args": ["perl::Canned<const PuiseuxFraction<Max, Rational, Rational>&>", "perl::Canned<const PuiseuxFraction<Max, Rational, Rational>&>"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"args": ["perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>", "perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "_gt", "sig": "_gt:O.X.X"},
   {"args": ["perl::Canned<const PuiseuxFraction<Max, Rational, Rational>&>", "Int"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "_ne", "sig": "_ne:O.X.X"},
+  {"args": ["perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>", "perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "div", "sig": "div:O.X.X"},
+  {"args": ["PuiseuxFraction<Min, Rational, Rational>", "Int"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

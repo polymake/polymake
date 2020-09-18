@@ -34,38 +34,46 @@ std::enable_if_t<is_field<E>::value, E>
 det(Matrix<E> M)
 {
    const Int dim = M.rows();
-   if (dim == 0) return one_value<E>();
 
-   std::vector<Int> row_index(dim);
-   copy_range(entire(sequence(0, dim)), row_index.begin());
-   E result = one_value<E>();
-
-   for (Int c = 0; c < dim; ++c) {
-      Int r = c;
-      while (is_zero(M(row_index[r], c))) {
-         if (++r == dim) return zero_value<E>();
-      }
-      if (r != c) {
-         std::swap(row_index[r], row_index[c]);
-         negate(result);
-      }
-      E *ppivot=&M(row_index[c],c);
-      const E pivot=*ppivot;
-      result*=pivot;
-      E *e=ppivot;
-      for (Int i = c+1; i < dim; ++i)
-         (*++e) /= pivot;
-      for (++r; r < dim; ++r) {
-         E* e2 = &M(row_index[r], c);
-         const E factor = *e2;
-         if (!is_zero(factor)) {
-            e = ppivot;
-            for (Int i = c+1; i < dim; ++i)
-               (*++e2) -= (*++e) * factor;
+   // the case distinction by dim is organized such that higher dimensions are sorted out first
+   if (dim>3) { // generic case: Gauss elimination
+      E result = one_value<E>();
+      std::vector<Int> row_index(dim);
+      copy_range(entire(sequence(0, dim)), row_index.begin());
+      
+      for (Int c = 0; c < dim; ++c) {
+         Int r = c;
+         while (is_zero(M(row_index[r], c))) {
+            if (++r == dim) return zero_value<E>();
+         }
+         if (r != c) {
+            std::swap(row_index[r], row_index[c]);
+            negate(result);
+         }
+         E *ppivot=&M(row_index[c],c);
+         const E pivot=*ppivot;
+         result*=pivot;
+         E *e=ppivot;
+         for (Int i = c+1; i < dim; ++i)
+            (*++e) /= pivot;
+         for (++r; r < dim; ++r) {
+            E* e2 = &M(row_index[r], c);
+            const E factor = *e2;
+            if (!is_zero(factor)) {
+               e = ppivot;
+               for (Int i = c+1; i < dim; ++i)
+                  (*++e2) -= (*++e) * factor;
+            }
          }
       }
-   }
-   return result;
+      return result;
+   } else switch(dim) {
+      case 3: // Laplace/first column: 9 multiplications + 5 additions (better than Sarrus)
+         return M(0,0)*(M(1,1)*M(2,2)-M(1,2)*M(2,1)) - M(1,0)*(M(0,1)*M(2,2)-M(2,1)*M(0,2)) + M(2,0)*(M(0,1)*M(1,2)-M(1,1)*M(0,2));
+      case 2: return M(0,0)*M(1,1) - M(1,0)*M(0,1);
+      case 1: return M(0,0);
+      default: return one_value<E>();
+      }
 }
 
 template <typename E>

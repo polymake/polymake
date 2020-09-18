@@ -60,6 +60,14 @@ sub all {
    }
 }
 
+sub reset {
+   my ($self) = @_;
+   try {
+      $self->SUPER::reset
+   } catch {
+      die_neatly($_, $self->{_query});
+   }
+}
 
 1
 

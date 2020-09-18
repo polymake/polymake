@@ -307,10 +307,10 @@ property ORIENTED_PSEUDO_MANIFOLD : Bool;
 
 # @category Topology
 # An orientation of the facets of an [[ORIENTED_PSEUDO_MANIFOLD]], such that the induced orientations
-# of a common ridge of two neighboring facets cancel each other out. Each facet is marked with //true//
-# if the orientation agrees with the (chosen) orientation of the first facet, and is marked with //false// otherwise.
+# of a common ridge of two neighboring facets cancel each other out. Each facet is marked with //1//
+# if the orientation agrees with the (chosen) orientation of the first facet, and is marked with //-1// otherwise.
 
-property ORIENTATION : Array<Bool>;
+property ORIENTATION : Array<Int>;
 
 rule nonexistent : ORIENTATION : VertexPerm.ORIENTATION, VertexPerm.PERMUTATION;
 
@@ -319,6 +319,10 @@ rule ORIENTATION : FacetPerm.ORIENTATION, FacetPerm.PERMUTATION {
 }
 weight 1.10;
 
+# @category Topology
+# A representation of the orientation that prints each facet using the VERTEX_LABELS, followed by its sign
+
+property LABELED_ORIENTATION : String;
 
 # @category Topology
 # Determines if this is homeomorphic to a sphere.

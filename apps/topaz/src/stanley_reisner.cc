@@ -48,7 +48,13 @@ BigObject stanley_reisner(BigObject C)
 UserFunction4perl("# @category Other"
                   "# Creates the __Stanley-Reisner ideal__ of a simplicial complex."
                   "# @param  SimplicialComplex complex"
-                  "# @return ideal::Ideal",
+                  "# @return ideal::Ideal"
+                  "# @example"
+                  "# > $s = new SimplicialComplex(INPUT_FACES=>[[0, 1], [0, 2], [1, 2], [2, 3]]);"
+                  "# > $i = stanley_reisner($s);"
+                  "# > print $i -> GENERATORS;"
+                  "# | x_0*x_1*x_2 x_0*x_3 x_1*x_3",
+
                   &stanley_reisner, "stanley_reisner(SimplicialComplex)");
 } }
 

@@ -1,0 +1,15 @@
+{
+  "CONE_AMBIENT_DIM": 3,
+  "POINTS": [
+    ["1", "0", "0"],
+    ["1", "2", "0"],
+    ["1", "1", "1"],
+    ["1", "0", "1"]
+  ],
+  "_canonical": true,
+  "_id": "1",
+  "_ns": {
+    "polymake": ["https://polymake.org", "4.2"]
+  },
+  "_type": "polytope::Polytope<Rational>"
+}

@@ -27,11 +27,11 @@
 namespace polymake { namespace common {
 
 template <typename Scalar>
-Vector<Scalar> pluecker(const Matrix<Scalar>& V)
+Vector<Scalar> pluecker(const Matrix<Scalar>& M)
 {
-   const Int n(V.rows()),
-             d(V.cols()),
-             r(rank(V)),
+   const Int n(M.rows()),
+             d(M.cols()),
+             r(rank(M)),
              sz(Integer::binom(n,r) * Integer::binom(d,r));
 
    const sequence all_rows = sequence(0, n);
@@ -42,7 +42,7 @@ Vector<Scalar> pluecker(const Matrix<Scalar>& V)
    Int i = 0;
    for (auto rho = entire(all_subsets_of_k(all_rows, r)); !rho.at_end(); ++rho)
       for (auto sigma = entire(all_subsets_of_k(all_cols, r)); !sigma.at_end(); ++sigma) {
-         pi[i] = det(Matrix<Scalar>(V.minor(*rho,*sigma)));
+         pi[i] = det(Matrix<Scalar>(M.minor(*rho,*sigma)));
          ++i;
       }
 
@@ -50,10 +50,15 @@ Vector<Scalar> pluecker(const Matrix<Scalar>& V)
 }
 
 UserFunctionTemplate4perl("# @category Linear Algebra"
-                          "# Compute the vector of maximal minors of a matrix."
-                          "# WARNING: interpretation different in [[tropical::lifted_pluecker]]"
-                          "# @param Matrix V"
-                          "# @return Vector",
+                          "# Compute the vector of maximal minors of the matrix //M//."
+                          "# See also [[tropical::tpluecker]] which is related."
+                          "# @param Matrix M"
+                          "# @return Vector"
+                          "# @example with parameters (2,4)"
+                          "# > $M = new Matrix<Rational>([[1,0],[0,1],[1,1],[1,3]]);"
+                          "# > print pluecker($M);"
+                          "# | 1 1 3 -1 -1 2"
+                          ,
                           "pluecker(Matrix)");
 } }
 

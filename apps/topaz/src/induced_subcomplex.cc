@@ -70,7 +70,12 @@ UserFunction4perl("# @category Producing a new simplicial complex from others"
                   "# @option Bool geom_real  tells the client to inherit the [[COORDINATES]]."
                   "# @param SimplicialComplex complex"
                   "# @param Set<Int> vertices"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following takes C to be the suspension over a triangle and the vertices to be the vertices of that triangle."
+                  "# > $C = suspension(simplex(2) -> BOUNDARY);"
+                  "# > $t = induced_subcomplex($C, [0, 1, 2]);"
+                  "# > print $t -> F_VECTOR;"
+                  "# | 3 3", 
                   &induced_subcomplex,"induced_subcomplex(SimplicialComplex,$;{ no_labels => 0, geom_real => 0})");
 } }
 

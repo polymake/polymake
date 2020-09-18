@@ -49,7 +49,13 @@ UserFunction4perl("# @category Producing a simplicial complex from other objects
                   "# If //no_labels// is set to 1, the labels are not copied.\n"
                   "# @param matroid::Matroid matroid"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following example constructs the independence complex from a rank 3 matroid on 4 elements."
+                  "# > $M = new matroid::Matroid(VECTORS=>[[1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 0, 2]]);"
+                  "# > print independence_complex($M) -> F_VECTOR;"
+                  "# | 4 6 3",
+
+
                   &independence_complex,"independence_complex(matroid::Matroid; { no_labels => 0 })");
 } }
 

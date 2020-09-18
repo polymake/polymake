@@ -88,16 +88,20 @@ sub deserialize_safe {
 }
 
 sub make_cursor {
-   my ($self, $query, $projection) = @_;
+   my ($self, $query, $projection, $raw) = @_;
    my %options;
    if (defined($projection)) {
       $options{projection} = sanitize_projection($projection);
    }
-   prime Cursor($self->SUPER::find($query, \%options), \&deserialize_safe);
+   if ( $raw ) {
+      prime Cursor($self->SUPER::find($query, \%options));
+   } else {
+      prime Cursor($self->SUPER::find($query, \%options), \&deserialize_safe);
+   }
 }
 
 sub find_one_impl {
-   my ($self, $query, $projection, $sort) = @_;
+   my ($self, $query, $projection, $sort, $raw) = @_;
    if (defined($projection)) {
       $projection = sanitize_projection($projection);
    }
@@ -106,7 +110,7 @@ sub find_one_impl {
    } catch {
       die_neatly($_, $self);
    };
-   deserialize_safe($result)
+   $raw ? $result : deserialize_safe($result)
 }
 
 # FIXME distinct does not have a sort option

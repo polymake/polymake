@@ -355,8 +355,108 @@ rule CLOSED_PSEUDO_MANIFOLD : {
 precondition : !PURE;
 weight 0.1;
 
-rule ORIENTED_PSEUDO_MANIFOLD, ORIENTATION : FACETS, DUAL_GRAPH, PSEUDO_MANIFOLD {
-   orientation($this);
+rule ORIENTED_PSEUDO_MANIFOLD, ORIENTATION : FACETS, CYCLES {
+    my $c = $this->CYCLES;
+    my $faces =        $c->[$c->size()-1]->faces;
+    my $coeff_matrix = $c->[$c->size()-1]->coeffs;
+    if ($coeff_matrix->rows != 1) {
+	$this->ORIENTED_PSEUDO_MANIFOLD = 0;
+    } else {
+	$this->ORIENTED_PSEUDO_MANIFOLD = 1;
+	my $iof = new Map<Set<Int>,Int>;
+	my $max_index=0;
+	foreach my $f (@{$this->FACETS}) {
+	    $iof->{$f} = $max_index++;
+	}
+	my $row = $coeff_matrix->[0];
+	my $orientation = new Array<Int>($this->FACETS->size());
+	foreach my $face_idx (0..$faces->size()-1) {
+	    $orientation->[$iof->{$faces->[$face_idx]}] = $row->[$face_idx];
+	}
+	$this->ORIENTATION = $orientation;
+    }
+}
+precondition : CLOSED_PSEUDO_MANIFOLD;
+weight 1.00;
+
+rule ORIENTED_PSEUDO_MANIFOLD, ORIENTATION : FACETS, N_VERTICES, BOUNDARY {
+    my $n = $this->N_VERTICES;
+    my $cc = $this->BOUNDARY->DUAL_GRAPH->CONNECTED_COMPONENTS;
+
+    # add all existing facets to a list
+    my @facets;
+    my $iof = new Map<Set<Int>,Int>;
+    my $max_index=0;
+    foreach my $f (@{$this->FACETS}) {
+	my $fcopy = new Set<Int>($f);
+	push @facets, $fcopy;
+	$iof->{$fcopy} = $max_index++;
+    }
+
+    # introduce a new cone point for each connected component of the boundary,
+    # and add the cones over the boundary to the list
+    my $boundary_vertex_map = $this->BOUNDARY->VERTEX_MAP;
+    my $new_verts = new Set<Int>;
+    foreach my $cp_number (0..$cc->rows-1) {
+	$new_verts += $n + $cp_number;
+	foreach my $dual_nodes ($cc->[$cp_number]) {
+	    foreach my $node (@{$dual_nodes}) {
+		my $f = new Set<Int>(map { $boundary_vertex_map->[$_] } @{$this->BOUNDARY->FACETS->[$node]});
+		$f += $n + $cp_number;  # add the new cone point
+		push @facets, $f;
+	    }
+	}
+    }
+
+    # take a top homology cycle of this new complex, and restrict it
+    my $c = new SimplicialComplex(FACETS=>\@facets)->CYCLES;
+    my $faces =        $c->[$c->size()-1]->faces;
+    my $coeff_matrix = $c->[$c->size()-1]->coeffs;
+    if ($coeff_matrix->rows != 1) {
+	$this->ORIENTED_PSEUDO_MANIFOLD = 0;
+    } else {
+	$this->ORIENTED_PSEUDO_MANIFOLD = 1;
+	my $row = $coeff_matrix->[0];
+	my $orientation = new Array<Int>($this->FACETS->size());
+	foreach my $face_idx (0..$faces->size()-1) {
+	    if (($new_verts * $faces->[$face_idx])->size() == 0) {
+		$orientation->[$iof->{$faces->[$face_idx]}] = $row->[$face_idx];
+	    }
+	}
+	$this->ORIENTATION = $orientation;
+    }
+}
+precondition : PSEUDO_MANIFOLD && !CLOSED_PSEUDO_MANIFOLD;
+weight 1.50;
+
+rule LABELED_ORIENTATION : N_VERTICES, FACETS, ORIENTATION {
+    my $facets = $this->FACETS;
+    my $orientation = $this->ORIENTATION;
+    my $labels = new Array<String>;
+    if (defined (my $vertex_labels = $this->lookup("VERTEX_LABELS"))) {
+	$labels = $vertex_labels;
+    } else {
+	$labels = new Array<String>(map { "$_" } (0..$this->N_VERTICES-1));
+    }
+    my $max_label_length=0;
+    foreach my $l(@{$labels}) {
+	assign_max($max_label_length, length($l));
+    }
+    my $lop = "";
+    foreach my $i (0..$orientation->size()-1) {
+	$lop .= "[";
+	my $first = 1;
+	foreach my $v (@{$facets->[$i]}) {
+	    if ($first == 1) {
+		$first = 0;
+	    } else {
+		$lop .= " " unless $max_label_length == 1;
+	    }
+	    $lop .= $labels->[$v];
+	}
+	$lop .= "]" . (($orientation->[$i] == 1) ? "+ " : "- ");
+    }
+    $this->LABELED_ORIENTATION(temporary) = $lop;
 }
 
 rule BALL : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
@@ -557,6 +657,10 @@ user_function barycentric_subdivision($ { relabel => 1, pin_hasse_section=>"HASS
 # @option String coord_section default: VERTICES
 # @option Bool geometric_realization set to 1 to obtain a [[GeometricSimplicialComplex]], default: 0
 # @return SimplicialComplex (or [[GeometricSimplicialComplex]])
+# @example The following applies barycentric subdivision to the triangle twice.
+# > $b = iterated_barycentric_subdivision(simplex(2), 2);
+# > print $b -> F_VECTOR;
+# | 25 60 36
 user_function iterated_barycentric_subdivision(SimplicialComplex $ { relabel => 1, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>0, coord_section=>"VERTICES"}) {
   iterated_barycentric_subdivision_impl(@_);
 }

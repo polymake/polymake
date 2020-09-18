@@ -58,6 +58,9 @@ use Polymake::Struct (
    [ '$Scale' => '#%', default => '1' ],
 
    [ '$LabelAlignment' => '#%', default => '"left"'],
+
+   # An option to prevent objects from exploding in threejs (if set to 0)
+   [ '$Explodable' => '#%', default => '1'],
 );
 
 

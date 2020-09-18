@@ -83,5 +83,10 @@
   {"args": ["std::pair<std::string, Integer>"], "include": ["polymake/Integer.h", "polymake/client.h"], "op": "new", "sig": "new"},
   {"args": ["std::pair<std::string, Vector<Integer>>"], "include": ["polymake/Integer.h", "polymake/Vector.h", "polymake/client.h"], "op": "new", "sig": "new"},
   {"class": "std::pair<Array<Set<Int>>, Array<std::pair<Int, Int>>>", "include": ["polymake/Array.h", "polymake/Set.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Array__Set__Int_I_Array__Pair_A_Int_I_Int_Z_Z"},
+  {"class": "std::pair<Rational, Vector<Rational>>", "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Rational_I_Vector__Rational_Z"},
+  {"args": ["std::pair<Rational, Vector<Rational>>"], "include": ["polymake/Rational.h", "polymake/Vector.h", "polymake/client.h"], "op": "new", "sig": "new"},
+  {"class": "std::pair<QuadraticExtension<Rational>, Vector<QuadraticExtension<Rational>>>", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_QuadraticExtension__Rational_I_Vector__QuadraticExtension__Rational_Z"},
+  {"args": ["std::pair<QuadraticExtension<Rational>, Vector<QuadraticExtension<Rational>>>"], "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/client.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const std::pair<QuadraticExtension<Rational>, Vector<QuadraticExtension<Rational>>>&>", "perl::Canned<const std::pair<QuadraticExtension<Rational>, Vector<QuadraticExtension<Rational>>>&>"], "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Vector.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

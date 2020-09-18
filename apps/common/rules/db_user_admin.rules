@@ -295,7 +295,6 @@ user_method get_users({ usernames=>undef, with_permissions=>false } ) {
          }
          $user->{admin_roles}->{$role->{role}} = true;
       }
-      print "\n";
       $users->{$u->{user}} = $user;
    }
 

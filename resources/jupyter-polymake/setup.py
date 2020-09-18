@@ -23,7 +23,7 @@ def install_my_kernel_spec(user=True):
         with open(os.path.join(td, 'kernel.json'), 'w') as f:
             json.dump(kernel_json, f, sort_keys=True)
         path_of_file = dirname( abspath(__file__) ) + "/jupyter_kernel_polymake/resources/"
-        filenames=[ "three.js", "Detector.js", "controls/TrackballControls.js", "renderers/SVGRenderer.js", "renderers/CanvasRenderer.js", "renderers/Projector.js", "menu.svg", "close.svg" ]
+        filenames=[ "three.js", "WebGL.js", "TrackballControls.js", "OrbitControls.js", "SVGRenderer.js", "Projector.js", "menu.svg", "close.svg" ]
         for i in filenames:
             file_copy(path_of_file + i, td )
         file_copy(path_of_file + "kernel.js", td )
@@ -52,12 +52,12 @@ setup( name="jupyter_kernel_polymake"
                                                  "resources/logo-64x64.png",
                                                  "resources/kernel.js",
                                                  "resources/three.js",
-                                                 "resources/Detector.js",
-                                                 "resources/controls/TrackballControls.js",
-                                                 "resources/renderers/SVGRenderer.js",
-                                                 "resources/renderers/CanvasRenderer.js",
-                                                 "resources/renderers/Projector.js",
-                                                 "resources/renderers/menu.svg",
-                                                 "resources/renderers/close.svg" ]}
+                                                 "resources/WebGL.js",
+                                                 "resources/TrackballControls.js",
+                                                 "resources/OrbitControls.js",
+                                                 "resources/SVGRenderer.js",
+                                                 "resources/Projector.js",
+                                                 "resources/menu.svg",
+                                                 "resources/close.svg" ]}
      ,
      )

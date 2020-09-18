@@ -63,7 +63,12 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @param SimplicialComplex complex"
                   "# @param Set<Int> face"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following returns the cone over the 4-cycle obtained as the star of vertex 0 in the suspension over the triangle."
+                  "# > $s = suspension(simplex(2) -> BOUNDARY);"
+                  "# > $t = star($s, [0]);"
+                  "# > print $t -> F_VECTOR;"
+                  "# | 5 8 4",
                   &stars, "star(SimplicialComplex $ { no_labels => 0 })");
 
 } }

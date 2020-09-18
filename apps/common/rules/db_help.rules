@@ -101,6 +101,10 @@ require PolyDB::Completion;
 # @topic objects/PolyDB::Cursor/methods/all
 # Get all remaining objects from the result stream
 
+# @category Database Query Operations
+# @topic objects/PolyDB::Cursor/methods/reset
+# Reset a database cursor to the beginning of the query. Also query limiters like sort can then be applied.
+
 
 # Local Variables:
 # mode: perl

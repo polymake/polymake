@@ -57,7 +57,12 @@ UserFunction4perl("# @category  Producing a new simplicial complex from others"
                   "# @param SimplicialComplex complex"
                   "# @param Set<Int> face"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following returns the 4-cycle obtained as the link of vertex 0 in the suspension over the triangle."
+                  "# > $s = suspension(simplex(2) -> BOUNDARY);"
+                  "# > $t = link_complex($s, [0]);"
+                  "# > print $t -> F_VECTOR;"
+                  "# | 4 4",
                   &link_complex,"link_complex(SimplicialComplex, $ { no_labels => 0 })");
 } }
 

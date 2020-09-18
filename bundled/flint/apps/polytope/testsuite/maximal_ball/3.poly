@@ -1,0 +1,26 @@
+{
+  "CONE_AMBIENT_DIM": 3,
+  "POINTS": [
+    ["1", "3", "3"],
+    ["1", "3", "4"],
+    ["1", "5", "3"],
+    ["1", "5", "4"]
+  ],
+  "REVERSE_TRANSFORMATION": [
+    ["1", "-3", "-3"],
+    ["0", "1", "0"],
+    ["0", "0", "1"]
+  ],
+  "_attrs": {
+    "REVERSE_TRANSFORMATION": {
+      "_type": "Matrix<Rational, NonSymmetric>",
+      "attachment": true
+    }
+  },
+  "_canonical": true,
+  "_id": "3",
+  "_ns": {
+    "polymake": ["https://polymake.org", "4.2"]
+  },
+  "_type": "polytope::Polytope<Rational>"
+}

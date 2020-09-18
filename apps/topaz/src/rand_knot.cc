@@ -77,7 +77,10 @@ UserFunction4perl("# @category Producing from scratch\n"
                   "# @option Bool on_sphere"
                   "# @option Bool brownian"
                   "# @option Int seed"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following generates a random knot with 6 edges from 6 random points on the cube."
+                  "# > $K = rand_knot(6);",
+                  
                   &rand_knot, "rand_knot($ { n_comp => 1,on_sphere => undef, brownian => undef, seed => undef })");
 } }
 

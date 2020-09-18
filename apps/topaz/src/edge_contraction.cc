@@ -111,7 +111,16 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# the function tries to contract all incident edges.\n"
                   "# @param SimplicialComplex complex"
                   "# @option Int seed"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following takes the second barycentric subdivision of the tetrahedron and performs edge contraction with a random order of the vertices."
+                  "# In the first instance the tetrahedron is recovered in the second it is not."
+                  "# > $s = iterated_barycentric_subdivision(simplex(3) -> BOUNDARY, 2);"
+                  "# > $t = edge_contraction($s, seed=>100);"
+                  "# > $t1 = edge_contraction($s, seed => 101);"
+                  "# > print $t -> F_VECTOR;"
+                  "# | 4 6 4"
+                  "# > print $t1 -> F_VECTOR;"
+                  "# | 6 12 8",
                   &edge_contraction, "edge_contraction(SimplicialComplex { seed=>undef })");
 } }
 

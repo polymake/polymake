@@ -758,6 +758,26 @@ user_method OUTER_DESCRIPTION : FACETS, AFFINE_HULL {
     new Array<Matrix>([$this->FACETS, $this->AFFINE_HULL]);
 }
 
+# @category Geometry
+# checks if a given Ball B(c,r) is contained in a Polytope
+# @param Vector<Scalar> c the center of the ball
+# @param Scalar r the radius of the ball
+# @return Bool
+user_method contains_ball {
+    my ($self, $c, $r) = @_;
+    return polytope_contains_ball($c, $r, $self);
+}
+
+# @category Geometry
+# check if a given Ball B(c,r) contains a Polytope
+# @param Vector<Scalar> c the center of the ball
+# @param Scalar r the radius of the ball
+# @return Bool
+user_method contained_in_ball {
+    my  ($self, $c, $r) = @_;
+    return polytope_contained_in_ball($self, $c, $r);
+}
+
 }
 
 # @category Coordinate conversions

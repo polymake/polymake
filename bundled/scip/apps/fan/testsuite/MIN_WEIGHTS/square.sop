@@ -14,7 +14,7 @@
   "_canonical": true,
   "_id": "square",
   "_ns": {
-    "polymake": ["https://polymake.org", "4.1"]
+    "polymake": ["https://polymake.org", "4.2"]
   },
   "_type": "fan::SubdivisionOfPoints<Rational>"
 }

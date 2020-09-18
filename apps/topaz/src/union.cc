@@ -64,7 +64,13 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The union of two 3-simplices with the same labels on vertices produces the 3-simplex again."
+                  "# > print union(simplex(3), simplex(3)) -> F_VECTOR;"
+                  "# | 4 6 4 1",
+
+
+
                   &t_union, "union(SimplicialComplex SimplicialComplex { no_labels => 0 })");
 } }
 

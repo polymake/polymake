@@ -20,12 +20,16 @@
 
 #include "polymake/Map.h"
 #include "polymake/Integer.h"
+#include "polymake/Rational.h"
+#include "polymake/TropicalNumber.h"
 
 namespace pm {
 namespace flint {
 
 Map<Integer, Int> factor(const Integer&);
 Integer expand(const Map<Integer, Int>&);
+TropicalNumber<Min> valuation(const Rational&, const Integer&);
+std::pair<Integer, Integer> factor_out_squares(const Integer&);
 
 }
 } // pm

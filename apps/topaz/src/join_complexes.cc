@@ -57,7 +57,11 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "#  The vertex labels are built from the original labels with a suffix ''_1'' or ''_2'' appended.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following constructs the tetrahedron as the join of two edges."
+                  "# > $s = join_complexes(simplex(1), simplex(1));"
+                  "# > print $s -> F_VECTOR;"
+                  "# | 4 6 4 1",
                   &join_complexes, "join_complexes(SimplicialComplex SimplicialComplex { no_labels => 0 })");
 } }
 

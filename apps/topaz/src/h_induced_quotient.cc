@@ -85,16 +85,23 @@ BigObject h_induced_quotient(BigObject p_in, const Set<Int>& V_in,OptionSet opti
 }
 
 UserFunction4perl("# @category Producing a new simplicial complex from others"
-                  "# Let //C// be the given simplicial and A the subcomplex induced by"
+                  "# Let //C// be the given simplicial and //A// the subcomplex induced by"
                   "# the given //vertices//. Then this function produces a simplicial complex"
-                  "# homotopy equivalent to //C// mod A by adding the cone over A with"
-                  "# apex a to //C//."
+                  "# homotopy equivalent to C mod A by adding the cone over A with"
+                  "# apex a to C."
                   "# The label of the apex my be specified via the option //apex//."
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @option String apex"
                   "# @param SimplicialComplex C"
                   "# @param Set<Int> vertices"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following takes C to be the suspension over a triangle and A to be the set of vertices of that triangle. The quotient induced is homotopy equivalent to a wedge of spheres."
+                  "# > $C = suspension(simplex(2) -> BOUNDARY);"
+                  "# > $t = h_induced_quotient($C, [0, 1, 2]);"
+                  "# > print $t -> HOMOLOGY;"
+                  "# | ({} 0)"
+                  "# | ({} 0)"
+                  "# | ({} 2)",                  
                   &h_induced_quotient,"h_induced_quotient(SimplicialComplex, $ { no_labels => 0, apex => undef})");
 } }
 

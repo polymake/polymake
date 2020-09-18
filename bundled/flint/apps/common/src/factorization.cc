@@ -91,6 +91,38 @@ Integer expand(const Map<Integer, Int>& m){
    return result;
 }
 
+  
+TropicalNumber<Min> valuation(const Rational& x, const Integer& p) {
+  if (x.is_zero()) {
+    return TropicalNumber<Min>(); // inf
+  } else {
+    Map<Integer, Int> num_factors = factor(numerator(x));
+    Int val = num_factors.exists(p) ? num_factors[p] : 0;
+    Map<Integer, Int> den_factors = factor(denominator(x));
+    if (den_factors.exists(p)) val -= den_factors[p];
+    return TropicalNumber<Min>(val);
+  }
+}
+
+// Decomposes n>0 into two integers a,b such that
+// - a is square free
+// - n = a * b^2
+// - a,b > 0
+std::pair<Integer, Integer> factor_out_squares(const Integer& n){
+   Map<Integer, Int> factorization(factor(n)), root, coeff;
+   for(const auto& p : factorization){
+      Int ex_curr = p.second;
+      if(ex_curr%2 == 1){
+         root[p.first] = 1;
+         ex_curr--;
+      }
+      if(ex_curr != 0){
+         coeff[p.first] = ex_curr/2;
+      }
+   }
+   return std::make_pair(expand(root), expand(coeff));
+}
+
 } // flint
 } // pm
 
@@ -110,5 +142,13 @@ namespace common {
                      "# @return Integer n",
                      &pm::flint::expand, "expand");
 
+   UserFunction4perl("# @category Utilities"
+                     "# Use flint's Integer factorization to compute the //p//-adic valuation of a Rational //x//"
+		     "# @param Rational x"
+		     "# @param Integer p"
+                     "# @return TropicalNumber<Min>",
+                     &pm::flint::valuation, "valuation");
+
+  
 }
 }

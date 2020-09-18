@@ -54,7 +54,12 @@ UserFunction4perl("# @category Comparing\n"
                   "# The facet permutation is the first component of the return value.\n"
                   "# @param SimplicialComplex complex1"
                   "# @param SimplicialComplex complex2"
-                  "# @return Pair<Array<Int>, Array<Int>> permutations of facet and vertex indexes, or undef when complexes are not isomorphic",
+                  "# @return Pair<Array<Int>, Array<Int>> permutations of facet and vertex indexes, or undef when complexes are not isomorphic"
+                  "# @example In the example below, two complexes are isomorphic, and the output shows first the facet permutation and then the vertex permutation of the isomorphism."
+                  "# > $s1 = new SimplicialComplex(FACETS => [[0, 1], [0, 2], [1, 2], [2, 3]]);"
+                  "# > $s2 = new SimplicialComplex(FACETS => [[0, 1], [0, 3], [1, 3], [2, 3]]);"
+                  "# > print find_facet_vertex_permutations($s1, $s2);"
+                  "# | <0 1 2 3> <0 1 3 2>",
                   &find_facet_vertex_permutations, "find_facet_vertex_permutations(SimplicialComplex,SimplicialComplex)");
 } }
 

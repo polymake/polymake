@@ -58,13 +58,13 @@ class FlintPolynomial {
 
    private:
       fmpq_poly_t flintPolynomial;
-      int shift;
+      Int shift;
 
-      static int safe_cast(Int x)
+      static slong safe_cast(Int x)
       {
-        if (x < std::numeric_limits<int>::min() || x > std::numeric_limits<int>::max())
+        if (x < std::numeric_limits<slong>::min() || x > std::numeric_limits<slong>::max())
           throw std::runtime_error("degree/exponent input too high for Flint");
-        return int(x);
+        return slong(x);
       }
 
    public:
@@ -94,12 +94,14 @@ class FlintPolynomial {
    protected:
      mutable std::unique_ptr<generic_impl> generic_impl_cache;
 
-     int convertUniPolynomial2Flint(fmpq_poly_t& out, const typename FlintPolynomial::generic_impl& in)
+     Int convertUniPolynomial2Flint(fmpq_poly_t& out, const typename FlintPolynomial::generic_impl& in)
      {
          fmpq_poly_init(out);
-         int expshift = std::min(safe_cast(in.lower_deg()), 0);
+         if (__builtin_expect(in.trivial(),0))
+            return 0;
+         Int expshift = in.lower_deg();
          for (auto t = entire(in.get_terms()); !t.at_end(); ++t){
-            fmpq_poly_set_coeff_mpq(out, t->first-expshift, t->second.get_rep());
+            fmpq_poly_set_coeff_mpq(out, safe_cast(t->first-expshift), t->second.get_rep());
          }
          return expshift;
       }
@@ -128,11 +130,11 @@ class FlintPolynomial {
          shift = 0;
          for (auto t = entire(src); !t.at_end(); ++t){
             if (t->first < shift) {
-               shift = safe_cast(t->first);
+               shift = t->first;
             }
          }
          for (auto t = entire(src); !t.at_end(); ++t){
-            fmpq_poly_set_coeff_mpq(flintPolynomial, t->first-shift, convert_to<Rational>(t->second).get_rep());
+            fmpq_poly_set_coeff_mpq(flintPolynomial, safe_cast(t->first-shift), convert_to<Rational>(t->second).get_rep());
          }
       }
 
@@ -154,13 +156,13 @@ class FlintPolynomial {
          fmpq_poly_init(flintPolynomial);
       }
 
-      explicit FlintPolynomial(int n_vars){
+      explicit FlintPolynomial(Int n_vars){
          if (n_vars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
          fmpq_poly_init(flintPolynomial);
          shift = 0;
       }
 
-      FlintPolynomial(Int c, int n_vars) {
+      FlintPolynomial(Int c, Int n_vars) {
          if (n_vars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
          fmpq_poly_init(flintPolynomial);
          fmpq_poly_set_si(flintPolynomial, c);
@@ -173,7 +175,7 @@ class FlintPolynomial {
          shift = p.shift;
       }
 
-      FlintPolynomial(const Rational& c, int n_vars) {
+      FlintPolynomial(const Rational& c, Int n_vars) {
          if (n_vars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
          fmpq_poly_init(flintPolynomial);
          fmpq_poly_set_mpq(flintPolynomial,c.get_rep());
@@ -187,7 +189,7 @@ class FlintPolynomial {
 
 
       template <typename Container1, typename Container2>
-      FlintPolynomial(const Container1& coefficients, const Container2& monomials, const int n_vars)
+      FlintPolynomial(const Container1& coefficients, const Container2& monomials, const Int n_vars)
       {  
          if (n_vars != 1)
            throw std::runtime_error("FlintPolynomial: univariate only");
@@ -195,16 +197,16 @@ class FlintPolynomial {
          shift = 0;
          for (auto m = entire(monomials); !m.at_end(); ++m){
             if (*m < shift) {
-               shift = safe_cast(*m);
+               shift = *m;
             }
          }
          auto c = entire(coefficients);
          for (auto e = entire(monomials); !e.at_end(); ++e, ++c){
-            fmpq_poly_set_coeff_mpq(flintPolynomial, *e-shift, convert_to<Rational>(*c).get_rep());
+            fmpq_poly_set_coeff_mpq(flintPolynomial, safe_cast(*e-shift), convert_to<Rational>(*c).get_rep());
          }
       }
 
-      explicit FlintPolynomial(const term_hash& terms, int nvars = 1)
+      explicit FlintPolynomial(const term_hash& terms, Int nvars = 1)
       {
          if (nvars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
          fmpq_poly_init(flintPolynomial);
@@ -256,21 +258,23 @@ class FlintPolynomial {
       }
 
       void reduce_shift(){
-         if (shift < 0 && lower_deg() > shift) {
-           set_shift(safe_cast(lower_deg()));
+         if (__builtin_expect(trivial(),0))
+            shift = 0;
+         else if (shift < 0 && lower_deg() > shift) {
+            set_shift(lower_deg());
          }
       }
 
-      void set_shift(int desired){
+      void set_shift(Int desired){
          if (shift == desired) {
             return;
          } else if (desired < shift) {
-            fmpq_poly_shift_left(flintPolynomial, flintPolynomial, shift-desired);
+            fmpq_poly_shift_left(flintPolynomial, flintPolynomial, safe_cast(shift-desired));
             shift = desired;
          } else {
             if (desired > lower_deg())
               throw std::runtime_error("Shifting would change polynomial");
-            fmpq_poly_shift_right(flintPolynomial, flintPolynomial, desired-shift);
+            fmpq_poly_shift_right(flintPolynomial, flintPolynomial, safe_cast(desired-shift));
             shift = desired;
          }
       }
@@ -295,12 +299,12 @@ class FlintPolynomial {
             fmpq_poly_set_mpq(tmp.flintPolynomial,res);
             mpq_clear(res);
          } else if (exponent < 0) {
-            tmp.shift = std::min(safe_cast(Int(deg() * exponent)), 0);
+            tmp.shift = safe_cast(Int(deg() * exponent));
             for (Int i = 0; i <= deg() - shift; ++i)
                if (exists(i+shift))
                  fmpq_poly_set_coeff_mpq(tmp.flintPolynomial, safe_cast(Int((deg()-shift-i)*abs(exponent))), get_coefficient(i+shift).get_rep());
          } else {
-            tmp.shift = safe_cast(Int(shift * exponent));
+            tmp.shift = Int(shift * exponent);
             for (Int i = 0; i <= deg()-shift; ++i)
                if (exists(i+shift))
                  fmpq_poly_set_coeff_mpq(tmp.flintPolynomial, safe_cast(Int(i*exponent)), get_coefficient(i+shift).get_rep());
@@ -446,16 +450,16 @@ class FlintPolynomial {
          if (__builtin_expect(trivial(), 0))
             return tmp;
          if (e < 0) {
-            int d = safe_cast(deg());
+            Int d = deg();
             if (d != lower_deg())
                throw std::runtime_error("Exponentiation with negative exponent is only implemented for monomials");
-            tmp.shift = safe_cast((d-shift)*e);
+            tmp.shift = (d-shift)*e;
             Rational c(get_coefficient(d));
             c = pm::Rational::pow(c, e);
             fmpq_poly_set_coeff_mpq(tmp.flintPolynomial, safe_cast(shift*e), c.get_rep());
          } else {
             fmpq_poly_pow(tmp.flintPolynomial,flintPolynomial,e);
-            tmp.shift = safe_cast(shift*e);
+            tmp.shift = shift*e;
          }
          return tmp;
       }
@@ -535,7 +539,7 @@ class FlintPolynomial {
          return result.negate();
       }
 
-      int n_vars() const
+      Int n_vars() const
       {
          return 1;
       }
@@ -579,7 +583,7 @@ class FlintPolynomial {
             return zero_value<Rational>();
          mpq_t tmp;
          mpq_init(tmp);
-         fmpq_poly_get_coeff_mpq(tmp,flintPolynomial,i-shift);
+         fmpq_poly_get_coeff_mpq(tmp,flintPolynomial,safe_cast(i-shift));
          Rational rat(std::move(tmp));
          return rat;
       }
@@ -730,14 +734,14 @@ class FlintPolynomial {
 
       size_t get_hash() const noexcept
       {
-         size_t h = std::hash<int>{}(shift);
+         size_t h = std::hash<Int>{}(shift);
          if (__builtin_expect(trivial(),0))
             return h;
          hash_func<Rational> rathash;
-         int i = safe_cast(lower_deg());
+         Int i = lower_deg();
          while (i <= deg()) {
             if (exists(i)) {
-               hash_combine(h, std::hash<int>{}(i));
+               hash_combine(h, std::hash<Int>{}(i));
                hash_combine(h, rathash(get_coefficient(i)));
             }
             ++i;

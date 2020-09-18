@@ -598,7 +598,11 @@ UserFunction4perl("# @category Other"
                   "# @option Array<Int> try_until_reached Used together with //rounds//=>r; When //try_until_reached//=>[a,...,b], runs for //r// rounds or until [a,...,b] is found"
                   "# @option Array<Int> try_until_exception Used together with //rounds//=>r; When //try_until_exception//=>[a,...,b], runs for //r// rounds or until anything other than [a,...,b] is found"
                   "# @option [complete file] String save_collapsed In every round, save all facets that remain after initial collapse in a data file as a [[SimplicialComplex]]. Rounds that have Morse vector [1,0,...,0] or [1,0,...,0,1] will save nothing. The actual file names are <filename>_<currentround>.top"
-                  "# @return Map<Array<Int>, Int>",
+                  "# @return Map<Array<Int>, Int>"
+                  "# @example The example below runs five rounds on the 15-simplex and in all cases returns a discrete Morse function with a single critical vertex."
+                  "# > print random_discrete_morse(simplex(15), rounds => 5);"
+                  "# | {(<1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0> 5)}",
+
                    &random_discrete_morse_sc,
                   "random_discrete_morse(SimplicialComplex { seed=> undef, strategy => 0, verbose => 0, rounds => 1, try_until_reached => undef, try_until_exception => undef, save_collapsed => undef })");
 

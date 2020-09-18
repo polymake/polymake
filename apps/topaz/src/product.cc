@@ -204,7 +204,11 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @option Bool geometric_realization default 0"
                   "# @option Bool color_cons"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return SimplicialComplex",
+                  "# @return SimplicialComplex"
+                  "# @example The following returns the product of two edges."
+                  "# > $s = simplicial_product(simplex(1), simplex(1));"
+                  "# > print $s -> F_VECTOR;"
+                  "# | 4 5 2",
                   &combinatorial_simplicial_product, "simplicial_product(SimplicialComplex, SimplicialComplex, {vertex_order1 => undef, vertex_order2 => undef, geometric_realization => 0, color_cons => 0, no_labels => 0})");
 
 UserFunctionTemplate4perl("# @category Producing a new simplicial complex from others\n"
@@ -218,7 +222,16 @@ UserFunctionTemplate4perl("# @category Producing a new simplicial complex from o
                   "# @option Bool geometric_realization default 1"
                   "# @option Bool color_cons"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
-                  "# @return GeometricSimplicialComplex<Scalar>",
+                  "# @return GeometricSimplicialComplex<Scalar>"
+                  "# @example The following returns the product of the edges (0, 0)--(1, 0) and (0, 0) -- (2, 0)."
+                  "# > $C = new GeometricSimplicialComplex(COORDINATES => [[0, 0], [1, 0]], FACETS => [[0, 1]]);"
+                  "# > $C1 = new GeometricSimplicialComplex(COORDINATES => [[0, 2], [0, 0]], FACETS => [[0, 1]]);"
+                  "# > $s = simplicial_product($C, $C1);"
+                  "# > print $s -> COORDINATES;"
+                  "# | 0 0 0 2"
+                  "# | 1 0 0 2"
+                  "# | 0 0 0 0"
+                  "# | 1 0 0 0",    
                   "simplicial_product<Scalar>(GeometricSimplicialComplex<Scalar>, GeometricSimplicialComplex<Scalar>, {vertex_order1 => undef, vertex_order2 => undef, geometric_realization => 1, color_cons => 0, no_labels => 0})");
 
    
