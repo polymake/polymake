@@ -1,3 +1,24 @@
+=== polymake 4.3 ===
+
+-- fan --
+  * implement function to construct the union of cones/polytopes
+    as a subcomplex of a chamber complex
+  * HyperplaneArrangement: properties renamed CELL_* -> CHAMBER_*
+  * HyperplaneArrangement: CHAMBER_SIGNATURES type changed to IncidenceMatrix
+
+-- group --
+  * documentation enhanced, several examples added
+
+-- polytope --
+  * Polytope: new property MINIMAL_BALL
+  * Schlegel diagram: fixes for non-rational polytopes
+
+-- topaz --
+  * new client functions for Jockusch and Novik/Zheng spheres and balls
+
+-- tropical --
+  * add function augmented_bergman_fan
+
 === polymake 4.2 ===
 
 -- general --
@@ -21,6 +42,7 @@
 -- topaz --
   * documentation enhanced, several examples added
   * implement function to compute broken circuit complex of a matroid
+  * fix bug in calculation of orientation of simplicial complexes
 
 -- tropical --
   * refactor functions for computing tropical Pluecker vectors
@@ -180,7 +202,7 @@
 -- general --
   * several improvements for x3d visualization (e.g. via blender)
   * fix callable library path deduction (thanks Antonio Rojas)
-  * various improvements in ipynb tutorials 
+  * various improvements in ipynb tutorials
 
 -- common --
   * all_subsets_of_k: c++ function now accessible from perl

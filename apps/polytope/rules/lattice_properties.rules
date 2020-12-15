@@ -130,10 +130,10 @@ property MINKOWSKI_CONE : polytope::Cone<Rational>;
 # @depends libnormaliz
 # @example [require bundled:libnormaliz] To obtain the Ehrhart quasi-polynomial of a scaled 2-dimensional cross polytope write:
 # > $p=scale(cross(2),1/3);
-# > print join("\n",@{$p->EHRHART_QUASI_POLYNOMIAL});
-# | 2/9*x^2 + 2/3*x + 1
-# | 2/9*x^2 + 2/9*x + 5/9
-# | 2/9*x^2 -2/9*x + 5/9
+# > local_var_names<UniPolynomial<Rational>>(qw(t)); print join("\n",@{$p->EHRHART_QUASI_POLYNOMIAL});
+# | 2/9*t^2 + 2/3*t + 1
+# | 2/9*t^2 + 2/9*t + 5/9
+# | 2/9*t^2 -2/9*t + 5/9
 property EHRHART_QUASI_POLYNOMIAL : Array<UniPolynomial<Rational>>;
 
 }

@@ -207,8 +207,8 @@ user_function automorphism_group(IncidenceMatrix<NonSymmetric>;$) {
 }
 
 function combinatorial_symmetries_impl($$$$) {
-    my ($p, $incidence_name, $row_action_name, $col_action_name) = @_;
-    my $pairs_of_gens = graph::automorphisms($p->$incidence_name);
+    my ($p, $incidences, $row_action_name, $col_action_name) = @_;
+    my $pairs_of_gens = graph::automorphisms($incidences);
     my @row_gens = map {$_->first}  @$pairs_of_gens;
     my @col_gens = map {$_->second} @$pairs_of_gens;
     my $row_action = new PermutationAction(GENERATORS=>new Array<Array<Int>>(\@row_gens));

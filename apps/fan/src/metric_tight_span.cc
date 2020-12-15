@@ -175,7 +175,7 @@ UserFunction4perl("# @category Finite metric spaces"
                   &thrackle_metric,"thrackle_metric");
 
 UserFunction4perl("# @category Finite metric spaces"
-                  "# Compute [[SubdivisionOfPoints]] with a tight span of th thrackle  metric on //n// points."
+                  "# Compute [[SubdivisionOfPoints]] with a tight span of the thrackle metric on //n// points."
                   "# This metric can be interpreted as a lifting function which induces the thrackle triangulation of the second hypersimplex."
                   "#\t See De Loera, Sturmfels and Thomas: Gröbner bases and triangulations of the second hypersimplex, Combinatorica 15 (1995)"
                   "# @param Int n the number of points"

@@ -597,6 +597,22 @@ rule FACET_LABELS : FacetPerm.FACET_LABELS, FacetPerm.PERMUTATION {
 weight 1.10;
 
 # @category Visualization
+# Print [[RAYS_IN_FACETS]] using [[RAY_LABELS]]
+property LABELED_FACETS : Array<String>;
+                         
+rule LABELED_FACETS : N_RAYS, RAYS_IN_FACETS {
+    my $facets = $this->RAYS_IN_FACETS;
+    my $labels = new Array<String>;
+    if (defined (my $vertex_labels = $this->lookup("VERTEX_LABELS"))) {
+	$labels = $vertex_labels;
+    } else {
+	$labels = new Array<String>(map { "$_" } (0..$this->N_RAYS-1));
+    }
+    $this->LABELED_FACETS(temporary) = labeled_output($labels, $facets, $facets->rows);
+} 
+weight 1.10;
+                         
+# @category Visualization
 # Unique names assigned to the [[INEQUALITIES]], analogous to [[RAY_LABELS]].
 property INEQUALITY_LABELS : Array<String> : mutable;
 

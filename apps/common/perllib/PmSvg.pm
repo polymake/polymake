@@ -70,10 +70,11 @@ use Polymake::Struct (
 
 # real world coordinates => Svg sheet coordinates
 sub transform {
-   my $self=shift;
-   my @xy=( $self->scaleX * ($_[0] - $self->minX) + $self->marginLeft,
-       (-1)*($self->scaleY * ($_[1] - $self->minY) + $self->marginBottom) );
-   wantarray ? @xy : sprintf("%.3f %.3f", @xy)
+   my ($self,$points)=@_;
+   foreach my $v (@$points) {
+      $v->[0] = $self->scaleX * ($v->[0] - $self->minX) + $self->marginLeft;
+      $v->[1] = (-1)*($self->scaleY * ($v->[1] - $self->minY) + $self->marginBottom);
+   }
 }
 
 sub append {
@@ -157,20 +158,21 @@ use Polymake::Struct (
    [ '@ISA' => 'Element' ],
    [ '$source' => '#1' ],
    [ '$name' => '#1 ->Name' ],
-   '@coords',
+   '$coords',
    '@radius',
 );
 
 sub init {
    my $self=shift;
    my $P=$self->source;
-   @{$self->coords} = map { [ @$_[0,1] ] } @{$P->Vertices}; # chop the z coordinate if any
+   $self->coords = ($P->Vertices->isa("Visual::DynamicCoords")) ? new Matrix<Float>($P->Vertices->compute()) : new Matrix<Float>($P->Vertices);
+   $self->coords = ($self->coords->cols == 3) ? $self->coords->minor(All,[0,1]) : $self->coords; # chop the z coordinate if any
    foreach my $coord (@{$self->coords}) {
       assign_min_max($self->minX, $self->maxX, $coord->[0]);
       assign_min_max($self->minY, $self->maxY, $coord->[1]);
    }
 
-   my $last_point=$#{$self->coords};
+   my $last_point=$self->coords->rows;
    my ($labelwidth, $max_radius);
    my $style=$P->VertexStyle;
    if (is_code($style) || $style !~ $Visual::hidden_re) {
@@ -237,13 +239,8 @@ sub draw_points {
       );
       if (defined($P->VertexLabels)) {
          my $vlabel = $P->VertexLabels->($p);
-         @{$svggroups}[$p]->text(
-            x => $coord->[0], 
-            y => $coord->[1] - $text_spacing - $r,
-            'text-anchor' => "middle",
-            'font-family' => $fontname,
-            'font-size' => $fontsize
-         )->cdata($vlabel);
+         my %attribs = ( x => $coord->[0], y => $coord->[1] - $text_spacing - $r );
+         $self->draw_label(@{$svggroups}[$p], $vlabel, \%attribs);
       }
    }
    continue {
@@ -253,11 +250,26 @@ sub draw_points {
 
 sub draw_lines { }
 
+sub draw_label {
+      my ($self, $svg, $label, $attribs) = @_;
+      $attribs->{'text-anchor'} //= "middle";
+      $attribs->{'font-family'} //= $fontname;
+      $attribs->{'font-size'  } //= $fontsize;
+
+      my $text = $svg->text(%$attribs);
+      my @lines = split("\n", $label);
+      if ($#lines>0) {
+         for my $i (0..$#lines) {
+            $text->text(-type=>'span', x=>0, dy=>$fontsize*$i)->cdata($lines[$i]);
+         }
+      } else {
+         $text->cdata($label);
+      }
+}
+
 sub draw {
    my ($self,$f, $svg, $scaleX)=@_;
-   foreach my $p (@{$self->coords}) {
-      @$p=$f->transform(@$p);
-   }
+   $f->transform($self->coords);
    $self->draw_lines($svg);
    # No grouping here. All points are going to be drawn to $svg
    my @svggroups = map { $svg } @{$self->coords};
@@ -320,10 +332,7 @@ sub draw_facet {
 sub draw {
    my ($self,$f, $svg, $scaleX)=@_;
    my $P = $self->source;
-     
-   foreach my $p (@{$self->coords}) {
-      @$p=$f->transform(@$p);
-   }
+   $f->transform($self->coords);
    
    my $nfacets = scalar(@{$P->Facets});
 
@@ -378,8 +387,10 @@ use Polymake::Struct (
    [ '@ISA' => 'PointSet' ],
 );
 
+use Math::Trig;
+
 sub draw_edge {
-   my ($self, $svg, $edge, $arrows)=@_;
+   my ($self, $svg, $edge, $arrows, $label)=@_;
    my ($s, $t)= $arrows!=-1 ? @$edge : reverse @$edge;
    my $style=$self->source->EdgeStyle;
    $style=$style->($edge) if is_code($style);
@@ -390,31 +401,45 @@ sub draw_edge {
    my $thickness=$self->source->EdgeThickness;
    $thickness=$thickness->($edge) if is_code($thickness);
    if (defined($thickness)) {
-      return if $thickness==0;
       $lw*=$thickness;
    }
-   my $color=$self->source->EdgeColor;
-   $color=$color->($edge) if is_code($color);
-   $color //= get_RGB($Visual::Color::edges);
-   $color=$color->toInt(); $color =~ tr/" "/","/;
    my ($coord_s,$coord_t) = ($self->coords->[$s],$self->coords->[$t]);
-   my %line_style = (
-         'stroke' => "rgb(" . "$color" . ")",
-         'stroke-width' => $lw
+   if ($lw) {
+      my $color=$self->source->EdgeColor;
+      $color=$color->($edge) if is_code($color);
+      $color //= get_RGB($Visual::Color::edges);
+      $color=$color->toInt(); $color =~ tr/" "/","/;
+      my %line_style = (
+            'stroke' => "rgb(" . "$color" . ")",
+            'stroke-width' => $lw
+            );
+      if ($arrows!=0) {
+         $line_style{"marker-end"}="url(#arrow)";
+      }
+      my $line = $svg->line(
+            x1=>$coord_s->[0], y1=>$coord_s->[1],
+            x2=>$coord_t->[0], y2=>$coord_t->[1],
+            %line_style
          );
-   if ($arrows!=0) {
-      $line_style{"marker-end"}="url(#arrow)";
    }
-   my $line = $svg->line(
-         x1=>$coord_s->[0], y1=>$coord_s->[1],
-         x2=>$coord_t->[0], y2=>$coord_t->[1],
-         %line_style
-      );
+   if (defined($label) && $label !~ $Visual::hidden_re && $label ne "") {
+      my $d = $coord_t-$coord_s;
+      my $rot = 360*atan2($d->[1],$d->[0])/(2*pi);
+      if ($d->[0] < 0) {
+         $rot -= 180;
+      }
+
+      my $offset = normalized(null_space($d))->row(0)*$fontsize;
+      my $pos = $coord_s + $d/2 + $offset;
+      my %attribs = ( transform => "translate($pos->[0],$pos->[1]) rotate($rot)" );
+      $self->draw_label($svg, $label, \%attribs);
+   }
 }
 
 sub draw_lines {
    my ($self, $svg)=@_;
    my $arrows=$self->source->ArrowStyle;
+   my $labels=$self->source->EdgeLabels;
    my $arrow_color= new RGB(@arrowheadcolor);
    $arrow_color =~ tr/" "/","/;
    if (is_code($arrows) || $arrows!=0) {
@@ -434,7 +459,8 @@ sub draw_lines {
    }
    for (my $e=$self->source->all_edges; $e; ++$e) {
       my $arrow = is_code($arrows) ? $arrows->($e) : $arrows;      
-      $self->draw_edge($svg,$e,$arrow);
+      my $label = is_code($labels) ? $labels->($e) : $labels;      
+      $self->draw_edge($svg,$e,$arrow,$label);
    }
 }
 

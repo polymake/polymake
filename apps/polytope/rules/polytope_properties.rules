@@ -562,6 +562,21 @@ property ZONOTOPE_INPUT_POINTS : Matrix<Scalar>;
 # Input section only.
 property CENTERED_ZONOTOPE : Bool;
 
+# @category Geometry
+# The minimal Ball which contains a the Polytope. The ball is 
+# given by its center c and the square of it radius r.
+# @example
+# > $P = new Polytope(POINTS=>[[1,0],[1,4]]);
+# > print $P->MINIMAL_BALL;
+# | 4 <1 2>
+property MINIMAL_BALL : Pair<Scalar, Vector<Scalar>>;
+
+rule MINIMAL_BALL : POINTS | VERTICES | INEQUALITIES | FACETS{
+   $this->MINIMAL_BALL = minimal_ball($this);
+}
+
+
+
 } # /Polytope
 
 # @category Geometry

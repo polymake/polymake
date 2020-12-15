@@ -25,5 +25,6 @@
   {"args": ["perl::Canned<const TropicalNumber<Max, Rational>&>", "perl::Canned<const TropicalNumber<Max, Rational>&>"], "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "mul", "sig": "mul:O.X.X"},
   {"args": ["TropicalNumber<Max, Rational>"], "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "new", "sig": "new"},
   {"args": ["TropicalNumber<Min, Rational>", "perl::Canned<const Rational&>"], "include": ["polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "assign", "ret": "empty", "sig": "assign:O"},
+  {"args": ["perl::Canned<const TropicalNumber<Min, Rational>&>", "perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, Int>&>"], "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "add", "sig": "add:O.X.X"},
  null ],
 "version": 3}

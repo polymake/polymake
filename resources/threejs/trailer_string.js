@@ -149,20 +149,18 @@ function init_edgelabels(obj) {
     var edgelabels = new THREE.Group();
     edgelabels.name = "edgelabels";
     if (Array.isArray(labels)) {
-        for (var i=0; i<edgeindices.length; i=i+2) {
-            var point = points[i];
+        for (var i=0; i<edgeindices.length/2; i++) {
             var spriteMaterial = textSpriteMaterial( labels[i] );
             var sprite = new THREE.Sprite(spriteMaterial);
-            sprite.position.copy(new THREE.Vector3().addVectors(points[edgeindices[i]].vector,points[edgeindices[i+1]].vector).multiplyScalar(0.5));
+            sprite.position.copy(new THREE.Vector3().addVectors(points[edgeindices[2*i]].vector,points[edgeindices[2*i+1]].vector).multiplyScalar(0.5));
             edgelabels.add(sprite);
         }
     } else {
         var spriteMaterial = textSpriteMaterial( labels );
-        for (var i=0; i<points.length; i++) {
-            var point = points[i];
+        for (var i=0; i<edgeindices.length/2; i++) {
             var sprite = new THREE.Sprite(spriteMaterial);
-            sprite.position.copy(new THREE.Vector3().addVectors(points[edgeindices[i]].vector,points[edgeindices[i+1]].vector).multiplyScalar(0.5));
-            pointlabels.add(sprite);
+            sprite.position.copy(new THREE.Vector3().addVectors(points[edgeindices[2*i]].vector,points[edgeindices[2*i+1]].vector).multiplyScalar(0.5));
+            edgelabels.add(sprite);
         }
     }
     obj.add(edgelabels);

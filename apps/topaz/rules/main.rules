@@ -46,7 +46,7 @@ INCLUDE
    visual.rules
    gap.rules
    hyperbolic_surface.rules
-
+   action.rules
 
 # Local Variables:
 # mode: perl

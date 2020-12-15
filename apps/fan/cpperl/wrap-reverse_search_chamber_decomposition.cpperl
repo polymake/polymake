@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "reverse_search_chamber_decomposition.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "chamber_decomposition_rs", "include": ["polymake/Rational.h"], "sig": "chamber_decomposition_rs:T1.B", "tp": 1},
+ null ],
+"version": 3}

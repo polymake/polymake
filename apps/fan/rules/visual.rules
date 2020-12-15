@@ -270,7 +270,7 @@ object HyperplaneArrangement {
 
 user_method VISUAL( @ ) {
    my ($this, @args)=@_;
-   $this->CELL_DECOMPOSITION->VISUAL(@args);
+   $this->CHAMBER_DECOMPOSITION->VISUAL(@args);
 }
 }
 

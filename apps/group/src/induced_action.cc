@@ -126,17 +126,25 @@ UserFunctionTemplate4perl("# @category Symmetry"
 
 UserFunctionTemplate4perl("# @category Symmetry"
                           "# gives the permutations that are induced on the rows of a matrix //M//"
-                          "# by the action of //gens// on the columns of //M//"
+                          "# by the action of //gens// on the columns of //M//. The matrices"
+                          "# in gens define the permutations by multiplicate the rows from the"
+                          "# right side on it."
                           "# @param Array<Matrix<Scalar>> gens a list of matrices that act as generators"
                           "# @param Matrix M the matrix acted upon"
                           "# @option Bool homogeneous_action should the generators also act on the homogeneous column? Default False"
-                          "# @return Array<Array<Int>>",
+                          "# @return Array<Array<Int>>"
+                          "# @example"
+                          "# > $gens = new Array<Matrix>([new Matrix([[0,1,0],[0,0,1],[1,0,0]]), new Matrix([[0,0,1],[1,0,0],[0,1,0]])]);"
+                          "# > $M = new Matrix([[1,2,3],[3,1,2],[2,3,1]]);"
+                          "# > print induced_permutations($gens, $M, homogeneous_action=>1);"
+                          "# | 2 0 1"
+                          "# | 1 2 0",
                           "induced_permutations<Scalar>(Array<Matrix<Scalar>>, Matrix<Scalar>; HashMap<Vector<Scalar>,Int>=(new HashMap<Vector<Scalar>,Int>) { homogeneous_action => 0 } )");
       
 UserFunctionTemplate4perl("# @category Symmetry"
                           "# gives the permutations that are induced on an ordered collection //S//"
                           "# by the action of //gens// on the elements of //S//"
-                          "# @param Array<Array<Int>> gens "
+                          "# @param Array<Array<Int>> gens a list of permutations"
                           "# @param Array<DomainType> S the collection acted upon"
                           "# @return Array<Array<Int>>",
                           "induced_permutations<DomainType>(Array<Array<Int>>, Array<DomainType>; HashMap<DomainType,Int>=(new HashMap<DomainType,Int>), { homogeneous_action => 0 })");

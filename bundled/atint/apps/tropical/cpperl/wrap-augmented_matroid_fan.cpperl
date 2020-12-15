@@ -1,0 +1,5 @@
+{"app": "tropical", "embed": "augmented_matroid_fan.cc",
+ "inst": [
+  {"args": ["Min", "void"], "func": "augmented_matroid_fan", "include": ["polymake/TropicalNumber.h"], "sig": "augmented_matroid_fan:T1.B", "tp": 1},
+ null ],
+"version": 3}

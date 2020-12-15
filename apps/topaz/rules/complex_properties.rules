@@ -320,9 +320,14 @@ rule ORIENTATION : FacetPerm.ORIENTATION, FacetPerm.PERMUTATION {
 weight 1.10;
 
 # @category Topology
+# A representation of the facets that prints them using the VERTEX_LABELS
+
+property LABELED_FACETS : Array<String>;
+
+# @category Topology
 # A representation of the orientation that prints each facet using the VERTEX_LABELS, followed by its sign
 
-property LABELED_ORIENTATION : String;
+property LABELED_ORIENTATION : Array<String>;
 
 # @category Topology
 # Determines if this is homeomorphic to a sphere.
@@ -558,6 +563,7 @@ rule BOUNDARY.COORDINATES : COORDINATES, BOUNDARY.VERTEX_MAP {
 }
 
 rule BOUNDARY.G_DIM = G_DIM;
+
 
 }
 

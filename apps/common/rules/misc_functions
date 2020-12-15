@@ -72,7 +72,22 @@ user_function average($) {
 }
 
 # @category Utilities
+# Returns the sum of the array elements.
+# @param ARRAY array
+# @example
+# > print sum([1,2,3]);
+# | 6
+
+user_function sum($) {
+   my ($data)=@_;
+   my $s=0;
+   $s+= $_ for @$data;
+   return $s;
+}
+
+# @category Utilities
 # Returns the median value of the array elements.
+# Running time O(n log(n)) if n is the length of the input.                      
 # @param ARRAY array
 # @example
 # > print median([1,2,3,9]);
@@ -180,6 +195,35 @@ function induced_labels(Array, IncidenceMatrix) {
    new Array<String>( map { join(",", @$v_labels[ @$_ ]) } @$incidence);
 }
 
+# @category Utilities
+# Find the given labels in an array and return their indices.
+# @param Array<String> array
+# @param String label label ...
+# @return Int Int ...
+function labeled_output(Array<String>, $, $) {
+    my ($labels, $facets, $size) = @_;
+    my $max_label_length=0;
+    foreach my $l(@{$labels}) {
+	assign_max($max_label_length, length($l));
+    }
+    my @labeled_facets;
+    foreach my $i (0..$size-1) {
+	my $lf = "[";
+	my $first = 1;
+	foreach my $v (@{$facets->[$i]}) {
+	    if ($first == 1) {
+		$first = 0;
+	    } else {
+		$lf .= " " unless $max_label_length == 1;
+	    }
+	    $lf .= $labels->[$v];
+	}
+	$lf .= "]";
+	push @labeled_facets, $lf;
+    }
+    return \@labeled_facets;
+}
+                     
 # @category Utilities
 # Find the given labels in an array and return their indices.
 # @param Array<String> array

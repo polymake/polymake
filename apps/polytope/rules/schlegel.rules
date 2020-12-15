@@ -61,7 +61,7 @@ rule FACET_POINT : FACET {
 
 method transform_points {
    my ($this, $points)=@_;
-   dehomogenize(convert_to<Float>($points) * convert_to<Float>($this->TRANSFORM));
+   convert_to<Float>(dehomogenize($points * $this->TRANSFORM));
 }
 
 method transform_and_rotate_points {

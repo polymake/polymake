@@ -402,6 +402,9 @@ user_function project_full<Scalar>(PolyhedralFan<Scalar>; {no_labels=>0}) {
 # if no such polyhedron exists.
 # @param PolyhedralFan P
 # @return Matrix<Scalar>
+# @example The face fan of the cross polytope is the normal fan of the cube; thus, to obtain the inequalities of the
+# 3-cube from the 3-dimensional cross polytope we can do this:
+# > $c = generating_polyhedron_facets(face_fan(cross(3)));
 user_function generating_polyhedron_facets<Scalar>(PolyhedralFan<Scalar>) { 
    return pseudo_regular(@_);
 }

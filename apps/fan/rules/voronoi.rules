@@ -18,6 +18,23 @@ object polytope::VoronoiPolyhedron {
 
 # The Voronoi regions as polyhedral complex. Polyhedron indices correspond
 # to site indices.
+# @example [prefer cdd] To construct the Voronoi diagram of a given set of sites in the plane, do this:
+# > $vd = new polytope::VoronoiPolyhedron(SITES=>[[1,0,0],[1,1,0],[1,-1,0],[1,0,1],[1,0,-1]])->VORONOI_DIAGRAM;
+# > print rows_numbered($vd->VERTICES);
+# | 0:1 1/2 -1/2
+# | 1:1 1/2 1/2
+# | 2:1 -1/2 1/2
+# | 3:1 -1/2 -1/2
+# | 4:0 1 -1
+# | 5:0 1 1
+# | 6:0 -1 1
+# | 7:0 -1 -1
+# > print $vd->MAXIMAL_POLYTOPES;
+# | {0 1 2 3}
+# | {0 1 4 5}
+# | {2 3 6 7}
+# | {1 2 5 6}
+# | {0 3 4 7}
 
 property VORONOI_DIAGRAM : PolyhedralComplex<Scalar>;
 
@@ -40,6 +57,21 @@ rule VORONOI_DIAGRAM : VERTICES_IN_FACETS, VERTICES, FAR_FACE{
       POINTS          => $this->VERTICES->minor(All, range(0, $this->VERTICES->cols-2)),
       INPUT_POLYTOPES => $vif           ->minor(sequence(0,$n)-sequence($fi,1), All));
 }
+
+# The Delaunay triangulation of the sites returned as a [[PolyhedralComplex]].
+# @example [prefer cdd] To construct the Delaunay diagram of a given set of sites in the plane, do this:
+# > $dd = new polytope::VoronoiPolyhedron(SITES=>[[1,0,0],[1,1,0],[1,-1,0],[1,0,1],[1,0,-1]])->DELAUNAY_DIAGRAM;
+# > print rows_numbered($dd->VERTICES);
+# | 0:1 1 0
+# | 1:1 0 -1
+# | 2:1 0 0
+# | 3:1 0 1
+# | 4:1 -1 0
+# > print $dd->MAXIMAL_POLYTOPES;
+# | {0 1 2}
+# | {0 2 3}
+# | {2 3 4}
+# | {1 2 4}
 
 property DELAUNAY_DIAGRAM : PolyhedralComplex<Scalar>;
 

@@ -224,7 +224,7 @@ sub valid_configured_entry {
       } else {
          my ($rulefile, $ext) = split /\@/, $rule_key;
          if ($ext
-             ? ($ext = $Extension::registered_by_URI{$ext} &&
+             ? (($ext = $Extension::registered_by_URI{$ext}) &&
                 -f $ext->app_dir($self) . "/rules/$rulefile")
              : -f $self->top . "/rules/$rulefile") {
             !$ext || $ext->is_active;

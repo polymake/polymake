@@ -201,8 +201,23 @@ std::pair<QuadraticExtension<Rational>,Vector<QuadraticExtension<Rational>>> max
   }
 };
 
-Function4perl(&maximal_ball, "maximal_ball(Polytope<Rational>)");
 
+
+UserFunction4perl(
+                  "# @category Geometry"
+                  "# Finds for a given rational Polytope //P// the maximal ball B(//r//,//c//)"
+                  "# which is contained in //P//. Here //r// is the radius of the maximal ball"
+                  "# and //c// is it center. Since is can happen, that r is not a rational number"
+                  "# or c is not a rational, does this function only work for polytopes for which in"
+                  "# the norm of each can be written as QuadraticExtension to the same root."
+                  "# @param Polytope<Rational> P input polytope with rational coordinates"
+                  "# @return Pair <QuadraticExtension<Rational>>, Vector<QuadraticExtension<Rational>>>> "
+                  "# @example"
+                  "# > $S = simplex(2);"
+                  "# > print maximal_ball($S);"
+                  "# | 1-1/2r2 <1 1-1/2r2 1-1/2r2>",
+                  &maximal_ball,
+                  "maximal_ball(Polytope<Rational>)");
 
 }}
 

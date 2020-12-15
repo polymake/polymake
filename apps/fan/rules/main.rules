@@ -48,11 +48,11 @@ declare object PolyhedralFan<Scalar=Rational> [ is_ordered_field(Scalar) ];
 # support cone defaults to being the whole space. Duplicate hyperplanes are
 # ignored, as well as hyperplanes that intersect the support cone trivially.
 # The support cone is subdivided by the hyperplanes resulting in a fan
-# [[CELL_DECOMPOSITION]].
+# [[CHAMBER_DECOMPOSITION]].
 # @tparam Scalar numeric data type used for the coordinates, must be an ordered field.  Default is [[Rational]].
 # @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
 # > $HA = new HyperplaneArrangement(HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
-# > $CD = $HA->CELL_DECOMPOSITION;
+# > $CD = $HA->CHAMBER_DECOMPOSITION;
 # > print $CD->RAYS;
 # | 0 1
 # | 1 0

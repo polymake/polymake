@@ -21,44 +21,88 @@ sub prepare_computations { undef }
 
 # @category Geometry
 # Dimension of the space which contains the polyhedral fan.
+# Note: To avoid confusion in context of (in-)homogenuous coordinates it is generally advised to use the method [[AMBIENT_DIM]].
+# @example The fan living in the plane containing only the cone which consists of the ray pointing in positive x-direction is
+# by definition embedded in the plane:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0]],INPUT_CONES=>[[0]]);
+# > print $f->FAN_AMBIENT_DIM;
+# | 2
 
 property FAN_AMBIENT_DIM : Int;
 
 
 # @category Geometry
 # Dimension of the polyhedral fan.
+# # Note: To avoid confusion in context of (in-)homogenuous coordinates it is generally advised to use the method [[DIM]].
+# @example The fan living in the plane containing only the cone which consists of the ray pointing in positive x-direction is
+# 1-dimensional:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0]],INPUT_CONES=>[[0]]);
+# > print $f->FAN_DIM;
+# | 1
 
 property FAN_DIM : Int;
 
 # @category Combinatorics
-# Combinatorial dimension.
+# Combinatorial dimension of the fan.
+# @example The [[normal_fan|normal fan]] of the 6-cube has combinatorial dimension 5:
+# > print normal_fan(cube(6))->COMBINATORIAL_DIM;
+# | 5
 
 property COMBINATORIAL_DIM : Int;
 
 # @category Geometry
-# True if [[FAN_DIM]] and [[FAN_AMBIENT_DIM]] coincide.
+# A fan is __full-dimensional__ if its [[FAN_DIM|dimension]] and [[FAN_AMBIENT_DIM|ambient dimension]] coincide.
+# @example The [[normal_fan|normal fan]] of a polytope is always full-dimensional, which we see here for the 5-dimensional [[cross|cross polytope]]:
+# > $nf = normal_fan(cross(5));
+# > print $nf->FULL_DIM;
+# | true
 
 property FULL_DIM : Bool;
 
 # @category Geometry
-# True if [[LINEALITY_SPACE]] is trivial.
+# A fan is __pointed__ if the [[LINEALITY_SPACE|lineality space]] is trivial.
+# @example The [[normal_fan|normal fan]] of a polytope is pointed if and only if the polytope is full-dimensional. Here we confirm this for
+# the normal fans of the 2-cube living in 2- and in 3-space, respectively:
+# > $nf_full = normal_fan(cube(2));
+# > print $nf_full->POINTED;
+# | true
+# > $nf_not_full = normal_fan(product(cube(2),new Polytope(POINTS=>[[1,0]])));
+# > print $nf_not_full->POINTED;
+# | false
 
 property POINTED : Bool;
 
 # @category Geometry
-# Since we do not require our cones to be pointed: a basis of the lineality space of the fan. Co-exists with [[RAYS]].
+# Since we do not require our cones to be [[POINTED|pointed]]: a basis of the lineality space of the fan. Co-exists with [[RAYS]].
+# @example We can create a fan in 3-space from the two 2-dimensional cones which are the (x,y)- and (x,z)-halfspaces where
+# y and z are non-negative, respectively. Both cones and thus the fan contain lineality in x-direction:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0],[0,0,1],[-1,0,0]],INPUT_CONES=>[[0,1,3],[0,2,3]]);
+# > print $f->LINEALITY_SPACE;
+# | 1 0 0
 
 property LINEALITY_SPACE : Matrix<Scalar>;
 
 
 # @category Geometry
 # A basis of the orthogonal complement to [[LINEALITY_SPACE]].
+# @example In 3-space, we build a fan containing only the ray pointing in positive x-direction, together with lineality in y-direction.
+# The definition of the cones yields no additional lineality, thus the orthogonal complement to the lineality space is spanned
+# by (1,0,0) and (0,0,1):
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0]],INPUT_CONES=>[[0]],INPUT_LINEALITY=>[[0,1,0]]);
+# > print $f->ORTH_LINEALITY_SPACE;
+# | 1 0 0
+# | 0 0 1
 
 property ORTH_LINEALITY_SPACE : Matrix<Scalar>;
 
 
 # @category Geometry
-# Dimension of [[LINEALITY_SPACE]].
+# Dimension of the [[LINEALITY_SPACE|lineality space]].
+# @example A [[POINTED|pointed]] fan has no lineality, thus the dimension of its lineality space is 0. The most simple example is a fan
+# only consisting of one ray, here in the plane:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0]],INPUT_CONES=>[[0]]);
+# > print $f->LINEALITY_DIM;
+# | 0
 
 property LINEALITY_DIM : Int;
 
@@ -66,8 +110,28 @@ property LINEALITY_DIM : Int;
 # @category Input property
 # Rays from which the cones are formed.  May be redundant. All vectors in the input must be non-zero.
 # You also need to provide [[INPUT_CONES]] to define a fan completely.
-#
 # Input section only. Ask for [[RAYS]] if you want a list of non-redundant rays.
+# @example When constructing the fan which displays the division of the plane into quadrants, we can use
+# redundant rays such that the indices given in [[INPUT_CONES]] suggest that two rays form the border of our fan, but due
+# to our choice in [[INPUT_RAYS]], they actually are the same ray adjacent to two distinct 2-dimensional cones:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[0,1],[-1,0],[0,-1],[2,0]],INPUT_CONES=>[[0,1],[1,2],[2,3],[3,4]]);
+# > print rows_labeled($f->RAYS);
+# | 0:1 0
+# | 1:0 1
+# | 2:-1 0
+# | 3:0 -1
+# > print $f->CONES;
+# | <{0}
+# | {1}
+# | {2}
+# | {3}
+# | >
+# | <{0 1}
+# | {1 2}
+# | {2 3}
+# | {0 3}
+# | >
+
 
 property INPUT_RAYS : Matrix<Scalar>;
 
@@ -75,11 +139,34 @@ property INPUT_RAYS : Matrix<Scalar>;
 # @category Input property
 # Maybe redundant list of not necessarily maximal cones.  Indices refer to [[INPUT_RAYS]].
 # Each cone must list all rays of [[INPUT_RAYS]] it contains.
+# Any incident cones will automatically be added.
 # The cones are allowed to contain lineality.
 # Cones which do not have any rays correspond to the trivial cone (contains only the origin).
 # An empty fan does not have any cones.
-#
 # Input section only. Ask for [[MAXIMAL_CONES]] if you want to know the maximal cones (indexed by [[RAYS]]).
+# @example In 3-space, we construct the fan containing the closure of the all-positive octant and the
+# (x<=0, y>=0, z=0) quadrant with the following input (note that we do not have to state the combinatorics for
+# cones contained in a given cone of higher dimension, e.g. the the (x>=0, z>=0) quadrant in the y=0 plane):
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0],[0,0,1],[-1,0,0]],INPUT_CONES=>[[0,1,2],[1,3]]);
+# > print rows_labeled($f->RAYS);
+# | 0:1 0 0
+# | 1:0 1 0
+# | 2:0 0 1
+# | 3:-1 0 0
+# > print $f->CONES;
+# | <{1}
+# | {3}
+# | {2}
+# | {0}
+# | >
+# | <{1 3}
+# | {1 2}
+# | {0 2}
+# | {0 1}
+# | >
+# | <{0 1 2}
+# | >
+
 
 property INPUT_CONES : IncidenceMatrix;
 
@@ -88,12 +175,25 @@ property INPUT_CONES : IncidenceMatrix;
 # redundancies are allowed.
 #
 # Input section only.  Ask for [[LINEALITY_SPACE]] if you want to know the lineality space.
+# @example In 3-space, we can "stretch" the (x>=0, y>=0) quadrant in the z=0 hyperplane to obtain the joint of the
+# two octants where x and y are non-negative by adding linearity in z-direction:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0]],INPUT_CONES=>[[0,1]],INPUT_LINEALITY=>[[0,0,1]]);
 
 property INPUT_LINEALITY : Matrix<Scalar>;
 
 
 # @category Geometry
-# Rays from which the cones are formed.  Non-redundant.  Co-exists with [[LINEALITY_SPACE]].
+# Rays of the [[PolyhedralFan]]. Non-redundant. Co-exists with [[LINEALITY_SPACE]].
+# @example The rays of the [[face_fan|face fan]] of a 3-dimensioanl cube. This fan has one ray in the direcction of each vertex of the cube.
+# > print face_fan(cube(3))->RAYS;
+# | -1 -1 -1
+# | 1 -1 -1
+# | -1 1 -1
+# | 1 1 -1
+# | -1 -1 1
+# | 1 -1 1
+# | -1 1 1
+# | 1 1 1
 
 property RAYS : Matrix<Scalar> {
    sub canonical { &canonicalize_rays; }
@@ -115,11 +215,19 @@ weight 1.10;
 
 # @category Geometry
 # Number of [[RAYS]].
+# @example The number of facets of a polytope is the number of rays of the corresponding [[normal_fan|normal fan]]. Here we see this for the 3-cube:
+# > print normal_fan(cube(3))->N_RAYS;
+# | 6
 
 property N_RAYS : Int;
 
 # @category Geometry
 # Number of [[INPUT_RAYS]].
+# @example To determine the combined amount of redundant and unused rays given by [[INPUT_RAYS]], we compare this number
+# to [[N_RAYS]]:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[0,1],[-1,0],[0,-1],[2,0],[1,1]],INPUT_CONES=>[[0,1],[1,2],[2,3],[3,4]]);
+# > print ($f->N_INPUT_RAYS-$f->N_RAYS);
+# | 2
 
 property N_INPUT_RAYS : Int;
 
@@ -127,6 +235,17 @@ property N_INPUT_RAYS : Int;
 # Non redundant list of maximal cones.  Indices refer to [[RAYS]].
 # Cones which do not have any rays correspond to the trivial cone (contains only the origin).
 # An empty fan does not have any cones.
+# @example The maximal cones of the normal fan of the 3-cube describe which faces share a common vertex:
+# > print normal_fan(cube(3))->MAXIMAL_CONES;
+# | {0 2 4}
+# | {1 2 4}
+# | {0 3 4}
+# | {1 3 4}
+# | {0 2 5}
+# | {1 2 5}
+# | {0 3 5}
+# | {1 3 5}
+
 property MAXIMAL_CONES : IncidenceMatrix;
 
 rule MAXIMAL_CONES : RaysPerm.MAXIMAL_CONES, RaysPerm.PERMUTATION {
@@ -160,10 +279,23 @@ rule MAXIMAL_CONES_THRU_RAYS : MAXIMAL_CONES {
 
 # @category Combinatorics
 # List of all cones of the fan of each dimension.  Indices refer to [[RAYS]].
+# @example A fan constructed with a 2-dimensional cone in [[INPUT_CONES]] also contains the incident 1-dimensional
+# cones.
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[0,1]],INPUT_CONES=>[[0,1]]);
+# > print $f->CONES;
+# | <{0}
+# | {1}
+# | >
+# | <{0 1}
+# | >
 property CONES : Array<IncidenceMatrix>;
 
 # @category Combinatorics
 # Number of [[MAXIMAL_CONES]].
+# @example The number of facets of a polytope is the same as the number of maximal cones of its face fan;
+# here we can see this for the 3-cube:
+# > print face_fan(cube(3))->N_MAXIMAL_CONES;
+# | 6
 property N_MAXIMAL_CONES : Int;
 
 # @category Combinatorics
@@ -171,7 +303,20 @@ property N_MAXIMAL_CONES : Int;
 property N_CONES : Int;
 
 # @category Combinatorics
-# Array of incidence matrices of all [[MAXIMAL_CONES|maximal cones]].
+# Array of incidence matrices of all [[MAXIMAL_CONES|maximal cones]]. Indices refer to [[RAYS]].
+# @example Here we construct a fan with a 3-dimensional and a 2-dimensional maximal cone and then display the incident cones:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0],[0,0,1],[-1,0,0]],INPUT_CONES=>[[0,1,2],[1,3]]);
+# > print $f->MAXIMAL_CONES;
+# | {0 1 2}
+# | {1 3}
+# > print $f->MAXIMAL_CONES_INCIDENCES;
+# | <{1 2}
+# | {0 2}
+# | {0 1}
+# | >
+# | <{1}
+# | {3}
+# | >
 
 property MAXIMAL_CONES_INCIDENCES : Array<IncidenceMatrix>;
 
@@ -192,6 +337,15 @@ weight 1.10;
 
 # @category Combinatorics
 # The combinatorial dimensions of the [[MAXIMAL_CONES|maximal cones]].
+# @example Here we construct a fan with a 3-dimensional and a 2-dimensional maximal cone, of which the latter contains lineality,
+# and then display the corresponding combinatorial dimensions:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0],[0,0,1],[-1,0,0],[0,-1,0]],INPUT_CONES=>[[0,1,2],[1,3,4]]);
+# > print $f->MAXIMAL_CONES;
+# | {0 1 2}
+# | {3}
+# > print $f->MAXIMAL_CONES_COMBINATORIAL_DIMS;
+# | 2 0
+
 property MAXIMAL_CONES_COMBINATORIAL_DIMS : Array<Int>;
 
 rule MAXIMAL_CONES_COMBINATORIAL_DIMS : ConesPerm.MAXIMAL_CONES_COMBINATORIAL_DIMS, ConesPerm.PERMUTATION {
@@ -233,6 +387,11 @@ user_method CONES_DIMS : FAN_DIM, CONES_COMBINATORIAL_DIMS {
 #
 # For a polyhedral fan built from scratch, you should create this property by yourself,
 # either manually in a text editor, or with a client program.
+# @example The [[normal_fan|normal fan]] of the 2-cube has 4 rays; to assign the labels 'a', 'b' and 'any label' to the first
+# three entries of [[RAYS]], do this (note that the unspecified label of the last ray is blank when visualizing, and that,
+# depending on your visualization settings, not the whole string of the third label might be displayed):
+# > $f = normal_fan(cube(2));
+# > $f->RAY_LABELS=['a','b','any label'];
 
 property RAY_LABELS : Array<String> : mutable;
 
@@ -259,6 +418,20 @@ property MAXIMAL_CONE_LABELS : Array<String> : mutable;
 #
 # One special node represents the origin and one special node represents the full fan
 # (even if the fan only has one maximal cone).
+# @example To compute the Hasse diagram of the [[normal_fan|normal fan]] of the 2-cube and display its
+# decoration, we can do the following. Note the artificial node on top and the empty node at the bottom. The latter represents the trivial cone consisting only of the origin.
+# > $h = normal_fan(cube(2))->HASSE_DIAGRAM;
+# print $h->DECORATION;
+# | ({-1} 3)
+# | ({0 2} 2)
+# | ({1 2} 2)
+# | ({0 3} 2)
+# | ({1 3} 2)
+# | ({0} 1)
+# | ({2} 1)
+# | ({1} 1)
+# | ({3} 1)
+# | ({} 0)
 
 property HASSE_DIAGRAM : Lattice<BasicDecoration> {
 
@@ -300,11 +473,23 @@ property F2_VECTOR : Matrix<Integer>;
 
 # @category Combinatorics
 # f<sub>k</sub> is the number of k-dimensional cones starting from dimension k=1.
+# The f-vector of a polytope and the f-vector of any of its [[face_fan|face fans]] coincide; for the 3-cube:
+# > print face_fan(cube(3))->F_VECTOR;
+# | 8 12 6
 
 property F_VECTOR : Vector<Integer>;
 
 # @category Combinatorics
 # The polyhedral fan is __pure__ if all [[MAXIMAL_CONES|maximal cones]] are of the same dimension.
+# @example Generating a fan from two distinct 2-dimensional cones gives a pure fan:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[0,1],[-1,0],[0,-1]],INPUT_CONES=>[[0,1],[2,3]]);
+# > print $f->PURE;
+# | true
+# @example Gnerating a fan from a 2-dimensional and a 1-dimensional cone results in the fan not being pure if the latter is a ray
+# not contained in the former:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,1],[-1,1],[0,-1]],INPUT_CONES=>[[0,1],[2]]);
+# > print $f->PURE;
+# | false
 
 property PURE : Bool;
 
@@ -314,22 +499,42 @@ property PURE : Bool;
 # Due to undecidability issues this is checked heuristically only.
 # See the remarks on [[topaz::SimplicialComplex::SPHERE|SPHERE]] for details.
 # Note that in the case of a polyhedral complex, this refers to the underlying fan, so should always be false.
+# @example The [[normal_fan|normal fan]] of a polytope always is complete; here we see this for the 8-cube:
+# > print normal_fan(cube(8))->COMPLETE;
+# | true
 
 property COMPLETE : Bool;
 
 
 # @category Combinatorics
 # The polyhedral fan is __simplicial__ if all [[MAXIMAL_CONES|maximal cones]] are [[Cone::SIMPLICIAL|simplicial]].
+# @example The [[normal_fan|normal fan]] of a d-cube is __simplicial__; here we see this for the 3-cube:
+# > print normal_fan(cube(3))->SIMPLICIAL;
+# | true
 
 property SIMPLICIAL : Bool;
 
 # @category Geometry
 # True if the fan is the [[normal_fan|normal fan]] of a [[Polytope::BOUNDED|bounded]] polytope.
+# @example The [[face_fan|face fan]] of the centered d-dimensional cross polytope w.r.t. the origin 
+# is the [[normal_fan|normal fan]] of the d-cube; here we confirm the regularity of the face fan for d=7:
+# > print face_fan(cross(7))->REGULAR;
+# | true
+# @example A [[normal_fan|normal fan]] always is complete; thus a fan which is not complete can not be regular:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[0,1]],INPUT_CONES=>[[0,1]]);
+# > print $f->REGULAR;
+# | false
 
 property REGULAR : Bool;
 
 # @category Geometry
 # True if the fan is a subfan of a [[REGULAR]] fan
+# @example Here we build a fan in the plane with the non-negative quadrant and the ray pointing in negative y-direction
+# as its [[MAXIMAL_CONES|maximal cones]]. This is a subfan of the fan with all four quadrants as its maximal cones which is the
+# [[normal_fan|normal fan]] of the 2-cube; thus, our fan is pseudo regular:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0],[0,1],[-1,0]],INPUT_CONES=>[[0,1],[2]]);
+# > print $f->PSEUDO_REGULAR;
+# | true
 
 property PSEUDO_REGULAR : Bool;
 
@@ -337,6 +542,14 @@ property PSEUDO_REGULAR : Bool;
 # The graph of the fan intersected with a sphere, that is,
 # the vertices are the rays which are connected if they are
 # contained in a common two-dimensional cone.
+# @example The graph of a [[face_fan|face fan]] of a polytope is isomorphic to the vertex-edge graph of the polytope.
+# Here we see this for the 3-cube:
+# > $c = cube(3);
+# > $f = face_fan($c);
+# > $g1 = $f->GRAPH;
+# > $g2 = $c->GRAPH;
+# > print isomorphic($g1->ADJACENCY,$g2->ADJACENCY);
+# | true
 
 property GRAPH : Graph;
 
@@ -345,7 +558,15 @@ rule GRAPH.NodePerm.PERMUTATION = RaysPerm.PERMUTATION;
 # @category Combinatorics
 # The graph whose nodes are the maximal cones which
 # are connected if they share a common facet.
-# Only defined if [[PURE]]
+# Only defined if [[PURE]].
+# @example The dual graph of a [[face_fan|face fan]] of the 3-cube is isomorphic to the vertex-edge graph of the
+# 3-dimensional cross polytope.
+# > $c = cross(3);
+# > $f = face_fan(cube(3));
+# > $g1 = $f->DUAL_GRAPH;
+# > $g2 = $c->GRAPH;
+# > print isomorphic($g1->ADJACENCY,$g2->ADJACENCY);
+# | true
 
 property DUAL_GRAPH : Graph;
 
@@ -353,18 +574,46 @@ rule DUAL_GRAPH.NodePerm.PERMUTATION = ConesPerm.PERMUTATION;
 
 # @category Geometry
 # The possible facet normals of all maximal cones.
+# @example The two facet normals of the complete fan dividing the plane into the four quadrants (which can be obtained by
+# computing the [[normal_fan|normal fan]] of the 2-cube) point in x- and in y-direction, respectively:
+# > print normal_fan(cube(2))->FACET_NORMALS;
+# | 1 0
+# | 0 1
 
 property FACET_NORMALS : Matrix<Scalar>;
 
 # @category Geometry
 # The number of possible facet normals of all maximal cones.
+# @example The facets of the [[normal_fan|normal fan]] of the 3-cube are each spanned by a ray pointing in positive or negative
+# direction of one axis and another ray pointing in positive or negative direction of another axis; thus, the third axis
+# is normal to this facet. This leaves us with three possible facet normals:
+# > print normal_fan(cube(3))->N_FACET_NORMALS;
+# | 3
 
 property N_FACET_NORMALS : Int;
 
 # @category Geometry
-# Tells for each maximal cone what are its facets.
+# Tells for each maximal cone what are its facet normals, thus implying the facets.
+# Each row corresponds to a maximal cone and each column to the row with the same index of [[FACET_NORMALS]].
 # A negative number means that the corresponding row of
 # [[FACET_NORMALS]] has to be negated.
+# @example The two facet normals of the complete fan dividing the plane into the four quadrants (which can be obtained by
+# computing the [[normal_fan|normal fan]] of the 2-cube) point in x- and in y-direction, respectively. Each quadrant has both of these
+# as normals only differing by the combination of how they point in- or outside:
+# > $f = normal_fan(cube(2));
+# > print $f->MAXIMAL_CONES;
+# | {0 2}
+# | {1 2}
+# | {0 3}
+# | {1 3}
+# > print rows_numbered($f->FACET_NORMALS);
+# | 0:1 0
+# | 1:0 1
+# > print $f->MAXIMAL_CONES_FACETS;
+# | 1 1
+# | -1 1
+# | 1 -1
+# | -1 -1
 
 property MAXIMAL_CONES_FACETS : SparseMatrix<Int>;
 
@@ -375,13 +624,38 @@ weight 1.10;
 
 # @category Geometry
 # The possible linear span normals of all maximal cones.
+# Empty if [[PURE]] and [[FULL_DIM]], i.e. each maximal cone has the same dimension as the ambient space.
+# @example We construct a fan in 3-space with two 2-dimensional maximal cones and a 1-dimensional maximal cone. Note that
+# there are two possible normals for the latter, but one of these also is a normal for one of the 2-dimensional cones; thus
+# we receive three normals:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0],[-1,0,1],[-1,-1,0]],INPUT_CONES=>[[0,1],[1,2],[3]]);
+# > print $f->LINEAR_SPAN_NORMALS;
+# | 0 0 1
+# | 1 0 1
+# | -1 1 0
 
 property LINEAR_SPAN_NORMALS : Matrix<Scalar>;
 
 # @category Geometry
-# Tells for each maximal cone what is its linear span.
+# Tells for each maximal cone what is its linear span by naming its normals.
 # Indices refer to [[LINEAR_SPAN_NORMALS]].
-# Rows correspond to [[MAXIMAL_CONES_FACETS]].
+# Rows correspond to [[MAXIMAL_CONES]].
+# An empty row corresponds to a full-dimensional cone.
+# @example We construct a fan in 3-space with two 2-dimensional maximal cones and a 1-dimensional maximal cone. This way
+# we receive two cones with one normal and one cone with two normals:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0,0],[0,1,0],[-1,0,1],[-1,-1,0]],INPUT_CONES=>[[0,1],[1,2],[3]]);
+# > print $f->MAXIMAL_CONES;
+# | {0 1}
+# | {1 2}
+# | {3}
+# > print rows_numbered($f->LINEAR_SPAN_NORMALS);
+# | 0:0 0 1
+# | 1:1 0 1
+# | 2:-1 1 0
+# > print $f->MAXIMAL_CONES_LINEAR_SPAN_NORMALS;
+# | {0}
+# | {1}
+# | {0 2}
 
 property MAXIMAL_CONES_LINEAR_SPAN_NORMALS : IncidenceMatrix;
 
@@ -396,24 +670,41 @@ rule MAXIMAL_CONES_LINEAR_SPAN_NORMALS : LINEAR_SPAN_NORMALS, ConesPerm.MAXIMAL_
 weight 1.10;
 
 # @category Topology
-# If the fan is [[SIMPLICIAL]] the simplicial complex obtained by intersection
+# If the fan is [[SIMPLICIAL]] the simplicial complex obtained by intersecting
 # the fan with the unit sphere.
 # If the fan is not [[SIMPLICIAL]] the crosscut complex of the intersection.
+# @example When intersecting, the [[normal_fan|normal fan]] of the 3-cube gives us a simplicial complex which is a topological 2-sphere:
+# > $ic = normal_fan(cube(3))->INTERSECTION_COMPLEX;
+# print $ic->SPHERE;
+# | true
 
 property INTERSECTION_COMPLEX : topaz::SimplicialComplex;
 
 
 # @category Topology
 # The homology of the intersection of the fan with the unit sphere.
+# # @example When intersecting, the [[normal_fan|normal fan]] of the 3-cube gives us a simplicial complex which is a topological 2-sphere:
+# > print normal_fan(cube(3))->HOMOLOGY;
+# | ({} 0)
+# | ({} 0)
+# | ({} 1)
 
 property HOMOLOGY : Array<topaz::HomologyGroup<Integer>>;
 
 rule HOMOLOGY = INTERSECTION_COMPLEX.HOMOLOGY;
 
 # @category Combinatorics
-# Returns the //i//-th maximal cone.
+# Returns the //i//-th [[MAXIMAL_CONES|maximal cone]].
 # @param Int i
 # @return Cone
+# @example To obtain the cone generated by the x-, y- and z-axis, we can take the first cone of the [[normal_fan|normal fan]] of
+# the 3-cube:
+# > $c = normal_fan(cube(3))->cone(0);
+# > print $c->RAYS;
+# | 1 0 0
+# | 0 1 0
+# | 0 0 1
+
 user_method cone($) : MAXIMAL_CONES {
    my ($self,$i)=@_;
    my $c=new Cone<Scalar>;
@@ -474,6 +765,11 @@ user_method cone($) : MAXIMAL_CONES {
 # @category Geometry
 # Returns the dimension of the ambient space.
 # @return Int
+# @example The fan living in the plane containing only the cone which consists of the ray pointing in positive x-direction is
+# by definition embedded in the plane:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0]],INPUT_CONES=>[[0]]);
+# > print $f->AMBIENT_DIM;
+# | 2
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return $self->FAN_AMBIENT_DIM;
@@ -482,6 +778,12 @@ user_method AMBIENT_DIM {
 # @category Geometry
 # Returns the dimension of the linear space spanned by the fan.
 # @return Int
+# @example The fan living in the plane containing only the cone which consists of the ray pointing in positive x-direction is
+# 1-dimensional:
+# > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0]],INPUT_CONES=>[[0]]);
+# > print $f->DIM;
+# | 1
+
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | FACET_NORMALS | LINEAR_SPAN_NORMALS"))) {

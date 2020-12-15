@@ -160,6 +160,7 @@ user_method VISUAL(%Visual::Polygon::decorations, %Visual::Graph::decorations, {
                                  Coord => $coord,
                                  VertexLabels => $labels,
                                  VertexColor => $Visual::Color::topaz_gr,
+                                 Explodable => 0,
                                  $graph_decor
                                );
    visualize(new Visual::SimplicialComplex(Name => $this->name,

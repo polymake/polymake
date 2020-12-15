@@ -75,6 +75,19 @@ sub gfan_to_symmetric_fan {
 #
 # @param Matrix M a matrix whose rows are the vectors in the configuration
 # @return PolyhedralFan
+# @example Four points in the plane of which none three are on a line give
+# us a secondary fan consisting of two opposing cones with 3-dimensional lineality:
+# > $f = gfan_secondary_fan(new PointConfiguration(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,1,1]]));
+# > print $f->RAYS;
+# | -1 1 1 -1
+# | 1 -1 -1 1
+# > print $f->MAXIMAL_CONES;
+# | {0}
+# | {1}
+# > print $f->LINEALITY_SPACE;
+# | 1 0 0 -1
+# | 0 1 0 1
+# | 0 0 1 1
 user_function gfan_secondary_fan(Matrix) {
   my ($M) = @_;
   return gfan_to_symmetric_fan(run_gfan(sub { gfan_print_matrix($_[0], eliminate_denominators_entire_affine($M)) },

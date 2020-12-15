@@ -188,7 +188,7 @@ bool contains_dual_primal(BigObject p_in, BigObject p_out){
   
   
   BigObject p_in_new(p_in.type());
-  p_in_new.take("POINTS") << hull_in.first;
+  p_in_new.take("INPUT_RAYS") << hull_in.first;
   p_in_new.take("EQUATIONS") << hull_in.second;
   
   // load the inner description of p_out
@@ -366,7 +366,7 @@ bool polytope_contains_ball(Vector<Scalar> c, Scalar r, BigObject p_out)
 template <typename Scalar>
 bool contains_primal_ball(BigObject p_in, Vector<Scalar> c, Scalar r){
   // get the vertex descrition of p_in
-  Matrix<Scalar> V_in = p_in.give("VERTICES | POINTS");
+  Matrix<Scalar> V_in = p_in.give("RAYS | INPUT_RAYS");
   Matrix<Scalar> L_in;
   
   // check if p_in has rays
@@ -425,7 +425,7 @@ bool contains_dual_ball(BigObject p_in, Vector<Scalar> c, Scalar r){
   
   
   BigObject p_in_new(p_in.type());
-  p_in_new.take("POINTS") << hull_in.first;
+  p_in_new.take("INPUT_RAYS") << hull_in.first;
   p_in_new.take("EQUATIONS") << hull_in.second;
   
   return contains_primal_ball<Scalar>(p_in_new, c, r);
@@ -441,7 +441,7 @@ template <typename Scalar>
 bool polytope_contained_in_ball(BigObject p_in, Vector<Scalar> c, Scalar r)
 {
   // check in which way p_in was given
-  if (p_in.exists("VERTICES | POINTS")){
+  if (p_in.exists("RAYS | INPUT_RAYS")){
     return contains_primal_ball<Scalar>(p_in, c, r);
     
   }else{

@@ -28,6 +28,7 @@
 
 namespace polymake { namespace polytope {
 
+template <typename Scalar>
 BigObject facet(BigObject p_in, Int facet_number, OptionSet options)
 {
    const IncidenceMatrix<> RIF = p_in.give("RAYS_IN_FACETS");
@@ -49,7 +50,7 @@ BigObject facet(BigObject p_in, Int facet_number, OptionSet options)
          p_out.take("CONE_DIM") << dim-1;
       }
    } else {
-      const Matrix<Rational> R=p_in.give("RAYS"),
+      const Matrix<Scalar> R=p_in.give("RAYS"),
                              LS=p_in.give("LINEALITY_SPACE");
 
       p_out.take("RAYS") << R.minor(RIF[facet_number],All);
@@ -92,6 +93,8 @@ face_pair(BigObject p_in, const Set<Int>& some_rays)
    return { rays_in_facets_found, facets_containing_given_rays };
 }
 
+
+template <typename Scalar>
 BigObject face(BigObject p_in, const Set<Int>& some_rays, OptionSet options)
 {
    const IncidenceMatrix<> RIF = p_in.give("RAYS_IN_FACETS");
@@ -121,7 +124,7 @@ BigObject face(BigObject p_in, const Set<Int>& some_rays, OptionSet options)
    p_out.take("RAYS_IN_FACETS") << rif_face;
 
    if (!options["no_coordinates"]) {
-      const Matrix<Rational> R=p_in.give("RAYS"),
+      const Matrix<Scalar> R=p_in.give("RAYS"),
                              LS=p_in.give("LINEALITY_SPACE");
 
       p_out.take("RAYS") << R.minor(rays_of_face,All);
@@ -137,7 +140,7 @@ BigObject face(BigObject p_in, const Set<Int>& some_rays, OptionSet options)
    return p_out;
 }
 
-UserFunction4perl("# @category Producing a polytope from polytopes"
+UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                   "# Extract the given //facet// of a polyhedron and write it as a new polyhedron."
                   "# @param Cone P"
                   "# @param Int facet"
@@ -146,7 +149,7 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @return Cone"
                   "# @example To create a cone from the vertices of the zeroth facet of the 3-cube, type this:"
                   "# > $p = facet(cube(3),0);",
-                  &facet,"facet(Cone $ {no_coordinates => 0, no_labels => 0})");
+                  "facet<Scalar>(Cone<Scalar> $ {no_coordinates => 0, no_labels => 0})");
 
 UserFunction4perl("# @category Other"
                   "# For a given set S of rays compute the smallest face F of a cone P containing them all; see also //face//."
@@ -159,7 +162,7 @@ UserFunction4perl("# @category Other"
                   "# | 1",
                   &face_pair,"face_pair(Cone $)");
 
-UserFunction4perl("# @category Producing a polytope from polytopes"
+UserFunctionTemplate4perl("# @category Producing a polytope from polytopes"
                   "# For a given set S of rays compute the smallest face F of a cone P containing them all; see also //face_pair//."
                   "# @param Cone P"
                   "# @param Set S"
@@ -168,7 +171,7 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# @return Cone"
                   "# @example To create a cone from the vertices of the zeroth facet of the 3-cube, type this:"
                   "# > $p = face(cube(3),[0,1]);",
-                  &face,"face(Cone $ {no_coordinates => 0, no_labels => 0})");
+                  "face<Scalar>(Cone<Scalar> $ {no_coordinates => 0, no_labels => 0})");
 
 } }
 

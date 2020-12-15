@@ -30,6 +30,12 @@ declare property_type Nonsequential : c++(special => 'graph::lattice::Nonsequent
 declare property_type InverseRankMap<SeqType> : c++ (name=>"graph::lattice::InverseRankMap", include=>"polymake/graph/Decoration.h") {
 
    operator @eq : c++;
+   
+   # @category Combinatorics
+   # @param Int r
+   # @param Int n
+   # Set the rank of a given node
+   user_method set_rank(&, $,$) : c++;
 
    # @category Combinatorics
    # @param Int r

@@ -315,13 +315,11 @@ sub linesToString {
     my $labels=$self->source->EdgeLabels;
 
     $text .= "\n  % EDGES\n";
-    my $c = 0;
     for (my $e=$self->source->all_edges; $e; ++$e) {
         my @vertices_to_draw=();
         my $a=$e->[0]; my $b=$e->[1];
         my $option_string = $self->edgeStyleString($e);
-        my $labelstring = defined($labels) ? " node [".$TikZ::default::edgelabelstyle."] {".$labels->($c)."}" : "";
-        ++$c;
+        my $labelstring = defined($labels) ? " node [".$TikZ::default::edgelabelstyle."] {".$labels->($e)."}" : "";
         if ($line_flag && (!is_code($style) || ($style->($i) !~ $Visual::hidden_re))){
             $text .= "  \\draw[$option_string] (v$a\_$id) -- (v$b\_$id)$labelstring;\n";
         }

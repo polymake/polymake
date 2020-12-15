@@ -22,16 +22,34 @@ file_suffix pcom
 # similar to overrides for [[Polytope]] objects derived from [[Cone]]
 
 # @category Input property
+# Points in homogeneous coordinates from which the polytopes are formed. May be redundant.
+# All vectors in the input must be non-zero. You also need to provide [[INPUT_POLYTOPES]] to define a complex completely.
+# Input section only. Ask for [[VERTICES]] if you want a list of non-redundant points.
+# @example To obtain a complex consisting of two triangles we can do this (note that,
+# contrary to a [[polytope::Polytope|polytope]], this complex is not convex):
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,3,-1],[1,0,1]],INPUT_POLYTOPES=>[[0,1,3],[1,2,3]]);
+
 property POINTS = override INPUT_RAYS;
 
 # @category Geometry
 # Number of [[POINTS]].
+# @example In the plane, glueing two triangles together along one side gives us a complex with four vertices;
+# nevertheless we can specify these two triangles using six points with redundancies:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,1,0],[2,0,2],[1,1,1]],INPUT_POLYTOPES=>[[0,1,2],[3,4,5]]);
+# > print $c->N_VERTICES;
+# | 4
+# > print $c->N_POINTS;
+# | 6
 property N_POINTS = override N_INPUT_RAYS;
 
 # @category Visualization
+# Unique names assigned to the [[POINTS]].  Similar to [[VERTEX_LABELS]] for [[VERTICES]].
+
 property POINT_LABELS = override INPUT_RAY_LABELS;
 
 # @category Geometry
+# Vertices from which the polytopes are formed.  Non-redundant. Co-exists with [[LINEALITY_SPACE]].
+
 property VERTICES = override RAYS;
 
 # @category Geometry
@@ -39,15 +57,50 @@ property VERTICES = override RAYS;
 property N_VERTICES = override N_RAYS;
 
 # @category Visualization
+# Unique names assigned to the [[VERTICES]].
+# If specified, they are shown by visualization tools instead of vertex indices.
+# For a polyhedral complex built from scratch, you should create this property by yourself,
+# either manually in a text editor, or with a client program.
+
 property VERTEX_LABELS = override RAY_LABELS;
 
 # @category Geometry
+# # The possible linear span normals of all maximal polytopes.
+# Empty if [[PURE]] and [[FULL_DIM]], i.e. each maximal polytope has the same dimension as the ambient space.
+# @example In the plane, when we construct a polyhedral complex with a 2-dimensional and two 1-dimensional maximal polytopes
+# only the latter two will have a linear span with a normal in this ambient space:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,-1,0],[1,-1,-1]],INPUT_POLYTOPES=>[[0,1,2],[0,3],[0,4]]);
+# > print $c->AFFINE_HULL;
+# | 0 0 1
+# | 0 -1 1
+
 property AFFINE_HULL = override LINEAR_SPAN_NORMALS;
 
 # @category Input property
+# Maybe redundant list of not necessarily maximal polytopes.  Indices refer to [[POINTS]].
+# Each polytope must list all vertices of [[POINTS]] it contains.
+# The polytopes are allowed to contain lineality.
+# An empty complex does not have any polytopes.
+# Input section only. Ask for [[MAXIMAL_POLYTOPES]] if you want to know the maximal polytopes (indexed by [[VERTICES]]).
+# @example We can define a polyhderal complex consisting of two distinct triangles with the following (note that additionally stating
+# one side of one of these triangles does not affect our resulting complex):
+# > $c = new PolyhedralComplex(POINTS=>[[1,1,0],[1,1,1],[1,0,1],[1,-1,0],[1,-1,-1],[1,0,-1]],INPUT_POLYTOPES=>[[0,1,2],[3,4,5],[0,1]]);
+# print $c->MAXIMAL_POLYTOPES;
+# | {0 1 2}
+# | {3 4 5}
+
 property INPUT_POLYTOPES = override INPUT_CONES;
 
 # @category Combinatorics
+# Non redundant list of maximal polytopes.  Indices refer to [[VERTICES]].
+# An empty complex does not have any polytopes.
+# @example After creating a complex via the [[INPUT_POLYTOPES]] property, we can display all maximal polytopes rising from
+# that definition:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,1,1],[1,0,1]],INPUT_POLYTOPES=>[[0,1,2],[0,3],[2]]);
+# > print $c->MAXIMAL_POLYTOPES;
+# | {0 1 2}
+# | {0 3}
+
 property MAXIMAL_POLYTOPES = override MAXIMAL_CONES;
 
 # @category Combinatorics
@@ -55,22 +108,104 @@ property MAXIMAL_POLYTOPES_THRU_VERTICES = override MAXIMAL_CONES_THRU_RAYS;
 
 # @category Combinatorics
 # Number of [[MAXIMAL_POLYTOPES]].
+# @example The number of maximal polytopes of a [[planar_net|planar net]] of a polytope is the number of facets of that polytope;
+# here we see this for the dodecahedron:
+# > $c = planar_net(dodecahedron());
+# > print $c->N_MAXIMAL_POLYTOPES;
+# | 12
 property N_MAXIMAL_POLYTOPES = override N_MAXIMAL_CONES;
 
 # @category Combinatorics
 # Array of incidence matrices of all [[MAXIMAL_POLYTOPES|maximal polytopes]].
+# @example [prefer cdd] Here we construct a polyhedral complex made of two triangles which share a side; this fact can afterwards be read from
+# this property:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,1,1],[1,0,1]],INPUT_POLYTOPES=>[[0,1,2],[1,2,3]]);
+# > print $c->MAXIMAL_POLYTOPES;
+# | {0 1 2}
+# | {1 2 3}
+# > print $c->MAXIMAL_POLYTOPES_INCIDENCES;
+# | <{1 2}
+# | {0 2}
+# | {0 1}
+# | >
+# | <{1 2}
+# | {2 3}
+# | {1 3}
+# | >
 property MAXIMAL_POLYTOPES_INCIDENCES = override MAXIMAL_CONES_INCIDENCES;
 
 # @category Combinatorics
+# The combinatorial dimensions of the maximal polytopes. The i-th entry refers to the i-th entry of [[MAXIMAL_POLYTOPES]].
+# @example When connecting two vertices of a triangle to a vertex distinct from that triangle we receive a polyhedral complex
+# with maximal polytopes of dimensions 2, 1 and 1, respectively:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,1,1],[1,0,1]],INPUT_POLYTOPES=>[[0,1,2],[0,3],[2,3]]);
+# > print $c->MAXIMAL_POLYTOPES;
+# | {0 1 2}
+# | {0 3}
+# | {2 3}
+# > print $c->MAXIMAL_POLYTOPES_COMBINATORIAL_DIMS;
+# | 2 1 1
 property MAXIMAL_POLYTOPES_COMBINATORIAL_DIMS = override MAXIMAL_CONES_COMBINATORIAL_DIMS;
 
 # @category Geometry
+# A basis of the normal space for each maximal polytope. This uniquely determines the affine hull of the corresponding maximal polytope.
+# Indices refer to [[AFFINE_HULL]].
+# Rows correspond to [[MAXIMAL_POLYTOPES]].
+# An empty row corresponds to a full-dimensional cone.
+# @example In the plane, when we construct a polyhedral complex with a 2-dimensional and two 1-dimensional maximal polytopes
+# only the latter will have a linear span with a normal in this ambient space:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,0,1],[1,-1,0],[1,-1,-1]],INPUT_POLYTOPES=>[[0,1,2],[0,3],[0,4]]);
+# > print $c->MAXIMAL_POLYTOPES;
+# | {0 1 2}
+# | {0 3}
+# | {0 4}
+# > print rows_numbered($c->AFFINE_HULL);
+# | 0:0 0 1
+# | 1:0 -1 1
+# > print $c->MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS;
+# | {}
+# | {0}
+# | {1}
 property MAXIMAL_POLYTOPES_AFFINE_HULL_NORMALS = override MAXIMAL_CONES_LINEAR_SPAN_NORMALS;
 
 # @category Geometry
+# Tells for each maximal polytope what are its facet normals, thus implying the facets.
+# Each row corresponds to a maximal polytope and each column to the row with the same index of [[AFFINE_HULL]].
+# A negative number means that the corresponding row of
+# [[AFFINE_HULL]] has to be negated.
+# @example [prefer cdd] Here we see the facet normals of the maximal polytopes of a complex made of two triangles (note that some
+# facet normal appear to be redundant due to usage of homogeneous coordinates and the derivation from PolyhedralFan):
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,1,1],[1,0,1]],INPUT_POLYTOPES=>[[0,1,2],[0,2,3]]);
+# > print $c->MAXIMAL_POLYTOPES;
+# | {0 1 2}
+# | {0 2 3}
+# > print rows_numbered($c->FACET_NORMALS);
+# | 0:1 -1 0
+# | 1:0 1 -1
+# | 2:0 0 1
+# | 3:1 0 -1
+# | 4:0 1 0
+# > print $c->MAXIMAL_POLYTOPES_FACETS;
+# | 1 1 1 0 0
+# | 0 -1 0 1 1
+
 property MAXIMAL_POLYTOPES_FACETS = override MAXIMAL_CONES_FACETS;
 
 # @category Combinatorics
+# List of all polytopes of the complex of each dimension. Indices refer to [[VERTICES]].
+# @example [prefer cdd] A complex whose only maximal polytope is a triangle also contains 3 line segments and 3 points:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[1,0,1]],INPUT_POLYTOPES=>[[0,1,2]]);
+# > print $c->POLYTOPES;
+# | <{1}
+# | {2}
+# | {0}
+# | >
+# | <{1 2}
+# | {0 2}
+# | {0 1}
+# | >
+# | <{0 1 2}
+# | >
 property POLYTOPES = override CONES;
 
 # @category Combinatorics
@@ -82,6 +217,14 @@ property BOUNDED : Bool;
 
 # @category Geometry
 # Indices of vertices that are rays.
+# @example We construct a PolyhedralComplex consisting only of one unbounded [[Polytope]] which is the Minkowski sum of an interval and a cone orthogonal to this line. Such a Minkowski sum always has a far vertex:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0,0],[1,1,0],[0,0,1]],INPUT_POLYTOPES=>[[0,1,2]]);
+# > print rows_numbered($c->VERTICES);
+# | 0:1 0 0
+# | 1:1 1 0
+# | 2:0 0 1
+# > print $c->FAR_VERTICES;
+# | {2}
 
 property FAR_VERTICES : Set;
 
@@ -91,6 +234,14 @@ property FAR_VERTICES : Set;
 # @param Int i 
 # @return Polytope
 # warning: might be unbounded
+# @example The [[planar_net|planar net]] of the 3-dimensional cross polytope consists only of triangles (and the according
+# adjacent lines and vertices); asking for any of its polytopes thus gives us a triangle:
+# > $c = planar_net(cross(3));
+# > $p = $c->polytope(5);
+# > print rows_numbered($p->VERTICES);
+# | 0:1 0 0
+# | 1:1 0.707106781186547 -1.22474487139159
+# | 2:1 -0.707106781186549 -1.22474487139159
 user_method polytope($) : MAXIMAL_POLYTOPES {
    my $p=new Polytope<Scalar>($_[0]->cone($_[1]));
    return $p;
@@ -99,6 +250,10 @@ user_method polytope($) : MAXIMAL_POLYTOPES {
 # @category Geometry
 # Returns the dimension of the ambient space.
 # @return Int
+# @example The ambient dimension of a point in the line is 1:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0]],INPUT_POLYTOPES=>[[0]]);
+# > print $c->AMBIENT_DIM;
+# | 1
 user_method AMBIENT_DIM {
   my ($self)=@_;
   return $self->FAN_AMBIENT_DIM-1;
@@ -107,6 +262,10 @@ user_method AMBIENT_DIM {
 # @category Geometry
 # Returns the dimension of the linear space spanned by the complex.
 # @return Int
+# @example The dimension of a point in the line is 0:
+# > $c = new PolyhedralComplex(POINTS=>[[1,0]],INPUT_POLYTOPES=>[[0]]);
+# > print $c->DIM;
+# | 0
 user_method DIM {
   my ($self)=@_;
   if (!defined ($self->lookup("LINEALITY_SPACE | INPUT_LINEALITY | INPUT_RAYS | RAYS | FACET_NORMALS | LINEAR_SPAN_NORMALS"))) {

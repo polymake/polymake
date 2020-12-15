@@ -1,0 +1,6 @@
+{"app": "group", "embed": "col_to_row_action.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Array<Int>>&>"], "func": "col_to_row_action", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "col_to_row_action:T1.X.X", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const pm::Transposed<pm::Matrix<pm::Rational> >&>", "perl::Canned<const Array<Array<Int>>&>"], "func": "col_to_row_action", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "col_to_row_action:T1.X.X", "tp": 1},
+ null ],
+"version": 3}

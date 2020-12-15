@@ -31,19 +31,7 @@ FunctionTemplate4perl("polytope_contains_ball<Scalar> (Vector<Scalar>, Scalar, P
 FunctionTemplate4perl("polytope_contained_in_ball<Scalar> ( Polytope<Scalar>, Vector<Scalar>, Scalar)");
 
 
-UserFunctionTemplate4perl("# @category Geometry"
-                          "# Finds the minimal Ball which contains a"
-                          "# given Polytope P_in with"
-                          "# semidefinit programming. The ball "
-                          "# is given by its center c and the "
-                          "# square of it radius r."
-                          "# @param Polytope P_in the inner Polytope"
-                          "# @return Pair <Scalar r, Vector c>"
-                          "# @example"
-                          "# > $P_in = new Polytope(POINTS=>[[1,0],[1,4]]);"
-                          "# > print minimal_ball($P_in);"
-                          "# | 4 <1 2>",
-                          "minimal_ball<Scalar>(Polytope<Scalar>)");
+FunctionTemplate4perl("minimal_ball<Scalar>(Polytope<Scalar>)");
 
 UserFunctionTemplate4perl("# @category Geometry"
                           "# Finds for a given inner Polytope //P_in// and a" 
@@ -52,7 +40,7 @@ UserFunctionTemplate4perl("# @category Geometry"
                           "# s and shifted by t is a subset of //P_out//."
                           "# @param Polytope P_in the inner Polytope"
                           "# @param Polytope P_out the outer Polytope"
-                          "# @return Pair <Scalar s, Vector t> "
+                          "# @return Pair <Scalar, Vector<Scalar>> "
                           "# @example"
                           "# > $P_in = new Polytope(POINTS=>[[1,0],[1,1]]);"
                           "# > $P_out = new Polytope(POINTS=>[[1,2],[1,4]]);"

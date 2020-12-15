@@ -550,7 +550,7 @@ object PointConfiguration {
 
 user_function combinatorial_symmetries(polytope::Cone) {
     my ($p) = @_;
-    return group::combinatorial_symmetries_impl($p, "RAYS_IN_FACETS", "FACETS_ACTION", "RAYS_ACTION");
+    return group::combinatorial_symmetries_impl($p, $p->RAYS_IN_FACETS, "FACETS_ACTION", "RAYS_ACTION");
 }
 
 # @category Symmetry

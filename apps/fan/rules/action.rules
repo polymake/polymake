@@ -559,11 +559,11 @@ user_function orbit_complex(fan::PolyhedralComplex, can_convert_to<Array<Array<I
 }
 
 # @category Symmetry
-# Constructs the orbit fan of a given fan //input_fan//
+# Constructs the orbit complex of a given polyhedral complex //input_complex//
 # with respect to a given group action //a//.
-# @param fan::PolyhedralFan input_fan the generating fan of the orbit fan
+# @param fan::PolyhedralComplex input_complex the generating complex of the orbit complex
 # @param group::PermutationAction a the action of a permutation group on the coordinates of the ambient space
-# @return Polytope the orbit fan of //input_fan// w.r.t. the action //a//
+# @return fan::PolyhedralComplex the orbit complex of //input_complex// w.r.t. the action //a//
 # @example To calculate an orbit complex with respect to a group of coordinate permutations, follow these steps:
 # First specify a seed complex:
 # > $f=new PolyhedralComplex(VERTICES=>[[1,1,1],[1,1,0],[1,1/2,1/4]], MAXIMAL_POLYTOPES=>[[0,2],[1,2]]);
@@ -681,7 +681,7 @@ user_function cones_action(fan::PolyhedralFan, $) {
 
 user_function combinatorial_symmetries(fan::PolyhedralFan) {
     my ($f) = @_;
-    return group::combinatorial_symmetries_impl($f, "MAXIMAL_CONES", "MAXIMAL_CONES_ACTION", "RAYS_ACTION");
+    return group::combinatorial_symmetries_impl($f, $f->MAXIMAL_CONES, "MAXIMAL_CONES_ACTION", "RAYS_ACTION");
 }
 
 # Local Variables:

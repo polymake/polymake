@@ -1,8 +1,0 @@
-{
-  "_canonical": true,
-  "_ns": {
-    "polymake": ["https://polymake.org", "4.2"]
-  },
-  "_type": "common::Pair<QuadraticExtension<Rational>, Vector<QuadraticExtension<Rational>>>",
-  "data": [["4/5", "-2/5", "2"], [["1", "0", "0"], ["4/5", "-2/5", "2"], ["4/5", "-2/5", "2"]]]
-}

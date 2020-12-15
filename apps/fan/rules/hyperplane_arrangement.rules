@@ -47,7 +47,7 @@ property LINEALITY_SPACE : Matrix<Scalar>;
 #
 # @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
 # > $HA = new HyperplaneArrangement(HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
-# > $CD = $HA->CELL_DECOMPOSITION;
+# > $CD = $HA->CHAMBER_DECOMPOSITION;
 # > print $CD->RAYS;
 # | 0 1
 # | 1 0
@@ -58,7 +58,7 @@ property LINEALITY_SPACE : Matrix<Scalar>;
 #
 # @example [require bundled:cdd] [prefer cdd] Subdivide the two-dimensional space along the axes
 # > $HA = new HyperplaneArrangement(HYPERPLANES=>[[1,0],[0,1]]);
-# > $CD = $HA->CELL_DECOMPOSITION;
+# > $CD = $HA->CHAMBER_DECOMPOSITION;
 # > print $CD->RAYS;
 # | -1 0
 # | 0 -1
@@ -98,7 +98,7 @@ property HYPERPLANE_AMBIENT_DIM = override VECTOR_AMBIENT_DIM;
 #
 # @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
 # > $HA = new HyperplaneArrangement(HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
-# > $CD = $HA->CELL_DECOMPOSITION;
+# > $CD = $HA->CHAMBER_DECOMPOSITION;
 # > print $CD->RAYS;
 # | 0 1
 # | 1 0
@@ -106,24 +106,24 @@ property HYPERPLANE_AMBIENT_DIM = override VECTOR_AMBIENT_DIM;
 # > print $CD->MAXIMAL_CONES;
 # | {1 2}
 # | {0 2}
-property CELL_DECOMPOSITION : PolyhedralFan<Scalar>;
+property CHAMBER_DECOMPOSITION : PolyhedralFan<Scalar>;
 
 # permuting the [[RAYS]]
 permutation ConesPerm : PermBase;
 
 
-rule ConesPerm.PERMUTATION : ConesPerm.CELL_DECOMPOSITION.MAXIMAL_CONES, CELL_DECOMPOSITION.MAXIMAL_CONES {
-   $this->ConesPerm->PERMUTATION=find_permutation(rows($this->ConesPerm->CELL_DECOMPOSITION->MAXIMAL_CONES), rows($this->CELL_DECOMPOSITION->MAXIMAL_CONES));
+rule ConesPerm.PERMUTATION : ConesPerm.CHAMBER_DECOMPOSITION.MAXIMAL_CONES, CHAMBER_DECOMPOSITION.MAXIMAL_CONES {
+   $this->ConesPerm->PERMUTATION=find_permutation(rows($this->ConesPerm->CHAMBER_DECOMPOSITION->MAXIMAL_CONES), rows($this->CHAMBER_DECOMPOSITION->MAXIMAL_CONES));
 }
 
 
-rule CELL_DECOMPOSITION.MAXIMAL_CONES : ConesPerm.CELL_DECOMPOSITION.MAXIMAL_CONES, ConesPerm.PERMUTATION {
-   $this->CELL_DECOMPOSITION->MAXIMAL_CONES=permuted_rows($this->ConesPerm->CELL_DECOMPOSITION->MAXIMAL_CONES, $this->ConesPerm->PERMUTATION);
+rule CHAMBER_DECOMPOSITION.MAXIMAL_CONES : ConesPerm.CHAMBER_DECOMPOSITION.MAXIMAL_CONES, ConesPerm.PERMUTATION {
+   $this->CHAMBER_DECOMPOSITION->MAXIMAL_CONES=permuted_rows($this->ConesPerm->CHAMBER_DECOMPOSITION->MAXIMAL_CONES, $this->ConesPerm->PERMUTATION);
 }
 
 
 # @category Combinatorics
-# Incidences between [[CELL_DECOMPOSITION.RAYS]] and [[HYPERPLANES]].
+# Incidences between [[CHAMBER_DECOMPOSITION.RAYS]] and [[HYPERPLANES]].
 property RAYS_IN_HYPERPLANES : IncidenceMatrix;
 
 
@@ -138,58 +138,58 @@ property N_HYPERPLANES = override N_VECTORS;
 
 
 # @category Combinatorics
-# The i-th entry is the signature of the i-th maximal cone of the [[CELL_DECOMPOSITION]] as Set<Int> # of indices of the [[HYPERPLANES]] that evaluate positively on this cone.
+# The i-th entry is the signature of the i-th maximal cone of the [[CHAMBER_DECOMPOSITION]] as Set<Int> # of indices of the [[HYPERPLANES]] that evaluate positively on this cone.
 #
 # @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
 # > $HA = new HyperplaneArrangement(HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
-# > $CD = $HA->CELL_DECOMPOSITION;
+# > $CD = $HA->CHAMBER_DECOMPOSITION;
 # > print $CD->MAXIMAL_CONES;
 # | {1 2}
 # | {0 2}
-# > print $HA->CELL_SIGNATURES;
+# > print $HA->CHAMBER_SIGNATURES;
 # | {}
 # | {0}
-# > print $HA->cell_to_signature($CD->MAXIMAL_CONES->[0]);
+# > print $HA->chamber_to_signature($CD->MAXIMAL_CONES->[0]);
 # | {}
-# > print $HA->cell_to_signature($CD->MAXIMAL_CONES->[1]);
+# > print $HA->chamber_to_signature($CD->MAXIMAL_CONES->[1]);
 # | {0}
-# > print $HA->signature_to_cell($HA->CELL_SIGNATURES->[0]);
+# > print $HA->signature_to_chamber($HA->CHAMBER_SIGNATURES->[0]);
 # | 0
-# > print $CD->MAXIMAL_CONES->[$HA->signature_to_cell($HA->CELL_SIGNATURES->[0])];
+# > print $CD->MAXIMAL_CONES->[$HA->signature_to_chamber($HA->CHAMBER_SIGNATURES->[0])];
 # | {1 2}
-property CELL_SIGNATURES : Array<Set<Int>>;
+property CHAMBER_SIGNATURES : IncidenceMatrix;
 
-rule CELL_SIGNATURES : ConesPerm.CELL_SIGNATURES, ConesPerm.PERMUTATION {
-   $this->CELL_SIGNATURES = permuted($this->ConesPerm->CELL_SIGNATURES,$this->ConesPerm->PERMUTATION);
+rule CHAMBER_SIGNATURES : ConesPerm.CHAMBER_SIGNATURES, ConesPerm.PERMUTATION {
+   $this->CHAMBER_SIGNATURES = permuted_rows($this->ConesPerm->CHAMBER_SIGNATURES,$this->ConesPerm->PERMUTATION);
 }
 
 
 # @category Combinatorics
-# Given a maximal cone of [[CELL_DECOMPOSITION]] as Set<Int> containing the
+# Given a maximal cone of [[CHAMBER_DECOMPOSITION]] as Set<Int> containing the
 # indices of the rays spanning it, return the signature of the cone as Set<Int>
 # of indices of the [[HYPERPLANES]] that evaluate negatively on this cone.
 #
 # @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
 # > $HA = new HyperplaneArrangement(HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
-# > $CD = $HA->CELL_DECOMPOSITION;
+# > $CD = $HA->CHAMBER_DECOMPOSITION;
 # > print $CD->MAXIMAL_CONES;
 # | {1 2}
 # | {0 2}
-# > print $HA->CELL_SIGNATURES;
+# > print $HA->CHAMBER_SIGNATURES;
 # | {}
 # | {0}
-# > print $HA->cell_to_signature($CD->MAXIMAL_CONES->[0]);
+# > print $HA->chamber_to_signature($CD->MAXIMAL_CONES->[0]);
 # | {}
-# > print $HA->cell_to_signature($CD->MAXIMAL_CONES->[1]);
+# > print $HA->chamber_to_signature($CD->MAXIMAL_CONES->[1]);
 # | {0}
-# > print $HA->signature_to_cell($HA->CELL_SIGNATURES->[0]);
+# > print $HA->signature_to_chamber($HA->CHAMBER_SIGNATURES->[0]);
 # | 0
-# > print $CD->MAXIMAL_CONES->[$HA->signature_to_cell($HA->CELL_SIGNATURES->[0])];
+# > print $CD->MAXIMAL_CONES->[$HA->signature_to_chamber($HA->CHAMBER_SIGNATURES->[0])];
 # | {1 2}
-user_method cell_to_signature : CELL_DECOMPOSITION.MAXIMAL_CONES, CELL_SIGNATURES {
+user_method chamber_to_signature : CHAMBER_DECOMPOSITION.MAXIMAL_CONES, CHAMBER_SIGNATURES {
    my($this, $cell) = @_;
-   my $mc = $this->CELL_DECOMPOSITION->MAXIMAL_CONES;
-   my $cs = $this->CELL_SIGNATURES;
+   my $mc = $this->CHAMBER_DECOMPOSITION->MAXIMAL_CONES;
+   my $cs = $this->CHAMBER_SIGNATURES;
    for(my $i=0; $i<$mc->rows(); $i++){
       if($mc->row($i) == $cell){
          return $cs->[$i];
@@ -201,32 +201,32 @@ user_method cell_to_signature : CELL_DECOMPOSITION.MAXIMAL_CONES, CELL_SIGNATURE
 # @category Combinatorics
 # Given a signature as a Set<Int> of indices that indicate which
 # [[HYPERPLANES]] should evaluate negatively (the remaining evaluate
-# positively), return the maximal cone of [[CELL_DECOMPOSITION]] associated to
+# positively), return the maximal cone of [[CHAMBER_DECOMPOSITION]] associated to
 # this signature. The result the index of the maximal cone in the maximal cones
-# of [[CELL_DECOMPOSITION]].
+# of [[CHAMBER_DECOMPOSITION]].
 #
 # @example Take the 2-dimensional positive orthant and slice it along the ray through (1,1)
 # > $HA = new HyperplaneArrangement(HYPERPLANES=>[[-1,1]], "SUPPORT.INPUT_RAYS"=>[[1,0],[0,1]]);
-# > $CD = $HA->CELL_DECOMPOSITION;
+# > $CD = $HA->CHAMBER_DECOMPOSITION;
 # > print $CD->MAXIMAL_CONES;
 # | {1 2}
 # | {0 2}
-# > print $HA->CELL_SIGNATURES;
+# > print $HA->CHAMBER_SIGNATURES;
 # | {}
 # | {0}
-# > print $HA->cell_to_signature($CD->MAXIMAL_CONES->[0]);
+# > print $HA->chamber_to_signature($CD->MAXIMAL_CONES->[0]);
 # | {}
-# > print $HA->cell_to_signature($CD->MAXIMAL_CONES->[1]);
+# > print $HA->chamber_to_signature($CD->MAXIMAL_CONES->[1]);
 # | {0}
-# > print $HA->signature_to_cell($HA->CELL_SIGNATURES->[0]);
+# > print $HA->signature_to_chamber($HA->CHAMBER_SIGNATURES->[0]);
 # | 0
-# > print $CD->MAXIMAL_CONES->[$HA->signature_to_cell($HA->CELL_SIGNATURES->[0])];
+# > print $CD->MAXIMAL_CONES->[$HA->signature_to_chamber($HA->CHAMBER_SIGNATURES->[0])];
 # | {1 2}
-user_method signature_to_cell : CELL_DECOMPOSITION.MAXIMAL_CONES, CELL_SIGNATURES {
+user_method signature_to_chamber : CHAMBER_DECOMPOSITION.MAXIMAL_CONES, CHAMBER_SIGNATURES {
    my($this, $signature) = @_;
-   my $mc = $this->CELL_DECOMPOSITION->MAXIMAL_CONES;
-   my $cs = $this->CELL_SIGNATURES;
-   for(my $i=0; $i<$cs->size(); $i++){
+   my $mc = $this->CHAMBER_DECOMPOSITION->MAXIMAL_CONES;
+   my $cs = $this->CHAMBER_SIGNATURES;
+   for(my $i=0; $i<$cs->rows(); $i++){
       if($cs->[$i] == $signature){
          return $i;
       }
@@ -234,22 +234,22 @@ user_method signature_to_cell : CELL_DECOMPOSITION.MAXIMAL_CONES, CELL_SIGNATURE
    die "$signature could not be found among the signatures.";
 }
 
-# Compute defining properties of the [[CELL_DECOMPOSITION]] using reverse search.
-rule CELL_DECOMPOSITION.RAYS, CELL_DECOMPOSITION.MAXIMAL_CONES, CELL_DECOMPOSITION.LINEALITY_SPACE, \
-      CELL_SIGNATURES : HYPERPLANES, SUPPORT.FACETS | SUPPORT.INEQUALITIES, \
+# Compute defining properties of the [[CHAMBER_DECOMPOSITION]] using reverse search.
+rule CHAMBER_DECOMPOSITION.RAYS, CHAMBER_DECOMPOSITION.MAXIMAL_CONES, CHAMBER_DECOMPOSITION.LINEALITY_SPACE, \
+      CHAMBER_SIGNATURES : HYPERPLANES, SUPPORT.FACETS | SUPPORT.INEQUALITIES, \
       SUPPORT.LINEAR_SPAN | SUPPORT.EQUATIONS, SUPPORT.RAYS | SUPPORT.INPUT_RAYS, \
       SUPPORT.LINEALITY_SPACE | SUPPORT.INPUT_LINEALITY, SUPPORT.CONE_DIM, LINEALITY_SPACE {
-      my($R, $MC, $S, $LS) = cell_decomposition_rs($this);
-      $this->CELL_DECOMPOSITION->RAYS = $R;
-      $this->CELL_DECOMPOSITION->MAXIMAL_CONES = $MC;
-      $this->CELL_SIGNATURES = $S;
-      $this->CELL_DECOMPOSITION->LINEALITY_SPACE = $LS;
+      my($R, $MC, $S, $LS) = chamber_decomposition_rs($this);
+      $this->CHAMBER_DECOMPOSITION->RAYS = $R;
+      $this->CHAMBER_DECOMPOSITION->MAXIMAL_CONES = $MC;
+      $this->CHAMBER_SIGNATURES = $S;
+      $this->CHAMBER_DECOMPOSITION->LINEALITY_SPACE = $LS;
 }
 incurs ConesPerm;
 
 
-rule CELL_DECOMPOSITION.LINEALITY_SPACE : LINEALITY_SPACE {
-   $this->CELL_DECOMPOSITION->LINEALITY_SPACE = $this->LINEALITY_SPACE;
+rule CHAMBER_DECOMPOSITION.LINEALITY_SPACE : LINEALITY_SPACE {
+   $this->CHAMBER_DECOMPOSITION->LINEALITY_SPACE = $this->LINEALITY_SPACE;
 }
 
 
@@ -264,12 +264,12 @@ property HYPERPLANE_LABELS : Array<String> : mutable;
 } #End Object HyperplaneArrangement
 
 # @category Geometry
-# This function computes the [[CELL_DECOMPOSITION]] of a given hyperplane
+# This function computes the [[CHAMBER_DECOMPOSITION]] of a given hyperplane
 # arrangement in a brute force way, by just considering every possible
 # signature. Since not every signature gives a valid cell, it is much cheaper
-# to traverse the cells of [[CELL_DECOMPOSITION]] by flipping the walls. This
+# to traverse the cells of [[CHAMBER_DECOMPOSITION]] by flipping the walls. This
 # method is here for verifying results of our other algorithms.
-user_function cell_decomposition_brute_force<Scalar>(HyperplaneArrangement<Scalar>) {
+user_function chamber_decomposition_brute_force<Scalar>(HyperplaneArrangement<Scalar>) {
    my($HA) = @_;
    my $hyperplanes = $HA->HYPERPLANES;
    my $supportIneq = $HA->SUPPORT->lookup("INEQUALITIES | FACETS");
@@ -285,7 +285,7 @@ user_function cell_decomposition_brute_force<Scalar>(HyperplaneArrangement<Scala
    for(my $k = 0; $k<= $hyperplanes->rows; $k++){
       my $flippable = all_subsets_of_k(sequence(0, $hyperplanes->rows), $k);
       foreach my $signature (@$flippable) {
-         my $cell = transform_to_cell($hyperplanes, $supportIneq, $joinedEq, $expectedCellDim, $signature, $numberedVectors);
+         my $cell = transform_to_chamber($hyperplanes, $supportIneq, $joinedEq, $expectedCellDim, $signature, $numberedVectors);
          if($cell->size() > 0){
             $cells2signatures->{$cell} = $signature;
          }
@@ -293,18 +293,18 @@ user_function cell_decomposition_brute_force<Scalar>(HyperplaneArrangement<Scala
    }
 
    my @result = canonicalize_ray_order($numberedVectors, $hyperplanes->cols(), $cells2signatures);
-   return new HyperplaneArrangement(HYPERPLANES=>$hyperplanes, "SUPPORT.INEQUALITIES"=>$supportIneq, "SUPPORT.EQUATIONS"=>$supportEq, "CELL_DECOMPOSITION.RAYS"=>$result[0], "CELL_DECOMPOSITION.MAXIMAL_CONES"=>$result[1], CELL_SIGNATURES=>$result[2], LINEALITY_SPACE=>$linSpace, "CELL_DECOMPOSITION.LINEALITY_SPACE"=>$linSpace);
+   return new HyperplaneArrangement(HYPERPLANES=>$hyperplanes, "SUPPORT.INEQUALITIES"=>$supportIneq, "SUPPORT.EQUATIONS"=>$supportEq, "CHAMBER_DECOMPOSITION.RAYS"=>$result[0], "CHAMBER_DECOMPOSITION.MAXIMAL_CONES"=>$result[1], CHAMBER_SIGNATURES=>$result[2], LINEALITY_SPACE=>$linSpace, "CHAMBER_DECOMPOSITION.LINEALITY_SPACE"=>$linSpace);
 }
 
 
 
 
-# Different algorithms might return the rays of the [[CELL_DECOMPOSITION]] in
+# Different algorithms might return the rays of the [[CHAMBER_DECOMPOSITION]] in
 # different orders. This method sorts the rays and applies the resulting
 # permutation to other variables from the algorithm. It then returns an array
 # with three elements:
 # 1. The sorted rays as a Matrix<Scalar>
-# 2. The maximal cones of the [[CELL_DECOMPOSITION]] as IncidenceMatrix
+# 2. The maximal cones of the [[CHAMBER_DECOMPOSITION]] as IncidenceMatrix
 # 3. The signatures of the maximal cones as Array<Set<Int>>.
 function canonicalize_ray_order<Scalar>(Map<Vector<Scalar>, Int>, Int, Map<Set<Int>, Set<Int>>) {
    my($numberedVectors, $dim, $cells2signatures) = @_;
@@ -326,7 +326,7 @@ function canonicalize_ray_order<Scalar>(Map<Vector<Scalar>, Int>, Int, Map<Set<I
 
 
 # Given a signature, assemble the associated cell as a Polytope.
-sub assemble_cell {
+sub assemble_chamber {
    my($hyperplanes, $supportIneq, $supportEq, $signature) = @_;
    my $inequalities = new Matrix($hyperplanes);
    $inequalities->minor(~$signature, All) *= -1;
@@ -335,7 +335,7 @@ sub assemble_cell {
 
 
 # Given a cell as a polytope, extract the indices of the rays of the
-# [[CELL_DECOMPOSITION]] that span this cone. If some of the rays are new, add
+# [[CHAMBER_DECOMPOSITION]] that span this cone. If some of the rays are new, add
 # them and equip them with indices.
 sub extract_vertex_indices {
    my($C, $expectedCellDim, $numberedVectors) = @_;
@@ -357,11 +357,11 @@ sub extract_vertex_indices {
 
 
 # Given a signature, get its representation as Set<Int> of indices of the rays
-# of [[CELL_DECOMPOSITION]]. This method is running while we have not found all
+# of [[CHAMBER_DECOMPOSITION]]. This method is running while we have not found all
 # rays, so it will remember new rays and equip them with indices.
-sub transform_to_cell {
+sub transform_to_chamber {
    my($hyperplanes, $supportIneq, $supportEq, $expectedCellDim, $signature, $numberedVectors) = @_;
-   my $C = assemble_cell($hyperplanes, $supportIneq, $supportEq, $signature);
+   my $C = assemble_chamber($hyperplanes, $supportIneq, $supportEq, $signature);
    return extract_vertex_indices($C, $expectedCellDim, $numberedVectors);
 }
 

@@ -29,17 +29,35 @@ Set<Container> orbit_permlib (BigObject G, const Container& c)
 }
 
 UserFunction4perl("# @category Orbits\n"
-                  "# The orbit of a set //S// under a group //G//."
-                  "# @param Group G"
+                  "# The orbit of a set //S// under a group defined by //G//."
+                  "# @param PermutationAction G"
                   "# @param Set S"
-                  "# @return Set",
+                  "# @return Set"
+                  "# @example "
+                  "# > $G=new Group(PERMUTATION_ACTION=>(new PermutationAction(GENERATORS=>[[1,2,0]])));"
+                  "# > print $G->PERMUTATION_ACTION->ALL_GROUP_ELEMENTS;"
+                  "# | 0 1 2"
+                  "# | 1 2 0"
+                  "# | 2 0 1"
+                  "# > $S=new Set<Int>(1,2);"
+                  "# > print orbit_permlib($G->PERMUTATION_ACTION, $S);"
+                  "# | {{0 1} {0 2} {1 2}}",
                   &orbit_permlib<Set<Int>>, "orbit_permlib(PermutationAction, Set)");
 
 UserFunction4perl("# @category Orbits\n"
-                  "# The orbit of a set //S// of sets under a group //G//."
-                  "# @param Group G"
+                  "# The orbit of a set //S// of sets under a group given by //G//."
+                  "# @param PermutationAction G"
                   "# @param Set<Set> S"
-                  "# @return Set",
+                  "# @return Set"
+                  "# @example"
+                  "# > $G=new PermutationAction(new PermutationAction(GENERATORS=>[[2,0,1]]));"
+                  "# > print $G->ALL_GROUP_ELEMENTS;"
+                  "# | 0 1 2"
+                  "# | 2 0 1"
+                  "# | 1 2 0"
+                  "# > $S=new Set<Set<Int>>(new Set<Int>(1,2), new Set<Int>(0,2));"
+                  "# > print orbit_permlib($G, $S);"
+                  "# | {{{0 1} {0 2}} {{0 1} {1 2}} {{0 2} {1 2}}}",
                   &orbit_permlib<Set<Set<Int>>>, "orbit_permlib(PermutationAction, Set<Set>)");
 
 } } // end namespaces

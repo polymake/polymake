@@ -127,10 +127,39 @@ BigObject common_refinement(BigObject f1, BigObject f2)
 }
 
 UserFunctionTemplate4perl("# @category Producing a fan"
-                          "# Computes the common refinement of two fans."
+                          "# Computes the common refinement of two fans. This is the fan made of"
+                          "# all intersections of cones of the first fan with cones of the"
+                          "# second fan. Note that the support of the result is the intersection"
+                          "# of the supports of the input fans."
                           "# @param PolyhedralFan f1"
                           "# @param PolyhedralFan f2"
-                          "# @return PolyhedralFan",
+                          "# @return PolyhedralFan"
+                          "# @example [prefer cdd] Two two-dimensional fans with different support"
+                          "# > $s = simplex(2);"
+                          "# > $c = new Polytope(POINTS=>[[1,0,0],[0,-1,0],[0,0,-1]]);"
+                          "# > $f1 = normal_fan($s);"
+                          "# > $f2 = normal_fan($c);"
+                          "# > print $f1->RAYS;"
+                          "# | -1 -1"
+                          "# | 1 0"
+                          "# | 0 1"
+                          "# > print $f1->MAXIMAL_CONES;"
+                          "# | {1 2}"
+                          "# | {0 2}"
+                          "# | {0 1}"
+                          "# > print $f2->RAYS;"
+                          "# | -1 0"
+                          "# | 0 -1"
+                          "# > print $f2->MAXIMAL_CONES;"
+                          "# | {0 1}"
+                          "# > $cc = common_refinement($f1,$f2);"
+                          "# > print $cc->RAYS;"
+                          "# | -1 -1"
+                          "# | -1 0"
+                          "# | 0 -1"
+                          "# > print $cc->MAXIMAL_CONES;"
+                          "# | {0 1}"
+                          "# | {0 2}",
                           "common_refinement<Coord>(PolyhedralFan<Coord>,PolyhedralFan<Coord>)");
 } }
 

@@ -32,12 +32,12 @@ Array<Array<Int>> col_to_row_action(const Matrix<Scalar>& M, const Array<Array<I
 UserFunctionTemplate4perl("#@category Symmetry"
                   "# If the action of some permutations on the entries of the rows "
                   "# maps each row of a matrix to another row we obtain an induced action"
-		  "# on the set of rows of the matrix."
+		              "# on the set of rows of the matrix."
                   "# Considering the rows as points this corresponds to the action on the"
-		  "# points induced by the action of some permutations on the coordinates."
+		              "# points induced by the action of some permutations on the coordinates."
                   "# @param Matrix M"
-		  "# @param Array of permutations" 
-                  "# @return Array of permutations",
+            		  "# @param Array<Array> p the permutations acting of the rows" 
+                  "# @return Array<Array> permutations resulting of the actions",
                   "col_to_row_action<Scalar>(Matrix<Scalar>,Array)");
 } }
 

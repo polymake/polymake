@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "faces_and_facets.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void", "void"], "func": "face", "include": ["polymake/Rational.h"], "sig": "face:T1.B.x.o", "tp": 1},
+  {"args": ["Rational", "void", "void", "void"], "func": "facet", "include": ["polymake/Rational.h"], "sig": "facet:T1.B.x.o", "tp": 1},
+ null ],
+"version": 3}

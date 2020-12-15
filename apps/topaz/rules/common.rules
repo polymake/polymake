@@ -429,6 +429,17 @@ rule ORIENTED_PSEUDO_MANIFOLD, ORIENTATION : FACETS, N_VERTICES, BOUNDARY {
 precondition : PSEUDO_MANIFOLD && !CLOSED_PSEUDO_MANIFOLD;
 weight 1.50;
 
+rule LABELED_FACETS : N_VERTICES, FACETS {
+    my $facets = $this->FACETS;
+    my $labels = new Array<String>;
+    if (defined (my $vertex_labels = $this->lookup("VERTEX_LABELS"))) {
+	$labels = $vertex_labels;
+    } else {
+	$labels = new Array<String>(map { "$_" } (0..$this->N_VERTICES-1));
+    }
+    $this->LABELED_FACETS(temporary) = labeled_output($labels, $facets, $facets->size());
+}
+
 rule LABELED_ORIENTATION : N_VERTICES, FACETS, ORIENTATION {
     my $facets = $this->FACETS;
     my $orientation = $this->ORIENTATION;
@@ -442,9 +453,9 @@ rule LABELED_ORIENTATION : N_VERTICES, FACETS, ORIENTATION {
     foreach my $l(@{$labels}) {
 	assign_max($max_label_length, length($l));
     }
-    my $lop = "";
+    my @labeled_orientations;
     foreach my $i (0..$orientation->size()-1) {
-	$lop .= "[";
+	my $lop = "[";
 	my $first = 1;
 	foreach my $v (@{$facets->[$i]}) {
 	    if ($first == 1) {
@@ -454,9 +465,10 @@ rule LABELED_ORIENTATION : N_VERTICES, FACETS, ORIENTATION {
 	    }
 	    $lop .= $labels->[$v];
 	}
-	$lop .= "]" . (($orientation->[$i] == 1) ? "+ " : "- ");
+	$lop .= "]" . (($orientation->[$i] == 1) ? "+" : "-");
+	push @labeled_orientations, $lop;
     }
-    $this->LABELED_ORIENTATION(temporary) = $lop;
+    $this->LABELED_ORIENTATION(temporary) = \@labeled_orientations;
 }
 
 rule BALL : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {

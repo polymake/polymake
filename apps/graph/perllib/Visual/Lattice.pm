@@ -36,9 +36,13 @@ sub create_node_labels {
       my $get_face;
       if(defined($self->AtomLabels)) {
          my @atom_labels=@{$self->AtomLabels};
+         my @substituted_labels;
          my $n = 0;
-         foreach (@atom_labels) { s/^_.*/\#$n/; ++$n; }
-         $get_face = sub { join(" ", @atom_labels[@{$self->Faces->[shift]}])};
+         foreach (@atom_labels) { 
+            push @substituted_labels, $_ =~ s/^_.*/\#$n/r;  
+            ++$n; 
+         }
+         $get_face = sub { join(" ", @substituted_labels[@{$self->Faces->[shift]}])};
       }
       else {
          $get_face = sub { join(" ", @{$self->Faces->[shift]})};

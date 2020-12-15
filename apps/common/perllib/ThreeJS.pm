@@ -525,7 +525,15 @@ sub writePoints {
    my ($self,$objvar) = @_;
    my $string = "";
    $string .= "$objvar.userData.points = [];\n";
-   my @coords = Utils::pointCoords($self->source->Vertices);
+   
+   my $embedding=$self->source->Vertices;
+   if (is_object($embedding) && $embedding->can("label_width")) {
+      # just provide some label widths for the hd embedder  
+      my @arr = (1)x$self->source->n_nodes;
+      $embedding->label_width=\@arr;
+   }
+
+   my @coords = Utils::pointCoords($embedding);
    foreach (@coords) {
       $string .= "$objvar.userData.points.push(new PMPoint($_));\n";
    }
@@ -640,7 +648,9 @@ sub writeEdgeLabels {
    if (is_code($labels)) {
       my @alllabels;
       for (my $e=$self->source->all_edges; $e; ++$e) {
-         push @alllabels, $labels->($e);
+         my $label = $labels->($e);
+         $label =~ s/\n/\\n/g;
+         push @alllabels, '"'.$label.'"';
       }
       $string .= "$objvar.userData.edgelabels = ".Utils::jsArray(@alllabels).";\n";
    } else {

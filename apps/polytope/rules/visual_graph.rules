@@ -275,6 +275,34 @@ user_method VISUAL_DUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => un
 
 }
 
+object Cone {
+
+# @category Visualization
+# Visualize the [[HASSE_DIAGRAM]] of a cone as a multi-layer graph.
+# @option Int seed random seed value for the node placement
+# @return Visual::Lattice
+
+user_method VISUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : \
+            HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
+   my ($this, $decor, $seed)=@_;
+   $decor->{Name} ||= $this->name;
+   $this->HASSE_DIAGRAM->VISUAL(AtomLabels=>$this->lookup("RAY_LABELS"),$decor,$seed);
+}
+
+
+# @category Visualization
+# Visualize the dual [[HASSE_DIAGRAM|face lattice]] of a cone as a multi-layer graph.
+# @option Int seed random seed value for the node placement
+# @return Visual::Lattice
+
+user_method VISUAL_DUAL_FACE_LATTICE(%Visual::Lattice::decorations, { seed => undef }) : \
+            HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
+   my ($this, $decor, $seed)=@_;
+   $decor->{Name} ||= $this->name;
+   $this->HASSE_DIAGRAM->VISUAL_DUAL(AtomLabels=>$this->lookup("FACET_LABELS"),$decor,$seed);
+}
+
+}
 
 # Local Variables:
 # mode: perl

@@ -23,7 +23,14 @@ namespace polymake { namespace topaz {
 
 bool isomorphic(BigObject p1, BigObject p2)
 {
-   const IncidenceMatrix<> M1=p1.give("FACETS"), M2=p2.give("FACETS");
+   const std::string
+      p1_input = p1.isa("Polytope")
+      ? "VERTICES_IN_FACETS"
+      : "FACETS",
+      p2_input = p2.isa("Polytope")
+      ? "VERTICES_IN_FACETS"
+      : "FACETS";
+   const IncidenceMatrix<> M1=p1.give(p1_input), M2=p2.give(p2_input);
    return graph::isomorphic(M1, M2);
 }
 
@@ -37,8 +44,8 @@ find_facet_vertex_permutations(BigObject p1, BigObject p2)
 UserFunction4perl("# @category Comparing\n"
                   "# Determine whether two given complexes are combinatorially isomorphic.\n"
                   "# The problem is reduced to graph isomorphism of the vertex-facet incidence graphs.\n"
-                  "# @param SimplicialComplex complex1"
-                  "# @param SimplicialComplex complex2"
+                  "# @param SimplicialComplex complex1 (or Polytope)"
+                  "# @param SimplicialComplex complex2 (or Polytope)"
                   "# @return Bool"
                   "# @example A minimal example of two complexes with the same f-vector, which are not isomorphic:"
                   "# > $s1 = new SimplicialComplex(FACETS=>[[0,1],[0,2],[0,3]]);"
@@ -47,7 +54,7 @@ UserFunction4perl("# @category Comparing\n"
                   "# | false"
                   "# > print isomorphic($s1,$s1);"
                   "# | true",
-                  &isomorphic, "isomorphic(SimplicialComplex,SimplicialComplex)");
+                  &isomorphic, "isomorphic($$)");
 
 UserFunction4perl("# @category Comparing\n"
                   "# Find the permutations of facets and vertices which maps the first complex to the second one.\n"

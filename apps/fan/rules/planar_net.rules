@@ -42,8 +42,13 @@ property VF_MAP_INV : Array<Int>;
     
 # @category Combinatorics
 # The spanning tree in the [[Polytope::DUAL_GRAPH]] which defines the layout.
-# Endoded as a list of edges, directed away from the root facet.
+# Encoded as a list of edges, directed away from the root facet.
 # Indices correspond to [[MAXIMAL_POLYTOPES]] as well as [[Polytope::FACETS]].
+# @example The planar net of the 3-cube consists of 6 squares. Looking at the dual tree we can see that the client [[planar_net]]
+# gives us the classical cross-shaped planar net, as we have a vertex which is connected to four different vertices and a last one
+# which has an edge to one of these four vertices:
+# > print planar_net(cube(3))->DUAL_TREE;
+# | (0 2) (0 3) (0 4) (0 5) (2 1)
 
 property DUAL_TREE : Array<Pair<Int,Int>>;
 

@@ -1,0 +1,6 @@
+{"app": "fan", "embed": "union_of_cones.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "union_of_cones", "include": ["polymake/Rational.h"], "sig": "union_of_cones:T1.B.o", "tp": 1},
+  {"args": ["Rational", "void", "void"], "func": "arrangement_from_cones", "include": ["polymake/Rational.h"], "sig": "arrangement_from_cones:T1.B.o", "tp": 1},
+ null ],
+"version": 3}
