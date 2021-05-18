@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -635,7 +635,19 @@ sub get_producers_of {
       if (defined(my $own_prod = $self->producers->{$key})) {
          @list = @$own_prod;
       }
-      $stop_after //= $prop->defined_for;
+      if (!defined($stop_after) && defined($prop->defined_for)) {
+         $stop_after = $prop->defined_for->pure_type;
+         if (defined($stop_after->generic)) {
+            $stop_after = $stop_after->generic;
+         } elsif (!defined($stop_after->abstract)) {
+            # this is not an abstract super type so we need to find the last
+            # matching specialization to check all of them for rules
+            my @siblings = grep {defined($_->full_spez_for) && $_->full_spez_for->pure_type == $stop_after} @{$stop_after->linear_isa};
+            if (@siblings > 0) {
+               $stop_after = $siblings[-1];
+            }
+         }
+      }
       if ($stop_after != $self) {
          foreach my $super_proto (@{$self->linear_isa}) {
             $super_proto->all_producers->{$key} //= 0;   # mark for cache invalidation

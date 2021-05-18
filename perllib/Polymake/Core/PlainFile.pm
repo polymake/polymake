@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -168,7 +168,7 @@ sub load {
                   ($subobject, my $sub_prop) = @$ret;
                   # this is necessary since we can't simply exchange the object references
                   # all the stack down
-                  swap_arrays($object, $subobject);
+                  swap_deref($object, $subobject);
                   $object->name = $subobject->name;
                   undef $subobject->name;
                   $object->description = $subobject->description;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -463,7 +463,16 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration> {
       my ($this,$d1,$d2) = @_;
 		my $st = $this->get_shift();
       return shift->nodes_of_rank_range($d1+$st,$d2+$st);
-   }}
+   }
+
+   method cones_of_dim($) {
+      my ($this, $k) = @_;
+      my $n = $this->nodes_of_rank(1)->size();
+      my @rows = map { $this->DECORATION->[$_]->face } @{$this->nodes_of_rank($k)};
+      return @rows ? new IncidenceMatrix(\@rows, $n) : new IncidenceMatrix(0, $n);
+   }
+                                                           
+}
 
 # @category Combinatorics
 # f<sub>ik</sub> is the number of incident pairs of i-dimensional cones and k-dimensional cones; the main diagonal contains the [[F_VECTOR]].
@@ -761,7 +770,38 @@ user_method cone($) : MAXIMAL_CONES {
    return $c;
 }
 
+# @category Combinatorics
+# Returns an incidence matrix containing the cones of dimension //k//
+# @param Int k
+# @return IncidenceMatrix
+# @example To obtain the 2-dimensional cones in the normal fan of the 3-cube, type
+# > $c = normal_fan(cube(3));
+# > print $c->cones_of_dim(2);
+# | {2 4}
+# | {0 4}
+# | {0 2}
+# | {1 4}
+# | {1 2}
+# | {3 4}
+# | {0 3}
+# | {1 3}
+# | {2 5}
+# | {0 5}
+# | {1 5}
+# | {3 5}
 
+user_method cones_of_dim($) : HASSE_DIAGRAM {
+    my ($self, $k) = @_;
+    if ($k < 1) {
+        croak("Need k>0");
+    }
+    my $d = $self->HASSE_DIAGRAM->rank;
+    if ($k >= $d) {
+        croak("Asking for cones of dimension $k is futile for a cone of combinatorial dimension $d");
+    }
+    return $self->HASSE_DIAGRAM->cones_of_dim($k);
+}
+                 
 # @category Geometry
 # Returns the dimension of the ambient space.
 # @return Int

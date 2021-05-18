@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -117,6 +117,11 @@ MAGIC* hash_is_cpp_class(HV* hv, HV* stash)
    return (stash && SvMAGICAL(hv)) ? get_cpp_magic((SV*)(hv)) : nullptr;
 }
 
+MAGIC* hash_is_monitored_class(HV* hv, HV* stash)
+{
+   return (!stash && SvSMAGICAL(hv)) ? get_monitored_magic((SV*)(hv)) : nullptr;
+}
+
 struct local_hash_ref_elem {
    HV *hv;
    SV *keyref;
@@ -147,23 +152,40 @@ void delete_hash_elem(pTHX_ void* p)
 OP* intercept_pp_helem(pTHX)
 {
    dSP;
-   SV* keysv=TOPs;
-   HV* hv=(HV*)TOPm1s;
-   HV* stash=SvSTASH(hv);
+   SV* keysv = TOPs;
+   HV* hv = (HV*)TOPm1s;
+   HV* stash = SvSTASH(hv);
    tmp_keysv tmp_key;
-   if (MAGIC* mg=hash_is_cpp_class(hv, stash))
+   if (MAGIC* mg = hash_is_cpp_class(hv, stash)) {
       return cpp_helem(aTHX_ hv, mg);
+   }
+   if (MAGIC* mg = hash_is_monitored_class(hv, stash)) {
+      OP* next = Perl_pp_helem(aTHX);
+      if (!(PL_op->op_private & OPpLVAL_INTRO) && (PL_op->op_flags & OPf_MOD || LVRET)) {
+         if ((PL_op->op_private & OPpLVAL_DEFER) ||
+             next != nullptr && (next->op_type == OP_ORASSIGN ||
+                                 next->op_type == OP_DORASSIGN ||
+                                 next->op_type == OP_ANDASSIGN)) {
+            SPAGAIN;
+            SV* elem = TOPs;
+            mg->mg_virtual->svt_copy(aTHX_ (SV*)hv, mg, elem, nullptr, 0);
+         } else {
+            mg->mg_virtual->svt_set(aTHX_ (SV*)hv, mg);
+         }
+      }
+      return next;
+   }
    if (SvROK(keysv)) {
       if (!ref_key_allowed(aTHX_ hv, stash))
          DIE(aTHX_ err_ref);
       if ((PL_op->op_private & (OPpLVAL_INTRO | OPpLVAL_DEFER)) == OPpLVAL_INTRO &&
           (PL_op->op_flags & OPf_MOD || LVRET)) {
-         SV* keyref=keysv;
-         keysv=tmp_key.set(keysv);
-         U32 hash=tmp_key.hash();
-         I32 existed=hv_exists_ent(hv, keysv, hash);
-         HE* he=hv_fetch_ent(hv, keysv, TRUE, hash);
-         SV* elem_sv=HeVAL(he);
+         SV* keyref = keysv;
+         keysv = tmp_key.set(keysv);
+         const U32 hash = tmp_key.hash();
+         const I32 existed = hv_exists_ent(hv, keysv, hash);
+         HE* he = hv_fetch_ent(hv, keysv, TRUE, hash);
+         SV* elem_sv = HeVAL(he);
          if (existed)
             ops::localize_scalar(aTHX_ elem_sv);
          else
@@ -263,19 +285,46 @@ OP* intercept_pp_exists(pTHX)
    return Perl_pp_exists(aTHX);
 }
 
+bool delete_special_cases(pTHX_ HV* hv, HV* stash, OP*& ret)
+{
+   if (SvTYPE(hv) != SVt_PVHV) {
+      ret = Perl_pp_delete(aTHX);
+      return true;
+   }
+   if (MAGIC* mg = hash_is_monitored_class(hv, stash)) {
+#if PerlVersion < 5180
+      // there was an awful bug in implementation of delete local fixed in perl 5.18
+      SvRMAGICAL_off(hv);
+#endif
+      const auto had_keys = HvKEYS(hv);
+      ret = Perl_pp_delete(aTHX);
+#if PerlVersion < 5180
+      SvRMAGICAL_on(hv);
+#endif
+      if (!(PL_op->op_private & OPpLVAL_INTRO) && HvKEYS(hv) < had_keys)
+         mg->mg_virtual->svt_set(aTHX_ (SV*)hv, mg);
+      return true;
+   }
+   return false;
+}
+
 OP* intercept_pp_delete(pTHX)
 {
    dSP;
    tmp_keysv tmp_key;
+   OP* ret;
 
    if (PL_op->op_private & OPpSLICE) {
-      HV* hv=(HV*)POPs;
-      HV* stash=SvSTASH(hv);
-      if (MAGIC* mg=hash_is_cpp_class(hv, stash)) {
+      HV* hv = (HV*)POPs;
+      HV* stash = SvSTASH(hv);
+      if (MAGIC* mg = hash_is_cpp_class(hv, stash)) {
          PUTBACK;
          return cpp_delete_hslice(aTHX_ hv, mg);
       }
-      SV** firstkey=PL_stack_base+TOPMARK+1;
+      if (delete_special_cases(aTHX_ hv, stash, ret)) {
+         return ret;
+      }
+      SV** firstkey = PL_stack_base+TOPMARK+1;
       if (firstkey <= SP) {
          if (SvROK(*firstkey)) {
             if (ref_key_allowed(aTHX_ hv, stash)) {
@@ -284,10 +333,11 @@ OP* intercept_pp_delete(pTHX)
                I32 discard = (gimme == G_VOID) ? G_DISCARD : 0;
 
                while (++MARK <= SP) {
-                  SV* keysv=*MARK;
-                  if (!SvROK(keysv)) return ErrNoRef(aTHX_ keysv);
-                  keysv=tmp_key.set(keysv);
-                  SV* sv=hv_delete_ent(hv, keysv, discard, tmp_key.hash());
+                  SV* keysv = *MARK;
+                  if (!SvROK(keysv))
+                     return ErrNoRef(aTHX_ keysv);
+                  keysv = tmp_key.set(keysv);
+                  SV* sv = hv_delete_ent(hv, keysv, discard, tmp_key.hash());
                   *MARK = sv ? sv : &PL_sv_undef;
                }
 
@@ -302,24 +352,28 @@ OP* intercept_pp_delete(pTHX)
             } else {
                DIE(aTHX_ err_ref);
             }
-         } else if (stash==my_pkg) {
-            if (HvFILL(hv)) return ErrNoRef(aTHX_ *firstkey);
+         } else if (stash == my_pkg) {
+            if (HvFILL(hv))
+               return ErrNoRef(aTHX_ *firstkey);
             MarkAsNormalHash(hv);
          }
       }
    } else {
-      HV* hv=(HV*)TOPm1s;
-      HV* stash=SvSTASH(hv);
-      if (MAGIC* mg=hash_is_cpp_class(hv, stash))
+      HV* hv = (HV*)TOPm1s;
+      HV* stash = SvSTASH(hv);
+      if (MAGIC* mg = hash_is_cpp_class(hv, stash)) {
          return cpp_delete_helem(aTHX_ hv, mg);
-
-      SV* keysv=TOPs;
+      }
+      if (delete_special_cases(aTHX_ hv, stash, ret)) {
+         return ret;
+      }
+      SV* keysv = TOPs;
       if (SvROK(keysv)) {
          if (ref_key_allowed(aTHX_ hv, stash)) {
             I32 discard = (GIMME_V == G_VOID) ? G_DISCARD : 0;
             (void)POPs; (void)POPs;
-            keysv=tmp_key.set(keysv);
-            SV* sv=hv_delete_ent(hv, keysv, discard, tmp_key.hash());
+            keysv = tmp_key.set(keysv);
+            SV* sv = hv_delete_ent(hv, keysv, discard, tmp_key.hash());
             if (!discard) {
                if (!sv) sv = &PL_sv_undef;
                PUSHs(sv);
@@ -328,8 +382,9 @@ OP* intercept_pp_delete(pTHX)
          } else {
             DIE(aTHX_ err_ref);
          }
-      } else if (stash==my_pkg) {
-         if (HvFILL(hv)) return ErrNoRef(aTHX_ keysv);
+      } else if (stash == my_pkg) {
+         if (HvFILL(hv))
+            return ErrNoRef(aTHX_ keysv);
          MarkAsNormalHash(hv);
       }
    }
@@ -382,7 +437,7 @@ OP* intercept_pp_keys(pTHX)
    I32 gimme = GIMME_V;
    if (gimme == G_ARRAY && (stash==my_pkg || (stash && ref_key_allowed(stash)))) {
       SSize_t sp_dist = SP - PL_stack_base;
-      OP* ret = Perl_pp_keys(aTHX);
+      OP* ret = def_pp_KEYS(aTHX);
       SV** last = PL_stack_sp;
       for (sp = PL_stack_base + sp_dist; sp <= last; ++sp)
          key2ref(aTHX_ *sp);
@@ -390,7 +445,7 @@ OP* intercept_pp_keys(pTHX)
    }
    if (gimme == G_SCALAR && (mg = hash_is_cpp_class(hv, stash)))
       return cpp_keycnt(aTHX_ hv, mg);
-   return Perl_pp_keys(aTHX);
+   return def_pp_KEYS(aTHX);
 }
 
 // aassign isn't intercepted directly, since it is used very often and not only with hashes.
@@ -521,7 +576,7 @@ OP* pp_rv2hv_ref_retrieve(pTHX)
 {
    dSP;
    SSize_t sp_dist = SP - PL_stack_base;
-   OP* ret = Perl_pp_rv2hv(aTHX);
+   OP* ret = def_pp_RV2HV(aTHX);
    SV** last = PL_stack_sp;
    for (SP = PL_stack_base + sp_dist; SP < last; SP += 2)
       key2ref(aTHX_ *SP);
@@ -546,7 +601,7 @@ OP* intercept_pp_rv2hv(pTHX)
    HV* stash;
    if (PL_op->op_flags & OPf_REF) {
       if (PL_op->op_next->op_type == OP_AASSIGN) {
-         PL_op = Perl_pp_rv2hv(aTHX);
+         PL_op = def_pp_RV2HV(aTHX);
          return ref_assign(aTHX);
       }
       if (SvROK(hv)) {
@@ -566,18 +621,18 @@ OP* intercept_pp_rv2hv(pTHX)
          if (stash == my_pkg || (stash && ref_key_allowed(stash)))
             return pp_rv2hv_ref_retrieve(aTHX);
          else
-            return Perl_pp_rv2hv(aTHX);
+            return def_pp_RV2HV(aTHX);
       }
       SAVEI8(PL_op->op_flags);  // just for the case the op dies
       PL_op->op_flags ^= OPf_REF;
-      Perl_pp_rv2hv(aTHX);               // get the hash
+      def_pp_RV2HV(aTHX);               // get the hash
       PL_op->op_flags ^= OPf_REF;
       hv = TOPs;
       stash = SvSTASH(hv);
       if (stash == my_pkg || (stash && ref_key_allowed(stash)))
          return pp_rv2hv_ref_retrieve(aTHX);
    }
-   return Perl_pp_rv2hv(aTHX);
+   return def_pp_RV2HV(aTHX);
 }
 
 OP* intercept_pp_padhv(pTHX)

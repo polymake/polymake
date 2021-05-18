@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_FIBONACCI_H
-#define POLYMAKE_FIBONACCI_H
+#pragma once
 
 #include "polymake/internal/iterators.h"
 #include "polymake/Integer.h"
@@ -103,7 +102,6 @@ namespace polymake {
    using pm::fibonacci_numbers;
 }
 
-#endif // POLYMAKE_FIBONACCI_H
 
 // Local Variables:
 // mode:C++

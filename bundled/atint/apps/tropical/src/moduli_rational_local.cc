@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -285,7 +285,7 @@ UserFunctionTemplate4perl("# @category Moduli of rational curves"
                           "# number of curves)"
                           "# The coordinates are the same that would be produced by the function "
                           "# [[m0n]]"
-                          "# @param RationalCurve R ... A list of rational curves (preferrably in the same M_0,n)"
+                          "# @param RationalCurve R ... A list of rational curves (preferably in the same M_0,n)"
                           "# @tparam Addition Min or Max, determines the coordinates"
                           "# @return Cycle<Addition> The local complex",
                           "local_m0n<Addition>(RationalCurve+)");

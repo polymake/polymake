@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,14 +15,13 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Set.h
     @brief Implementation of pm::ApproximateSet class
 */
 
 
 
-#ifndef POLYMAKE_APPROXIMATE_SET_H
-#define POLYMAKE_APPROXIMATE_SET_H
 
 #include "polymake/Set.h"
 
@@ -37,7 +36,6 @@ namespace polymake {
    using pm::ApproximateSet;
 }
 
-#endif // POLYMAKE_APPROXIMATE_SET_H
 
 
 // Local Variables:

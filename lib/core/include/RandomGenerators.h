@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_RANDOM_GENERATORS_H
-#define POLYMAKE_RANDOM_GENERATORS_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/Bitset.h"
@@ -419,7 +418,6 @@ using pm::RandomSeed;
 
 }
 
-#endif // POLYMAKE_RANDOM_GENERATORS_H
 
 // Local Variables:
 // mode:C++

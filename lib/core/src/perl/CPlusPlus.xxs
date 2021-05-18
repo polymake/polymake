@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -179,6 +179,11 @@ const VTable* get_vtable(SV* descr)
    return reinterpret_cast<const VTable*>(SvPVX(PmArray(descr)[TypeDescr_vtbl_index]));
 }
 
+}
+
+int canned_dup(pTHX_ MAGIC* mg, CLONE_PARAMS* param)
+{
+   return 0;
 }
 
 MAGIC* allocate_canned_magic(pTHX_ SV* sv, SV* descr, ValueFlags flags, unsigned int n_anchors)

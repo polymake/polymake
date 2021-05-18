@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,7 +23,7 @@
 
 namespace polymake { namespace fan {
 
-PowerSet<Int> building_set(const Set<Set<Int>>& B, Int n)
+PowerSet<Int> building_set(const PowerSet<Int>& B, Int n)
 {
    PowerSet<Int> building_set;
    for (Int i = 0; i < n; ++i)
@@ -58,8 +58,9 @@ bool is_building_set(const PowerSet<Int>& building_set, Int n)
          return false;
       }
    for (auto p = entire(all_subsets_of_k(building_set,2)); !p.at_end(); ++p) {
-      const Set<Set<Int>> pair(*p);
-      const Set<Int> a(pair.front()), b(pair.back());
+      const PowerSet<Int> pair(*p);
+      const Set<Int>& a = pair.front();
+      const Set<Int>& b = pair.back();
       if ((a*b).empty()) continue;
       if (!building_set.contains(a+b)) {
          cout << "The set does not contain the union of " << a << " and " << b << endl;
@@ -69,7 +70,7 @@ bool is_building_set(const PowerSet<Int>& building_set, Int n)
    return true;
 }
 
-bool is_B_nested(const Set<Set<Int>>& nested, const PowerSet<Int>& building)
+bool is_B_nested(const PowerSet<Int>& nested, const PowerSet<Int>& building)
 {
    for (auto nit = entire(nested); !nit.at_end(); ++nit) {
       if (!building.contains(*nit)) {
@@ -78,8 +79,9 @@ bool is_B_nested(const Set<Set<Int>>& nested, const PowerSet<Int>& building)
       }
    }
    for (auto p=entire(all_subsets_of_k(nested,2)); !p.at_end(); ++p) {
-      const Set<Set<Int>> pair(*p);
-      const Set<Int> a(pair.front()), b(pair.back());
+      const PowerSet<Int> pair(*p);
+      const Set<Int>& a = pair.front();
+      const Set<Int>& b = pair.back();
       Int incl_rel;
       if (!((a*b).empty() || (incl_rel = incl(a,b)) ==  1 || incl_rel == -1)) {
          cout << "The sets " << a << " and " << b << " are not nested." << endl;
@@ -88,10 +90,10 @@ bool is_B_nested(const Set<Set<Int>>& nested, const PowerSet<Int>& building)
    }
    for (Int k = 2; k <= nested.size(); ++k) {
       for (auto p = entire(all_subsets_of_k(nested,k)); !p.at_end(); ++p) {
-         const Set<Set<Int>> family(*p);
+         const PowerSet<Int> family(*p);
          bool pairwise_intersections_empty(true);
          for (auto f=entire(all_subsets_of_k(family,2)); !f.at_end() && pairwise_intersections_empty; ++f) {
-            const Set<Set<Int>> pair(*f);
+            const PowerSet<Int> pair(*f);
             pairwise_intersections_empty = ((pair.front() * pair.back()).size() == 0);
          }
          if (!pairwise_intersections_empty) continue;
@@ -109,22 +111,22 @@ UserFunction4perl("# @category Other"
                   "# Produce a building set from a family of sets."
                   "# @param Array<Set> generators the generators of the building set"
                   "# @param Int n the size of the ground set"
-                  "# @return PowerSet the induced building set",
+                  "# @return Set<Set<Int>> the induced building set",
                   &building_set, "building_set(Array<Set> $)");
 
 UserFunction4perl("# @category Other"
                   "# Check if a family of sets is a building set."
-                  "# @param PowerSet check_me the would-be building set"
+                  "# @param Set<Set<Int>> check_me the would-be building set"
                   "# @param Int n the size of the ground set"
                   "# @return Bool is check_me really a building set?",
-                  &is_building_set, "is_building_set(PowerSet $)");
+                  &is_building_set, "is_building_set(Set<Set<Int>> $)");
 
 UserFunction4perl("# @category Other"
                   "# Check if a family of sets is nested wrt a given building set."
-                  "# @param Set<Set> check_me the would-be nested sets"
-                  "# @param PowerSet B the building set"
+                  "# @param Set<Set<Int>> check_me the would-be nested sets"
+                  "# @param Set<Set<Int>> B the building set"
                   "# @return Bool is the family of sets really nested wrt B?",
-                  &is_B_nested, "is_B_nested(Set<Set> PowerSet)");
+                  &is_B_nested, "is_B_nested(Set<Set<Int>> Set<Set<Int>>)");
 } }
 
 // Local Variables:

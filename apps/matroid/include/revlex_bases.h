@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_MATROID_REVLEX_BASES_H__
-#define __POLYMAKE_MATROID_REVLEX_BASES_H__
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/Set.h"
@@ -101,7 +100,6 @@ Array<Set<Int>> bases_from_revlex_encoding_impl(const Container& revlex_encoding
 
 } }
 
-#endif // __POLYMAKE_MATROID_REVLEX_BASES_H__
 
 // Local Variables:
 // mode:C++

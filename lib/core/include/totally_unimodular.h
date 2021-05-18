@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOTALLY_UNIMODULAR_H
-#define POLYMAKE_TOTALLY_UNIMODULAR_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/PowerSet.h"
@@ -49,7 +48,6 @@ bool totally_unimodular(const GenericMatrix<Matrix, E>& M)
 
 } // end namespace pm
 
-#endif // POLYMAKE_TOTALLY_UNIMODULAR_H
 
 // Local Variables:
 // mode:C++

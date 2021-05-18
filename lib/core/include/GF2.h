@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2021
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -14,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GF2_H
-#define POLYMAKE_GF2_H
+#pragma once
 
 #include "polymake/Integer.h"
 #include "polymake/internal/converters_basic_defs.h"
@@ -158,7 +158,6 @@ namespace polymake {
    using pm::GF2;
 }
 
-#endif // POLYMAKE_GF2_H
 
 // Local Variables:
 // mode:C++

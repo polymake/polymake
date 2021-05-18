@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_MAXIMAL_CHAINS_H
-#define POLYMAKE_GRAPH_MAXIMAL_CHAINS_H
+#pragma once
 
 #include "polymake/graph/Lattice.h"
 #include "polymake/graph/Decoration.h"
@@ -84,7 +83,15 @@ Array<Set<Int>> maximal_chains(const Lattice<Decoration, SeqType>& HD, bool igno
             facet += s->to_node();
       }
       facets.push_back(facet);
+      if (facets.size() > 1 &&
+          facets[0].size() != facet.size()) {
+         cerr << "maximal chains of different length:\n"
+              << facets[0] << "\n"
+              << facet << endl;
+         throw std::runtime_error("stop");
+      }
 
+      
       // depth-first search to the next facet
       do {
          if (!(++flag.back()).at_end()) break;
@@ -154,7 +161,6 @@ Matrix<Scalar> bs_geom_real(const Matrix<Scalar>& old_coord, const Lattice<Decor
 
 } }
 
-#endif // POLYMAKE_GRAPH_MAXIMAL_CHAINS_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_LATTICE_TOOLS_H
-#define POLYMAKE_GRAPH_LATTICE_TOOLS_H
+#pragma once
 
 #include "polymake/Set.h"
 #include "polymake/graph/Lattice.h"
@@ -37,7 +36,7 @@ Int find_vertex_node(const LType& HD, Int v)
 template <typename LType, typename SetType>
 Int find_facet_node(const LType& HD, const GenericSet<SetType>& F)
 {
-   for (const auto& f: HD.nodes_of_rank(HD.rank()-1))
+   for (const auto f: HD.nodes_of_rank(HD.rank()-1))
       if (HD.face(f)==F)
          return f;
    throw no_match("facet node not found");
@@ -152,7 +151,6 @@ namespace pm {
    struct check_iterator_feature<polymake::graph::HasseDiagram_facet_iterator<Decoration>, end_sensitive> : std::true_type {};
 }
 
-#endif
 
 // Local Variables:
 // mode:C++

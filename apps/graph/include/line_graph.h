@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_LINE_GRAPH_H
-#define POLYMAKE_GRAPH_LINE_GRAPH_H
+#pragma once
 
 #include "polymake/Graph.h"
 
@@ -59,7 +58,6 @@ Graph<typename Kind::non_multi_type> line_graph(const Graph<Kind>& G)
 
 } }
 
-#endif // POLYMAKE_GRAPH_LINE_GRAPH_H
 
 // Local Variables:
 // mode:C++

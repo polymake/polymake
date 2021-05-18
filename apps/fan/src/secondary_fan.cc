@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -51,7 +51,7 @@ boundary_of(const std::vector<Simplex>& S, const Simplex& ignore)
 {
    hash_map<Simplex, Int> multiplicity_of;
    for (const auto& sigma: S)
-      for (const Int& i: sigma)
+      for (const Int i: sigma)
          ++multiplicity_of[sigma - i];
    
    std::vector<Simplex> boundary;

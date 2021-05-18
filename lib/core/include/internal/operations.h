@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_OPERATIONS_H
-#define POLYMAKE_INTERNAL_OPERATIONS_H
+#pragma once
 
 #include "polymake/internal/operations_basic_defs.h"
 #include "polymake/internal/iterators.h"
@@ -1532,7 +1531,6 @@ struct is_default_constructible<pm::operations::composed11<InnerOperation, Outer
 
 #endif // __clang__
 
-#endif // POLYMAKE_INTERNAL_OPERATIONS_H
 
 // Local Variables:
 // mode:C++

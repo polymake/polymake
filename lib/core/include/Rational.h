@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Rational.h
     @brief Implementation of pm::Rational class
 */
 
-#ifndef POLYMAKE_RATIONAL_H
-#define POLYMAKE_RATIONAL_H
 
 #include "polymake/Integer.h"
 
@@ -2083,7 +2082,6 @@ namespace polymake {
    using pm::Rational;
 }
 
-#endif // POLYMAKE_RATIONAL_H
 
 // Local Variables:
 // mode:C++

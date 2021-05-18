@@ -1,0 +1,65 @@
+#  Copyright (c) 1997-2020
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+package Visual::Color;
+
+# default color for the [[SITES]] of a voronoi diagram
+custom $voronoisites = "255 165 0";
+
+# @category Visualization
+options %Visual::sitedecorations = (
+   # String An array, hash or sub to provide labels for the sites (default is 0..n-1 for n [[SITES]])
+   SiteLabels => undef,
+
+   # [complete color] Flexible<Color> color of the [[SITES]]
+   SiteColor => $Visual::Color::voronoisites,
+
+   # Flexible<Float> Thickness of the [[SITES]]
+   SiteThickness => 1,
+);
+
+object polytope::VoronoiPolyhedron {
+
+# @category Visualization
+# Visualize the Voronoi diagram together with its sites.
+# @options %Visual::Polygons::decorations
+# @options %Visual::sitedecorations
+# @return Visual::Container
+
+user_method VISUAL_VORONOI(%Visual::Polygons::decorations, %Visual::sitedecorations) : SITES, VORONOI_DIAGRAM, POINTED, VERTICES{
+   my ($this, $decor, $sitedecor)=@_;
+
+   foreach (keys %$sitedecor) {
+      $sitedecor->{s/Site/Vertex/r} = delete $sitedecor->{$_};
+   }
+   $sitedecor->{VertexLabels} //= $this->lookup("SITE_LABELS"); 
+   my $points = new Matrix<Scalar>($this->SITES);
+   my $p = new Visual::PointSet(Name=>"sites", Points=>dehomogenize(convert_to<Float>($points)),Explodable=>0,$sitedecor);
+   if ($this->POINTED) {
+      $points /= $this->VERTICES->minor($this->BOUNDED_VERTICES, range(0, $this->VERTICES->cols-2));
+   }
+   my $bbox = bounding_box_facets($points,surplus_k=>1);
+   $decor->{VertexLabels} //= "hidden";
+   compose($p,$this->VORONOI_DIAGRAM->VISUAL(FacetTransparency=>0.5,BoundingFacets=>$bbox,$decor));
+}
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

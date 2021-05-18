@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_SIMPLICIAL_COMPLEX_AS_FACE_MAP_H
-#define POLYMAKE_TOPAZ_SIMPLICIAL_COMPLEX_AS_FACE_MAP_H
+#pragma once
 
 #include "polymake/FaceMap.h"
 #include "polymake/PowerSet.h"
@@ -295,7 +294,6 @@ struct spec_object_traits< polymake::topaz::SimplicialComplex_as_FaceMap<Vertex,
 
 }
 
-#endif // POLYMAKE_TOPAZ_SIMPLICIAL_COMPLEX_AS_FACE_MAP_H
 
 // Local Variables:
 // mode:C++

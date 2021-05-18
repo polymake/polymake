@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file color.h
     @brief Implementation of pm::RGB and pm::HSV classes
  */
 
-#ifndef POLYMAKE_COLOR_H
-#define POLYMAKE_COLOR_H
 
 #include "polymake/GenericStruct.h"
 #include "polymake/GenericIO.h"
@@ -109,7 +108,6 @@ namespace polymake {
    using pm::HSV;
 }
 
-#endif // POLYMAKE_COLOR_H
 
 // Local Variables:
 // mode:C++

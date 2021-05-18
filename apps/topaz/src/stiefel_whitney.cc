@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -131,7 +131,7 @@ UserFunction4perl("# @category Other"
                   "# @option Int high_dim"
                   "# @option Int low_dim"
                   "# @option Bool verbose"
-                  "# @return Array<PowerSet<Int>>",
+                  "# @return Array<Set<Set<Int>>>",
                   &stiefel_whitney,"stiefel_whitney(Array<Set<Int>> { high_dim => undef, low_dim => undef, verbose => 0} )");
    
 } }

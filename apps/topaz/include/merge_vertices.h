@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_MERGE_VERTICES_H
-#define POLYMAKE_TOPAZ_MERGE_VERTICES_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/Set.h"
@@ -42,7 +41,6 @@ void merge_disjoint_vertices (Array<std::string>& L1, const Array<std::string>& 
 
 } }
 
-#endif // POLYMAKE_TOPAZ_MERGE_VERTICES_H
 
 // Local Variables:
 // mode:C++

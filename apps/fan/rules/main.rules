@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -113,9 +113,11 @@ INCLUDE
   action.rules
   symmetric_fan.rules
   voronoi.rules
+  visual_voronoi.rules
   hyperplane_arrangement.rules
   compactification.rules
-
+  stacky_fan.rules
+    
 # Local Variables:
 # mode: perl
 # cperl-indent-level:3

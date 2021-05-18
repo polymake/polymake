@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_IDEAL_SINGULAR_CONVERT_TYPES_H
-#define POLYMAKE_IDEAL_SINGULAR_CONVERT_TYPES_H
+#pragma once
 
 
 
@@ -63,4 +62,3 @@ poly convert_Polynomial_to_poly(const Polynomial<>& polymakePolynomial, ring sin
 } // end namespace polymake
 
 
-#endif

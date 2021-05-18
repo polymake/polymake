@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_HOMOLOGY_COMPLEX_FLINT_H
-#define POLYMAKE_TOPAZ_HOMOLOGY_COMPLEX_FLINT_H
+#pragma once
 
 #include "polymake/list"
 #include "polymake/Array.h"
@@ -313,7 +312,6 @@ public:
 
 } }
 
-#endif // POLYMAKE_TOPAZ_HOMOLOGY_COMPLEX_FLINT_H
 
 // Local Variables:
 // mode:C++

@@ -1,0 +1,6 @@
+{"app": "fan", "embed": "all_cones_symmetry.cc",
+ "inst": [
+  {"args": ["Rational", "void", "Int(Int)"], "func": "all_cones_symmetry", "include": ["polymake/Rational.h"], "sig": "all_cones_symmetry:T1.B.Int", "tp": 1},
+  {"args": ["QuadraticExtension<Rational>", "void", "Int(Int)"], "func": "all_cones_symmetry", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "all_cones_symmetry:T1.B.Int", "tp": 1},
+ null ],
+"version": 3}

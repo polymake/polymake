@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_EXTEND_ALGO_H
-#define POLYMAKE_INTERNAL_EXTEND_ALGO_H
+#pragma once
 
 #if !defined(__clang__) && __GNUC__ >= 9
 #pragma GCC diagnostic push
@@ -171,7 +170,6 @@ find_in_range_if(Iterator&& src, const Predicate& pred_arg)
 #pragma GCC diagnostic pop
 #endif
 
-#endif // POLYMAKE_INTERNAL_EXTEND_ALGO_H
 
 // Local Variables:
 // mode:C++

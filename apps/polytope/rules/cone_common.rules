@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -719,7 +719,7 @@ rule COCIRCUIT_EQUATIONS : COMBINATORIAL_DIM, RAYS, RAYS_IN_FACETS, INTERIOR_RID
 # @option Bool no_labels Do not generate [[VERTEX_LABELS]] from the faces of the original cone. default: 0
 # @option Bool geometric_realization create a [[topaz::GeometricSimplicialComplex]]; default is true
 # @return topaz::SimplicialComplex
-user_function barycentric_subdivision<Scalar>(Cone<Scalar> { no_labels=>0, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"VERTEX_LABELS", geometric_realization=>1, coord_section=>"RAYS", ignore_top_node=>0 }) {
+user_function barycentric_subdivision<Scalar>(Cone<Scalar> { no_labels=>0, pin_hasse_section=>"HASSE_DIAGRAM", label_section=>"RAY_LABELS", geometric_realization=>1, coord_section=>"RAYS", ignore_top_node=>0 }) {
   topaz::barycentric_subdivision_impl<BasicDecoration,Sequential,Scalar>(@_);
 }
 

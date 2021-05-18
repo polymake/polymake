@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GROUP_PERMLIB_TOOLS_H
-#define POLYMAKE_GROUP_PERMLIB_TOOLS_H
+#pragma once
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -217,7 +216,6 @@ public:
 } // end namespace classic
 } // end namespace permlib
 
-#endif // POLYMAKE_GROUP_PERMLIB_TOOLS_H
 
 // Local Variables:
 // mode:C++

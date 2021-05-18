@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_COMMON_PRINT_CONSTRAINTS_H
-#define POLYMAKE_COMMON_PRINT_CONSTRAINTS_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -98,4 +97,3 @@ void print_constraints_sub(const Matrix<Scalar>& M, Array<std::string> coord_lab
 
 } }
 
-#endif

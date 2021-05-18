@@ -8,5 +8,6 @@
   {"args": ["Array<Int>", "perl::Canned<const Array<Array<Int>>&>"], "func": "conjugacy_classes_and_reps", "include": ["polymake/Array.h"], "sig": "conjugacy_classes_and_reps:T1.X", "tp": "1"},
   {"args": ["Matrix<Rational>", "perl::Canned<const Array<Matrix<Rational>>&>", "perl::Canned<const Array<Matrix<Rational>>&>"], "func": "conjugacy_classes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "conjugacy_classes:T1.X.X", "tp": "1"},
   {"args": ["Matrix<double>", "perl::Canned<const Array<Matrix<double>>&>", "perl::Canned<const Array<Matrix<double>>&>"], "func": "conjugacy_classes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "conjugacy_classes:T1.X.X", "tp": "1"},
+  {"args": ["Matrix<double>", "perl::Canned<const Array<Matrix<double>>&>"], "func": "conjugacy_classes_and_reps", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "conjugacy_classes_and_reps:T1.X", "tp": 1},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -136,9 +136,9 @@ object Polytope {
 	 $tb_new.=$_;
       }
       $this->take("TRIANGULATION.BOUNDARY.FACETS",$tb_new);
-      my $tb=new Array<PowerSet>($value);
+      my $tb=new Array<Set<Int>>($value);
       my $n_facets=scalar(@$tb);
-      my $tb_f_triag=new Array<Set<Int> >($n_facets);
+      my $tb_f_triag=new Array<Set<Int>>($n_facets);
       my $n_simplices=0;
       for (my $i=0; $i<$n_facets;++$i) {
          my $ns_f=$tb->[$i]->size;

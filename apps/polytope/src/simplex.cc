@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -115,7 +115,7 @@ BigObject regular_simplex(const Int d, OptionSet options)
 BigObject fano_simplex(Int d, OptionSet options)
 {
    if (d <= 0)
-      throw std::runtime_error("fano_simplex : dimension must be postive");
+      throw std::runtime_error("fano_simplex : dimension must be positive");
 
    BigObject p("Polytope<Rational>");
    p.set_description() << "Fano simplex of dimension " << d << endl;
@@ -134,7 +134,7 @@ BigObject fano_simplex(Int d, OptionSet options)
 BigObject lecture_hall_simplex(Int d, OptionSet options)
 {
    if (d <= 0)
-      throw std::runtime_error("lecture_hall_simplex : dimension must be postive");
+      throw std::runtime_error("lecture_hall_simplex : dimension must be positive");
 
    BigObject p("Polytope<Rational>");
    p.set_description() << "lecture hall simplex of dimension " << d << endl;

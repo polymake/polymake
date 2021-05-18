@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -26,8 +26,7 @@
 	Defines a function to compute the minimal interior cells of a polyhedral subdivision.
 	*/
 
-#ifndef POLYMAKE_ATINT_MINIMAL_INTERIOR_H
-#define POLYMAKE_ATINT_MINIMAL_INTERIOR_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
@@ -56,4 +55,3 @@ IncidenceMatrix<> refined_local_cones(BigObject localized_cycle, BigObject refin
 
 } }
 
-#endif

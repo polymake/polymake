@@ -40,5 +40,7 @@
   {"args": ["perl::Canned<const SparseMatrix<Integer, Symmetric>&>"], "func": "cols", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "cols:M"},
   {"args": ["perl::AnchorArg<perl::Canned<const Matrix<Int>&>>"], "func": "cols", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "cols:R_Container.X8"},
   {"args": ["perl::Canned<const SparseMatrix<GF2, NonSymmetric>&>"], "func": "cols", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "cols:M"},
+  {"args": ["perl::Canned<const SparseMatrix<Int, Symmetric>&>"], "func": "cols", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "cols:M"},
+  {"args": ["perl::Canned<const pm::Transposed<pm::Matrix<pm::Rational> >&>"], "func": "cols", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "kind": "meth", "sig": "cols:M"},
  null ],
 "version": 3}

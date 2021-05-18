@@ -1,0 +1,230 @@
+#  Copyright (c) 1997-2021
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# rename fan::HyperplaneArrangement property CELL_* to CHAMBER_*
+
+upgrade 4.3.1 fan::PolyhedralFan = \&extract_old_group_data_fan;
+
+upgrade 4.3.1 fan::PolyhedralComplex = \&extract_old_group_data_pcom;
+
+sub extract_old_group_data_fan {
+   my($fan) = @_;
+   my $found = 0;
+
+   if(defined(my $prop = delete $fan->{MAXIMAL_CONES_REPS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{REPRESENTATIVE_MAXIMAL_CONES} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{SYMMETRY_GENERATORS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{HOMOGENEOUS_COORDINATE_ACTION}->{GENERATORS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{SYMMETRY_GROUP})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{HOMOGENEOUS_COORDINATE_ACTION}->{ALL_GROUP_ELEMENTS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{N_SYMMETRIES})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{ORDER} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{INPUT_RAYS_REPS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{INPUT_RAYS_ACTION}->{ORBIT_REPRESENTATIVES} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{INPUT_CONES_REPS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{INPUT_CONES_ACTION}->{ORBIT_REPRESENTATIVES} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{RAYS_REPS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{REPRESENTATIVE_RAYS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{RAYS_IN_ORBITS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{RAYS_ACTION}->{ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{N_RAY_ORBITS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{RAYS_ACTION}->{N_ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{RAYS_ORBIT_SIZES})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{RAYS_ACTION}->{ORBIT_SIZES} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{MAXIMAL_CONES_IN_ORBITS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{MAXIMAL_CONES_ACTION}->{ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{N_MAXIMAL_CONE_ORBITS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{MAXIMAL_CONES_ACTION}->{N_ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{MAXIMAL_CONES_ORBIT_SIZES})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{MAXIMAL_CONES_ACTION}->{ORBIT_SIZES} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{MAXIMAL_CONES_REPS_DIMS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{MAXIMAL_CONES_ACTION}->{REPRESENTATIVE_COMBINATORIAL_DIMS} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{RAYS_IMAGES})){
+      my $A = new common::Matrix<common::Int>($prop);
+      $A = common::transpose($A);
+      $fan->{GROUP}->[0]->{RAYS_ACTION}->{ALL_GROUP_ELEMENTS} = new common::Array<common::Array<common::Int>>(common::rows($A));
+   }
+   if(defined(my $prop = delete $fan->{CONES_REPS})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{REPRESENTATIVE_CONES} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{ORBITS_F_VECTOR})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{ORBITS_F_VECTOR} = $prop;
+   }
+   if(defined(my $prop = delete $fan->{CONES_ORBIT_SIZES})){
+      $found = 1;
+      $fan->{GROUP}->[0]->{CONES_ORBIT_SIZES} = $prop;
+   }
+   return $found;
+}
+
+sub extract_old_group_data_pcom {
+   my($pcom) = @_;
+   my $found = 0;
+   if(defined(my $prop = delete $pcom->{MAXIMAL_POLYTOPES_REPS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{REPRESENTATIVE_MAXIMAL_POLYTOPES} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{POINTS_REPS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{POINTS_ACTION}->{ORBIT_REPRESENTATIVES} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{INPUT_POLYTOPES_REPS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{INPUT_POLYTOPES_ACTION}->{ORBIT_REPRESENTATIVES} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{VERTICES_REPS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{REPRESENTATIVE_VERTICES} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{VERTICES_IN_ORBITS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{VERTICES_ACTION}->{ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{N_VERTICES_ORBITS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{VERTICES_ACTION}->{N_ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{VERTICES_ORBIT_SIZES})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{VERTICES_ACTION}->{ORBIT_SIZES} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{MAXIMAL_POLYTOPES_IN_ORBITS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{MAXIMAL_POLYTOPES_ACTION}->{ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{N_MAXIMAL_POLYTOPE_ORBITS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{MAXIMAL_POLYTOPES_ACTION}->{N_ORBITS} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{MAXIMAL_POLYTOPES_ORBIT_SIZES})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{MAXIMAL_POLYTOPES_ACTION}->{ORBIT_SIZES} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{MAXIMAL_POLYTOPES_REPS_DIMS})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{MAXIMAL_POLYTOPES_ACTION}->{REPRESENTATIVE_COMBINATORIAL_DIMS} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{VERTICES_IMAGES})){
+      my $A = new common::Matrix<common::Int>($prop);
+      $A = common::transpose($A);
+      $pcom->{GROUP}->[0]->{VERTICES_ACTION}->{ALL_GROUP_ELEMENTS} = new common::Array<common::Array<common::Int>>(common::rows($A));
+   }
+   if(defined(my $prop = delete $pcom->{ORBITS_F_VECTOR})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{ORBITS_F_VECTOR} = $prop;
+   }
+   if(defined(my $prop = delete $pcom->{POLYTOPES_ORBIT_SIZES})){
+      $found = 1;
+      $pcom->{GROUP}->[0]->{POLYTOPES_ORBIT_SIZES} = $prop;
+   }
+   return $found;
+}
+
+
+# replace PowerSet with Set<Set<Int>> as property type
+
+upgrade 4.3.2 common::PowerSet {
+   my ($obj, $attrs) = @_;
+   ($attrs // $obj)->{_type} =~ s/common::\KPowerSet(?:<\w+>)?\b/ $1 ? "Set<Set$1>" : "Set<Set<Int>>" /e;
+}
+
+# replace PowerSet with Set<Set<Int>> as attachment type
+
+upgrade 4.3.2 PowerSet {
+   my ($obj, $attrs) = @_;
+   $attrs->{_type} =~ s/^PowerSet(?:<\w+>)?\b/ $1 ? "Set<Set$1>" : "Set<Set<Int>>" /e;
+}
+
+# fulton::BinomialIdeal is now ideal::Ideal with object_specialization Binomial
+upgrade 4.3.3 fulton::BinomialIdeal {
+   my ($obj, $attrs) = @_;
+   ($attrs // $obj)->{_type} =~ s/fulton::BinomialIdeal\b/ideal::Ideal/;
+   $obj->{BINOMIAL} = true;
+}
+
+# move Cone::TORIC_IDEAL to CONE_TORIC_IDEAL
+# migrate Polytope.GROEBNER_BASIS to Polytope.TORIC_IDEAL.GROEBNER
+#  (in one rule to avoid applying CONE_ rule to the groebner_basis objects)
+upgrade 4.3.3 polytope::Cone {
+   my ($obj, $attrs) = @_;
+   my $res = false;
+   # we need to do this first
+   if (exists $obj->{"TORIC_IDEAL"}) {
+      $res = rename_property($obj, "TORIC_IDEAL", "CONE_TORIC_IDEAL");
+   }
+   # BASIS -> GROEBNER.BINOMIAL_BASIS
+   # TERM_ORDER_NAME -> GROEBNER.ORDER_NAME (with replace for lex|deglex|degrevlex)
+   # TERM_ORDER_MATRIX -> GROEBNER.ORDER_MATRIX
+   # GROEBNER_BASIS is multiple and GROEBNER is as well
+   my $prop = "GROEBNER_BASIS";
+   if (exists $obj->{$prop}) {
+      foreach my $subobj (@{$obj->{$prop}}) {
+         if (exists($subobj->{BASIS})) {
+            rename_property($subobj, "BASIS", "BINOMIAL_BASIS");
+         }
+         if (exists($subobj->{TERM_ORDER_MATRIX})) {
+            rename_property($subobj, "TERM_ORDER_MATRIX", "ORDER_MATRIX");
+         }
+         if (exists($subobj->{TERM_ORDER_NAME})) {
+            my %orders = qw(lex lp deglex Dp degrevlex dp);
+            rename_property($subobj, "TERM_ORDER_NAME", "ORDER_NAME");
+            $subobj->{ORDER_NAME} =~ s/(lex|deglex|degrevlex)/$orders{$1}/g;
+         }
+      }
+      my %ideal;
+      move_property($obj, $prop, \%ideal, "GROEBNER");
+      $ideal{BINOMIAL} = true;
+      $obj->{TORIC_IDEAL} = \%ideal;
+      $res = true;
+   }
+   $res;
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

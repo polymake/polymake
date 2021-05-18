@@ -1,0 +1,295 @@
+{
+  "descend": {
+    "fan::HyperplaneArrangement": {
+      "CHAMBER_DECOMPOSITION": "fan::PolyhedralFan",
+      "SUPPORT": "polytope::Cone"
+    },
+    "fan::PlanarNet": {
+      "POLYTOPE": "polytope::Polytope"
+    },
+    "fan::PolyhedralComplex": {
+      "COMPACTIFICATION": "graph::Lattice"
+    },
+    "fan::PolyhedralFan": {
+      "DUAL_GRAPH": "graph::Graph",
+      "GRAPH": "graph::Graph",
+      "GROUP": [
+        "group::Group",
+        {
+          "MATRIX_ACTION": "group::MatrixActionOnVectors"
+        }
+      ],
+      "HASSE_DIAGRAM": "graph::Lattice",
+      "INTERSECTION_COMPLEX": "topaz::SimplicialComplex"
+    },
+    "fan::SubdivisionOfPoints": {
+      "POLYHEDRAL_COMPLEX": "fan::PolyhedralComplex",
+      "TIGHT_SPAN": "fan::PolyhedralComplex"
+    },
+    "fulton::CyclicQuotient": {
+      "VERSAL_COMPONENT": "fulton::VersalComponent"
+    },
+    "fulton::NormalToricVariety": {
+      "DIVISOR": "fulton::TDivisor",
+      "EFFECTIVE_CONE": "polytope::Cone",
+      "GENERATING_POLYTOPE": "polytope::Polytope",
+      "MORI_CONE": "polytope::Cone",
+      "NEF_CONE": "polytope::Cone",
+      "RATIONAL_DIVISOR_CLASS_GROUP": "fulton::RationalDivisorClassGroup"
+    },
+    "fulton::TDivisor": {
+      "SECTION_POLYTOPE": "polytope::Polytope"
+    },
+    "fulton::VersalComponent": {
+      "N_GON_TRIANGULATION": "graph::Graph",
+      "P_RESOLUTION": "fan::PolyhedralFan",
+      "TOTAL_SPACE": "ideal::Ideal"
+    },
+    "group::Group": {
+      "FACETS_ACTION": "group::PermutationAction",
+      "FACET_NORMALS_ACTION": "group::PermutationAction",
+      "HOMOGENEOUS_COORDINATE_ACTION": "group::PermutationAction",
+      "IMPLICIT_SET_ACTION": "group::ImplicitActionOnSets",
+      "INEQUALITIES_ACTION": "group::PermutationAction",
+      "INPUT_CONES_ACTION": "group::PermutationAction",
+      "INPUT_RAYS_ACTION": "group::PermutationAction",
+      "MAXIMAL_CONES_ACTION": "group::PermutationAction",
+      "PERMUTATION_ACTION": "group::PermutationAction",
+      "RAYS_ACTION": "group::PermutationAction",
+      "REGULAR_REPRESENTATION": "group::MatrixActionOnVectors",
+      "SET_ACTION": "group::PermutationAction",
+      "VECTOR_ACTION": "group::PermutationAction"
+    },
+    "ideal::Groebner": {
+      "INITIAL_IDEAL": "ideal::Ideal"
+    },
+    "ideal::Ideal": {
+      "GROEBNER": "ideal::Groebner",
+      "PRIMARY_DECOMPOSITION": "ideal::Ideal",
+      "RADICAL": "ideal::Ideal"
+    },
+    "matroid::Matroid": {
+      "AUTOMORPHISM_GROUP": "group::Group",
+      "DUAL": "matroid::Matroid",
+      "LATTICE_OF_CYCLIC_FLATS": "graph::Lattice",
+      "LATTICE_OF_FLATS": "graph::Lattice",
+      "POLYTOPE": "polytope::Polytope"
+    },
+    "polytope::Cone": {
+      "DUAL_GRAPH": "graph::Graph",
+      "GRAPH": "graph::Graph",
+      "GROUP": [
+        "group::Group",
+        {
+          "BITSET_ACTION": "group::ImplicitActionOnSets",
+          "MATRIX_ACTION": "group::MatrixActionOnVectors"
+        }
+      ],
+      "HASSE_DIAGRAM": "graph::Lattice",
+      "TRIANGULATION": "topaz::GeometricSimplicialComplex"
+    },
+    "polytope::LinearProgram": {
+      "DIRECTED_BOUNDED_GRAPH": "graph::Graph",
+      "DIRECTED_GRAPH": "graph::Graph"
+    },
+    "polytope::PointConfiguration": {
+      "CONVEX_HULL": "polytope::Polytope",
+      "GRAPH": "graph::Graph",
+      "GROUP": [
+        "group::Group",
+        {
+          "POINTS_ACTION": [
+            "group::PermutationAction",
+            {
+              "SYMMETRIZED_COCIRCUIT_EQUATIONS": "polytope::SymmetrizedCocircuitEquations"
+            }
+          ]
+        }
+      ],
+      "POLYTOPAL_SUBDIVISION": "fan::SubdivisionOfPoints",
+      "SPLIT_COMPATIBILITY_GRAPH": "graph::Graph",
+      "TRIANGULATION": "topaz::GeometricSimplicialComplex"
+    },
+    "polytope::Polytope": {
+      "BOUNDED_COMPLEX": "fan::PolyhedralComplex",
+      "GROUP": [
+        "group::Group",
+        {
+          "VERTICES_ACTION": [
+            "group::PermutationAction",
+            {
+              "SYMMETRIZED_COCIRCUIT_EQUATIONS": "polytope::SymmetrizedCocircuitEquations"
+            }
+          ]
+        }
+      ],
+      "LP": "polytope::LinearProgram",
+      "MILP": "polytope::MixedIntegerLinearProgram",
+      "POLYTOPAL_SUBDIVISION": "fan::SubdivisionOfPoints",
+      "QUOTIENT_SPACE": "polytope::QuotientSpace",
+      "SCHLEGEL_DIAGRAM": "polytope::SchlegelDiagram",
+      "SLACK_IDEAL": "polytope::SlackIdeal",
+      "SPLIT_COMPATIBILITY_GRAPH": "graph::Graph",
+      "TILING_LATTICE": "polytope::AffineLattice"
+    },
+    "polytope::PropagatedPolytope": {
+      "SUM_PRODUCT_GRAPH": "graph::Graph"
+    },
+    "polytope::QuotientSpace": {
+      "IDENTIFICATION_ACTION": "group::PermutationAction",
+      "SIMPLICIAL_COMPLEX": "topaz::SimplicialComplex",
+      "SYMMETRY_GROUP": "group::Group"
+    },
+    "polytope::SlackIdeal": {
+      "NON_SATURATED": "ideal::Ideal"
+    },
+    "polytope::VectorConfiguration": {
+      "GROUP": [
+        "group::Group",
+        {
+          "MATRIX_ACTION": "group::MatrixActionOnVectors"
+        }
+      ]
+    },
+    "polytope::VoronoiPolyhedron": {
+      "CRUST_GRAPH": "graph::Graph",
+      "DELAUNAY_DIAGRAM": "fan::PolyhedralComplex",
+      "DELAUNAY_GRAPH": "graph::Graph",
+      "ITERATED_DELAUNAY_GRAPH": "graph::Graph",
+      "ITERATED_VORONOI_GRAPH": "graph::GeometricGraph",
+      "NN_CRUST_GRAPH": "graph::Graph",
+      "NN_GRAPH": "graph::Graph",
+      "VORONOI_DIAGRAM": "fan::PolyhedralComplex",
+      "VORONOI_GRAPH": "graph::GeometricGraph"
+    },
+    "topaz::HyperbolicSurface": {
+      "SECONDARY_FAN": "fan::PolyhedralFan"
+    },
+    "topaz::SimplicialComplex": {
+      "BOUNDARY": "topaz::SimplicialComplex",
+      "DUAL_GRAPH": "graph::Graph",
+      "GRAPH": "graph::Graph",
+      "GROUP": "group::Group",
+      "HASSE_DIAGRAM": "graph::Lattice",
+      "KNOT": "topaz::SimplicialComplex",
+      "MIXED_GRAPH": "graph::Graph",
+      "MORSE_MATCHING": "topaz::MorseMatching",
+      "ODD_SUBCOMPLEX": "topaz::SimplicialComplex"
+    },
+    "tropical::Cycle": {
+      "WEIGHT_CONE": "polytope::Cone"
+    },
+    "tropical::Hypersurface": {
+      "DOME": "polytope::Polytope",
+      "DUAL_SUBDIVISION": "fan::SubdivisionOfPoints",
+      "PATCHWORK": "tropical::Patchwork"
+    },
+    "tropical::LinesInCubic": {
+      "CUBIC": "tropical::Cycle",
+      "LIST_FAMILY_FIXED_EDGE": "tropical::Cycle",
+      "LIST_FAMILY_FIXED_VERTEX": "tropical::Cycle",
+      "LIST_FAMILY_MOVING_EDGE": "tropical::Cycle",
+      "LIST_FAMILY_MOVING_VERTEX": "tropical::Cycle",
+      "LIST_ISOLATED_EDGE": "tropical::Cycle",
+      "LIST_ISOLATED_NO_EDGE": "tropical::Cycle"
+    },
+    "tropical::Morphism": {
+      "DOMAIN": "tropical::Cycle"
+    },
+    "tropical::Polytope": {
+      "DOME": "polytope::Polytope",
+      "ENVELOPE": "polytope::Polytope",
+      "POLYTOPE_COVECTOR_DECOMPOSITION": "tropical::CovectorLattice",
+      "TORUS_COVECTOR_DECOMPOSITION": "tropical::CovectorLattice"
+    },
+    "tropical::RationalCurve": {
+      "GRAPH": "graph::Graph"
+    },
+    "tropical::TropicalRationalFunction": {
+      "DOMAIN": "tropical::Cycle"
+    }
+  },
+  "super": {
+    "fan::HyperplaneArrangement": [
+      "polytope::VectorConfiguration"
+    ],
+    "fan::PlanarNet": [
+      "fan::PolyhedralComplex",
+      "fan::PolyhedralFan"
+    ],
+    "fan::PolyhedralComplex": [
+      "fan::PolyhedralFan"
+    ],
+    "fan::SubdivisionOfPoints": [
+      "fan::SubdivisionOfVectors"
+    ],
+    "fulton::CyclicQuotient": [
+      "fan::PolyhedralFan",
+      "fulton::NormalToricVariety"
+    ],
+    "fulton::NormalToricVariety": [
+      "fan::PolyhedralFan"
+    ],
+    "graph::GeometricGraph": [
+      "graph::Graph"
+    ],
+    "graph::Lattice": [
+      "graph::Graph"
+    ],
+    "group::ImplicitActionOnSets": [
+      "group::Action",
+      "group::PermutationAction"
+    ],
+    "group::MatrixActionOnVectors": [
+      "group::Action"
+    ],
+    "group::PermutationAction": [
+      "group::Action"
+    ],
+    "group::PermutationActionOnSets": [
+      "group::Action",
+      "group::PermutationAction"
+    ],
+    "matroid::ValuatedMatroid": [
+      "matroid::Matroid"
+    ],
+    "polytope::PointConfiguration": [
+      "polytope::VectorConfiguration"
+    ],
+    "polytope::Polytope": [
+      "polytope::Cone"
+    ],
+    "polytope::PropagatedPolytope": [
+      "polytope::Cone",
+      "polytope::Polytope"
+    ],
+    "polytope::SlackIdeal": [
+      "ideal::Ideal"
+    ],
+    "polytope::VoronoiPolyhedron": [
+      "polytope::Cone",
+      "polytope::Polytope"
+    ],
+    "topaz::GeometricSimplicialComplex": [
+      "topaz::SimplicialComplex"
+    ],
+    "tropical::CovectorLattice": [
+      "graph::Graph",
+      "graph::Lattice"
+    ],
+    "tropical::Cycle": [
+      "fan::PolyhedralComplex",
+      "fan::PolyhedralFan"
+    ],
+    "tropical::Hypersurface": [
+      "fan::PolyhedralComplex",
+      "fan::PolyhedralFan",
+      "tropical::Cycle"
+    ],
+    "tropical::MatroidRingCycle": [
+      "fan::PolyhedralComplex",
+      "fan::PolyhedralFan",
+      "tropical::Cycle"
+    ]
+  }
+}

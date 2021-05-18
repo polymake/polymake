@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,7 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GENERIC_INCIDENCE_MATRIX_H
+#pragma once
+
 #define POLYMAKE_GENERIC_INCIDENCE_MATRIX_H
 
 #include "polymake/internal/matrix_methods.h"
@@ -1000,7 +1001,6 @@ namespace std {
 #ifdef POLYMAKE_GENERIC_MATRIX_H
 # include "polymake/internal/Incidence_and_SparseMatrix.h"
 #endif
-#endif // POLYMAKE_GENERIC_INCIDENCE_MATRIX_H
 
 // Local Variables:
 // mode:C++

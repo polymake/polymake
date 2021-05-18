@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -552,7 +552,13 @@ sub Polymake::User::load_commands {
    my ($filename) = @_;
    replace_special_paths($filename);
    open my $in, $filename or die "can't read from $filename: $!\n";
-   fill_history({ filter => $nonsignificant_line_re }, <$in>);
+   my @cells;
+   if ($filename =~ /\.ipynb$/) {
+      local $/;
+      my $nb = decode_json(<$in>);
+      @cells = map { @{$_->{source}} } grep {$_->{cell_type} eq "code"} @{$nb->{cells}};
+   }
+   fill_history({ filter => $nonsignificant_line_re }, @cells > 0 ? @cells : <$in>);
 }
 ###############################################################################################
 sub Polymake::User::replay_history {

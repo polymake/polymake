@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -28,12 +28,20 @@ declare (%registered_by_dir,     # "AbsPath" => active or disabled Extension
          %registered_by_URI,     # "URI" => active or disabled Extension, maybe replacement
          %refused,               # "URI" => "ignore", "skip", or "stop" : reaction on encountering an unwanted extension in a data file
          %conflicts,             # "URI" => conflicting Extension
+         %disabled               # "AbsPath" => true if can't be configured for the current architecture
         );
 
 declare $loading;                # temporarily set to Extension during loading some rules defined there
 
 # List of obsoleted bundled extensions:
 $refused{'bundled:group'} = 'ignore';
+
+add_settings_callback sub {
+   my ($settings) = @_;
+   $settings->add_item('_extensions::disabled', \%disabled,
+                       "Extensions disabled because of configuration problems",
+                       UserSettings::Item::Flags::hidden + UserSettings::Item::Flags::by_arch + UserSettings::Item::Flags::no_export);
+};
 
 use Polymake::Struct (
    [ new => '$;$$' ],
@@ -366,7 +374,7 @@ and assign distinct URIs.
       if (++$rounds > 1 && $PrivateDir) {
          warn_print( "Extension order in your settings \@User::extensions is incompatible with the inter-dependencies\n",
                      "between the extensions, they will be automatically reordered.\n",
-                     "Please revise the results in $PrivateDir/prefer.pl after finishing the running polymake session." );
+                     "Please revise the results in $PrivateDir/settings after this polymake session has finished." );
          $list_updated = true;
       }
       @pending = @next_round;
@@ -397,13 +405,12 @@ and assign distinct URIs.
 
    if ($list_updated) {
       @User::extensions = grep { exists $registered_by_dir{$_} } @User::extensions;
-      $Prefs->custom->set('@extensions');
    }
 
    # filter out extensions disabled for this architecture
 
    foreach my $ext (@survived) {
-      if ($ext->is_active = !$User::disabled_extensions{$ext->dir}) {
+      if ($ext->is_active = !$disabled{$ext->dir}) {
          foreach my $prereq (@{$ext->requires}) {
             unless ($prereq->is_active) {
                if ($prereq->is_bundled) {
@@ -427,7 +434,7 @@ and assign distinct URIs.
                         "  reconfigure_extension(\"", $ext->dir, "\");" );
          }
          unless ($ext->is_active) {
-            $Prefs->custom->set('%disabled_extensions', $ext->dir, 1);
+            $disabled{$ext->dir} = true;
          }
       }
       if ($ext->is_active) {
@@ -435,9 +442,8 @@ and assign distinct URIs.
       }
    }
 
-   if (my @obsolete=grep { !exists $registered_by_dir{$_} } keys %User::disabled_extensions) {
-      delete @User::disabled_extensions{@obsolete};
-      $Prefs->custom->set('%disabled_extensions');
+   if (my @obsolete = grep { !exists $registered_by_dir{$_} } keys %disabled) {
+      delete @disabled{@obsolete};
    }
 }
 #######################################################################################

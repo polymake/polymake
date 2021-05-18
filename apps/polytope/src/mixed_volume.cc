@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,10 +21,11 @@
 #include "polymake/Matrix.h"
 #include "polymake/Graph.h"
 #include "polymake/polytope/solve_LP.h"
+#include "polymake/RandomPoints.h"
 
 /*
-  http://www.uni-frankfurt.de/fb/fb12/mathematik/dm/personen/steffens/Dokumente/MV_Computation1.pdf   [1]
-  http://www.uni-frankfurt.de/fb/fb12/mathematik/dm/personen/steffens/Dokumente/Diss1.pdf             [2]
+  The algorithm employs ideas of Reinhard Steffens:
+  http://publikationen.ub.uni-frankfurt.de/frontdoor/index/index/docId/7253                           [1]
 */
 
 namespace polymake { namespace polytope {
@@ -97,16 +98,18 @@ E volume(const Int n, const Array<Int>& node, const Array<Int>& next, const matr
     Matrix<E> A(n, polytopes[0].cols()-1);
     for (Int j = 0; j < n; ++j) {
        auto it = entire(graphs[j].adjacent_nodes(node[j]));
-       for (Int i = 0; i < next[j]; ++i)  //reset iterator
+       for (Int i = 0; i < next[j]; ++i)  // reset iterator
           ++it;
        A.row(j) = (polytopes[j].row(node[j]) - polytopes[j].row(*it)).slice(range_from(1));
     }
     E d = det(A);
     if (d == 0)
        throw std::runtime_error("mixed_volume: calculation failed, edge matrix is singular.");
-    // check (2.9) in [2]. change the  Lift-functions
+    // check (2.9) in [1]. change the  Lift-functions
     return abs(d);
 }
+
+// FIXME: #1227 Using symbolic instead of random perturbation for the lift function would make more sense.
 
 template <typename E>
 E mixed_volume(const Array<BigObject>& summands)
@@ -118,80 +121,109 @@ E mixed_volume(const Array<BigObject>& summands)
    graph_list graphs(n);         // stores all graphs from the input polytopes P_j
    Array<Int> node(n);
    Array<Int> next(n);
-   Array<Int> r(n);              //stores the number of input Points
+   Array<Int> r(n);              // stores the number of input Points
 
-   //initialization:
-   Int j = 0;
-   Vector<E> Lift(n+1);
-   Lift[0] = 0;
-   for (const BigObject& s : summands) {
-      const Matrix<E> m = s.give("VERTICES");
-      polytopes[j] = m;
-      r[j] = m.rows();
-      for (Int k = 1; k <= n; ++k)        //LIFT
-         Lift[k] = 1 + j*(1 - j*(1 - k*j)); //1 + j - j*j + k*j*j*j;
-      lifted_edges[j] = m*Lift;
-      const Graph<Undirected> graph=s.give("GRAPH.ADJACENCY");
-      graphs[j]=graph;
-      ++j;
-   }
-   if (n != polytopes[0].cols()-1)
-      throw std::runtime_error("mixed_volume: dimension and number of input polytopes mismatch");
-   Matrix<E> A = construct_A(n, r, polytopes, lifted_edges);
-   A = ones_vector<E>(A.rows()) | A;
-
-   // Algo:
-   Vector<E> m = zero_vector<E>(n+1);
-   Vector<E> temp;
-   Int count;
-
-   j = 0;
-   for (Int i = 0; i < polytopes[j].rows(); ++i) {
-      auto it = entire(graphs[j].adjacent_nodes(i));
-      for (count = 0; count < polytopes[j].rows()-1; ++count) {
-         if (*it > i) {
-            temp = ((polytopes[j].row(i) + polytopes[j].row(*it))/2).slice(range_from(1))
-                 | (lifted_edges[j][i] + lifted_edges[j][*it])/2;
-            if (lower_envelope_check(A, n, j+1, r, Vector<E>(m+temp))) {
-               node[j] = i;
-               next[j] = count;
-               if (j == n-1) {
-                  vol += volume(n, node, next, polytopes, graphs);
-               } else {
-                  ++j;
-                  m += temp;
-                  count = polytopes[j].rows();  //jump out of loop
-                  i = -1;
-               }
+   int tried = 0;                // counts how often we tried to get a generic lift function
+   while (tried < 2) {
+      //initialization:
+      UniformlyRandom<AccurateFloat> rng;
+      Int j = 0;
+      Vector<E> Lift(n+1);
+      Lift[0] = 0;
+      for (const BigObject& s : summands) {
+         const Matrix<E> m = s.give("VERTICES");
+         polytopes[j] = m;
+         r[j] = m.rows();
+         for (Int k = 1; k <= n; ++k) {       //LIFT
+            Lift[k] = 1 + j*(1 - j*(1 - k*j)); //1 + j - j*j + k*j*j*j;
+            if (tried > 0) {
+               // If first try didn't produce a generic lift, perturbate with random number
+               E tmp(rng.get()); // the casting could produce issues
+               Lift[k] += tmp;
             }
          }
-         ++it;
-         if (j > 0 && it.at_end()&& i == polytopes[j].rows()-1) {
-            --j;
-            i = node[j];
-            it = entire(graphs[j].adjacent_nodes(i));
-            count = next[j];
-            for (Int k = 0; k < count; ++k) //reset iterator
+         lifted_edges[j] = m*Lift;
+         const Graph<Undirected> graph=s.give("GRAPH.ADJACENCY");
+         graphs[j]=graph;
+         ++j;
+      }
+      if (n != polytopes[0].cols()-1)
+         throw std::runtime_error("mixed_volume: dimension and number of input polytopes mismatch");
+      Matrix<E> A = construct_A(n, r, polytopes, lifted_edges);
+      A = ones_vector<E>(A.rows()) | A;
+   
+      // Algo:
+      Vector<E> m = zero_vector<E>(n+1);
+      Vector<E> temp;
+      Int count;
+   
+      j = 0;
+      try 
+      {
+         for (Int i = 0; i < polytopes[j].rows(); ++i) {
+            auto it = entire(graphs[j].adjacent_nodes(i));
+            for (count = 0; count < polytopes[j].rows()-1; ++count) {
+               if (*it > i) {
+                  temp = ((polytopes[j].row(i) + polytopes[j].row(*it))/2).slice(range_from(1))
+                       | (lifted_edges[j][i] + lifted_edges[j][*it])/2;
+                  if (lower_envelope_check(A, n, j+1, r, Vector<E>(m+temp))) {
+                     node[j] = i;
+                     next[j] = count;
+                     if (j == n-1) {
+                        vol += volume(n, node, next, polytopes, graphs);
+                     } else {
+                        ++j;
+                        m += temp;
+                        count = polytopes[j].rows();  //jump out of loop
+                        i = -1;
+                     }
+                  }
+               }
                ++it;
-            temp = ((polytopes[j].row(i) + polytopes[j].row(*it))/2).slice(range_from(1))
-                 | (lifted_edges[j][i] + lifted_edges[j][*it])/2;
-            m -= temp;
-            ++it;
+               if (j > 0 && it.at_end()&& i == polytopes[j].rows()-1) {
+                  --j;
+                  i = node[j];
+                  it = entire(graphs[j].adjacent_nodes(i));
+                  count = next[j];
+                  for (Int k = 0; k < count; ++k) //reset iterator
+                     ++it;
+                  temp = ((polytopes[j].row(i) + polytopes[j].row(*it))/2).slice(range_from(1))
+                       | (lifted_edges[j][i] + lifted_edges[j][*it])/2;
+                  m -= temp;
+                  ++it;
+               }
+               if (it.at_end())
+                  break;
+            }
          }
-         if (it.at_end())
-            break;
+         return vol;
+      } 
+      catch ( const std::runtime_error& e ) 
+      {
+         if ( tried < 2 && std::strcmp(e.what(), "mixed_volume: calculation failed, edge matrix is singular.") == 0 ) {
+            tried++;
+         }
+         else {
+            // if too many tries didn't work, throw the original error
+            throw;
+         }
+      }
+      catch ( ... )
+      {
+         throw;
       }
    }
-   return vol;
+   // the throw statement will not be used, instead the catched error will be thrown (see before)
+   // still, this one is needed for the compiler
+   throw std::runtime_error("mixed_volume: calculation failed, edge matrix is singular.");
 }
 
-
 UserFunctionTemplate4perl("# @category Triangulations, subdivisions and volume"
-                          "# Produces the mixed volume of polytopes P<sub>1</sub>,P<sub>2</sub>,...,P<sub>n</sub>."
+                          "# Produces the normalized mixed volume of polytopes P<sub>1</sub>,P<sub>2</sub>,...,P<sub>n</sub>. It does so by producing a (pseudo-)random lift function. If by bad luck the function is not generic, an error message might be displayed."
                           "# @param Polytope<Scalar> P1 first polytope"
                           "# @param Polytope<Scalar> P2 second polytope"
                           "# @param Polytope<Scalar> Pn last polytope"
-                          "# @return Scalar mixed volume"
+                          "# @return Scalar normalized mixed volume"
                           "# @example"
                           "# > print mixed_volume(cube(2),simplex(2));"
                           "# | 4",

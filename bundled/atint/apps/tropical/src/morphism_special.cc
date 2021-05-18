@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -56,12 +56,12 @@ namespace polymake { namespace tropical {
 			"# (which is actually realized as $ M_{0,n+d(r+1)} \\times R^r $ )"
 			"# This is the same as calling the function"
 			"# evaluation_map(Int,Int,Matrix<Rational>,Int) with the standard d-fold"
-			"# degree as matrix (i.e. each (inverted) unit vector of $ R^{r+1} $ occuring d times)."
+			"# degree as matrix (i.e. each (inverted) unit vector of $ R^{r+1} $ occurring d times)."
 			"# @param Int n The number of marked (contracted) points"
 			"# @param Int r The dimension of the target space"
 			"# @param Int d The degree of the embedding. The direction matrix will be"
 			"# the standard d-fold directions, i.e. each unit vector (inverted for Max),"
-			"# occuring d times."
+			"# occurring d times."
 			"# @param Int i The index of the marked point that should be evaluated. i "
 			"# should lie in between 1 and n"
 			"# @tparam Addition Min or Max"

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -100,12 +100,12 @@ user_method DUAL_CONNECTED = DUAL_GRAPH.CONNECTED;
 
 # @category Combinatorics
 # The connected components of the [[GRAPH]], encoded as node sets. 
-# @return PowerSet<Int>
+# @return Set<Set<Int>>
 user_method CONNECTED_COMPONENTS = GRAPH.CONNECTED_COMPONENTS;
 
 # @category Combinatorics
 # The connected components of the [[DUAL_GRAPH]], encoded as node sets. 
-# @return PowerSet<Int>
+# @return Set<Set<Int>>
 user_method DUAL_CONNECTED_COMPONENTS = DUAL_GRAPH.DUAL_CONNECTED_COMPONENTS;
 
 # @category Topology
@@ -115,12 +115,12 @@ user_method N_CONNECTED_COMPONENTS = GRAPH.N_CONNECTED_COMPONENTS;
 
 # @category Combinatorics
 # The maximal cliques of the [[GRAPH]], encoded as node sets.
-# @return PowerSet<Int>
+# @return Set<Set<Int>>
 user_method MAX_CLIQUES = GRAPH.MAX_CLIQUES;
 
 # @category Combinatorics
 # The maximal cliques of the [[DUAL_GRAPH]], encoded as node sets.
-# @return PowerSet<Int>
+# @return Set<Set<Int>>
 user_method DUAL_MAX_CLIQUES = DUAL_GRAPH.MAX_CLIQUES;
 
 # @category Combinatorics
@@ -130,7 +130,7 @@ user_method CONNECTIVITY = GRAPH.CONNECTIVITY;
 
 # @category Combinatorics
 # Node connectivity of the [[DUAL_GRAPH]]. Dual to [[CONNECTIVITY]].
-# @return PowerSet<Int>
+# @return Set<Set<Int>>
 user_method DUAL_CONNECTIVITY = DUAL_GRAPH.CONNECTIVITY;
 
 # @category Combinatorics
@@ -470,6 +470,7 @@ rule LABELED_ORIENTATION : N_VERTICES, FACETS, ORIENTATION {
     }
     $this->LABELED_ORIENTATION(temporary) = \@labeled_orientations;
 }
+
 
 rule BALL : FACETS, DIM, N_VERTICES, HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->BALL=ternary_to_bool(is_ball_or_sphere($this,0));

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -137,6 +137,9 @@ inline bool int_quotient(long long& Quot, const pm::Integer& Num, const pm::Inte
 #pragma clang diagnostic ignored "-Wreturn-type"
 #if __clang_major__ >= (defined(__APPLE__) ? 9 : 4)
 #pragma clang diagnostic ignored "-Winstantiation-after-specialization"
+#endif
+#if defined(__APPLE__) && __clang_major__ >= 12
+#pragma clang diagnostic ignored "-Wrange-loop-analysis"
 #endif
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push

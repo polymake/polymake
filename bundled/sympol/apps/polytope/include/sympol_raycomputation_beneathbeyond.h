@@ -20,8 +20,7 @@
 //
 // ---------------------------------------------------------------------------
 
-#ifndef RAYCOMPUTATION_BENEATHBEYOND_H
-#define RAYCOMPUTATION_BENEATHBEYOND_H
+#pragma once
 
 #if defined(__GNUC__)
 #ifdef __clang__
@@ -75,4 +74,3 @@ class RayComputationBeneathBeyond : public sympol::RayComputation {
 
 } } } // end NS
 
-#endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -134,7 +134,7 @@ cocircuit_equations_support_reps(const Matrix<Scalar>& points,
    for (Int i = 0; i < representative_interior_ridge_simplices.size(); ++i) {
       const group::SparseSimplexVector<SetType> cocircuit_equation = cocircuit_equation_of_ridge_impl(points, representative_interior_ridge_simplices[i]);
       Set<Int> support;
-      for (const auto m: cocircuit_equation)
+      for (const auto& m: cocircuit_equation)
          if (!is_zero(m.second))
             support += index_of_maximal.at(Gamma.lex_min_representative(m.first));
       if (filename.size())

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -41,27 +41,46 @@ sub new {
    $self;
 }
 
-sub drawPoint {
-    my ($self,$i) = @_;
-    my $id=$self->id;
+sub vertexStylesToString {
+    my ($self)=@_;
+    my $id = $self->id;
+    my $text = "";
+    my $number = @{$self->source->Vertices};
+    
+    my ($vcolortext,$vcolors) = $self->uniqueColors("VertexColor",new RGB("255 255 255"),$number);        
+    $text .= $vcolortext;
+    my ($bdcolortext,$bdcolors) = $self->uniqueColors("VertexBorderColor",new RGB("0 0 0"),$number);        
+    $text .= $bdcolortext;
+    $text .= "\n  % DEF VERTEXSTYLES\n";
+    my $bdthickness = $self->source->VertexBorderThickness;
+    my $labels = $self->source->VertexLabels;
+    my $label_flag = (defined($labels) && $labels !~ $Visual::hidden_re && $labels ne "") ? 1 : 0;
 
-#points stuff
-    my $point_style=$self->source->VertexStyle;
-    my $point_flag= is_code($point_style) || $point_style !~ $Visual::hidden_re ? "show" : "hide";
-    my $point_color=$self->source->VertexColor;
-    my $point_color_flag= is_code($point_color) ? "show" : "hide";
-    my $point_labels=$self->source->VertexLabels;
-	 my $alignment=$self->source->LabelAlignment;
-#---
-    my $point_thickness=$self->source->VertexThickness;
-    my $point_thickness_flag= is_code($point_thickness) ? "show" : "hide";
-
-    my $text;
-    my $option_string = ($point_color_flag eq "show") ? "pointcolor\_$id"."\_$i" : "pointcolor\_$id";
-    my $pthick = ($point_thickness_flag eq "show") ? $point_thickness->($i) : $point_thickness;
-    $text .= "  \\node[text=black, inner sep=3pt,draw=black,fill=$option_string,rectangle,rounded corners=3pt,align=".$alignment."] at (v$i\_$id) {".$point_labels->($i).'};'."\n";
-
+    if (is_code($vcolors) || is_code($bdcolors) || is_code($bdthickness)) {
+        $self->nodecode = 1; 
+        foreach my $i (0..$number-1) {
+            my $optionstring = "text=black, inner sep=2pt, rectangle, rounded corners=3pt,";
+            my $colid = is_code($vcolors) ? $vcolors->($i) : $vcolors;
+            my $bdcolid = is_code($bdcolors) ? $bdcolors->($i) : $bdcolors;
+            my $bdthick = is_code($bdthickness) ? $bdthickness->($i) : $bdthickness;
+            $optionstring .= "fill=$colid, draw=$bdcolid,";
+            $optionstring .= ", line width=$bdthick"."pt" if (defined($bdthick));
+            $text .= $self->tikzstyle("vertexstyle$id\_$i",$optionstring);
+        }
+    } else {
+        my $optionstring = "inner sep=2pt, rectangle, rounded corners=3pt,";
+        $optionstring .= "fill=$vcolors, draw=$bdcolors,";
+        $optionstring .= ", line width=$bdthick"."pt" if (defined($bdthickness));
+        $text .= $self->tikzstyle("vertexstyle$id",$optionstring);
+    }
     return $text;
+}
+
+sub drawAllPoints {
+    my ($self,$trans,$pointset) = @_;
+    my $npoints = @{$self->source->Vertices};
+    my @idlist = defined($pointset) ? @$pointset : (0..$npoints-1);
+    return $self->pointsToString(\@idlist,1);
 }
 
 sub line_break_label_length {

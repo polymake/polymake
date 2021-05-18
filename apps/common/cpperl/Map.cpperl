@@ -116,5 +116,12 @@
   {"args": ["perl::Canned<Map<Int, std::string>&>", "Int"], "include": ["polymake/Map.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
   {"args": ["perl::AnchorArg<perl::Canned<const Map<Int, std::string>&>>", "Int"], "func": "pm::perl::find_element", "include": ["polymake/Map.h", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
   {"args": ["perl::AnchorArg<perl::Canned<const Map<std::string, std::string>&>>", "std::string"], "func": "pm::perl::find_element", "include": ["polymake/Map.h", "polymake/perl/assoc.h"], "sig": "assoc_find.X8.X"},
+  {"class": "Map<Set<Int>, Rational>", "include": ["polymake/Map.h", "polymake/Rational.h", "polymake/Set.h"], "pkg": "Polymake::common::Map_A_Set__Int_I_Rational_Z"},
+  {"args": ["Map<Set<Int>, Rational>"], "include": ["polymake/Map.h", "polymake/Rational.h", "polymake/Set.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<Map<Set<Int>, Rational>&>", "perl::Canned<const Set<Int>&>"], "include": ["polymake/Map.h", "polymake/Rational.h", "polymake/Set.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
+  {"args": ["perl::Canned<const Map<Vector<Rational>, Int>&>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<long, true> const, mlist<> >&>"], "func": "exists", "include": ["polymake/IncidenceMatrix.h", "polymake/Map.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h"], "kind": "meth", "sig": "exists:CORE.M.X"},
+  {"args": ["perl::Canned<const Map<Vector<double>, Int>&>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<long, true> const, mlist<> >&>"], "func": "exists", "include": ["polymake/IncidenceMatrix.h", "polymake/Map.h", "polymake/Matrix.h", "polymake/Vector.h"], "kind": "meth", "sig": "exists:CORE.M.X"},
+  {"class": "Map<Set<Int>, Set<Set<Int>>>", "include": ["polymake/Map.h", "polymake/Set.h"], "pkg": "Polymake::common::Map_A_Set__Int_I_Set__Set__Int_Z"},
+  {"args": ["Map<Set<Int>, Set<Set<Int>>>"], "include": ["polymake/Map.h", "polymake/Set.h"], "op": "new", "sig": "new"},
  null ],
 "version": 3}

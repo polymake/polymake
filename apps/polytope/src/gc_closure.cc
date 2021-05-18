@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -101,7 +101,7 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
    //FIXME constraint, since polymake cannot compute hilbertbasis of non pointed cones
    const Int polytope_dim = p_in.give("CONE_DIM");
    if (dim != polytope_dim)
-      throw std::runtime_error("totally_dual_integral: the inequalities should descibe a full dimensional polyhedron");
+      throw std::runtime_error("totally_dual_integral: the inequalities should describe a full dimensional polyhedron");
 
    // for every vertex
    for (Int i = 0; i < vertices.rows(); ++i) {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -194,7 +194,8 @@ int parse_interrupts_op(pTHX_ const bool localize, OP** op_ptr)
       }
       value_op = newSVOP(OP_CONST, 0, new_value);
    }
-   OP* set_op = newUNOP(OP_CUSTOM, 0, Perl_scalar(aTHX_ value_op));
+   OP* set_op = newUNOP(OP_NULL, 0, Perl_scalar(aTHX_ value_op));
+   set_op->op_type = OP_CUSTOM;
    set_op->op_ppaddr = localize ? pp_local_set_handler : pp_set_handler;
    *op_ptr = set_op;
    return KEYWORD_PLUGIN_EXPR;

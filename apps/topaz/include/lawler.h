@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_LAWLER_H
-#define POLYMAKE_TOPAZ_LAWLER_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Array.h"
@@ -28,7 +27,6 @@ Array<Set<Int>> lawler(const Array<Set<Int>>& F, const Int n_vertices);
 
 } }
 
-#endif // POLYMAKE_TOPAZ_LAWLER_H
 
 // Local Variables:
 // mode:C++

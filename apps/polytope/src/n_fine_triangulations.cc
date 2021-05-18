@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -62,7 +62,7 @@ struct EdgeData {
    EdgeData(const Bitset& a1, const Bitset& a2, const Bitset& v, const bool& m) : adv1(a1), adv2(a2), vis(v), monotony(m), trivial(false) {}
 };
 
-//calculates the following informations for all edges: possible advances, upper visible points to the right of the left endpoint, monotony
+//calculates the following information for all edges: possible advances, upper visible points to the right of the left endpoint, monotony
 template <typename Scalar>
 Array<Array<EdgeData>> edge_precalc(const Array<Vector<Scalar>>& points)
 {

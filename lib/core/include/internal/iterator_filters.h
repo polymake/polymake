@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_ITERATOR_FILTERS_H
-#define POLYMAKE_INTERNAL_ITERATOR_FILTERS_H
+#pragma once
 
 #include "polymake/internal/modified_containers.h"
 #include "polymake/internal/comparators_ops.h"
@@ -602,7 +601,6 @@ using pm::make_output_predicate_selector;
 
 }
 
-#endif // POLYMAKE_INTERNAL_ITERATOR_FILTERS_H
 // Local Variables:
 // mode:C++
 // c-basic-offset:3

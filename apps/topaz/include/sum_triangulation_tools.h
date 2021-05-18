@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H
-#define POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/graph/Lattice.h"
@@ -248,7 +247,6 @@ IncidenceMatrix<> web_of_stars(const Array<Int>& poset_hom,
 
 } }
 
-#endif // POLYMAKE_TOPAZ_SUM_TRIANGULATION_TOOLS_H
 
 // Local Variables:
 // mode:C++

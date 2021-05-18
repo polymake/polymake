@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_FAN_HASSE_DIAGRAM_H
-#define POLYMAKE_FAN_HASSE_DIAGRAM_H
+#pragma once
 
 #include "polymake/PowerSet.h"
 #include "polymake/graph/Closure.h"
@@ -469,4 +468,3 @@ hasse_diagram_general(
 
 } }
 
-#endif

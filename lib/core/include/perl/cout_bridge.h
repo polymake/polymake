@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -14,9 +14,8 @@
    GNU General Public License for more details.
 --------------------------------------------------------------------------------
 */
-#ifndef POLYMAKE_PERL_COUT_BRIDGE_H
-#define POLYMAKE_PERL_COUT_BRIDGE_H
 
+#pragma once
 #include "polymake/perl/glue.h"
 #include <iostream>
 
@@ -38,7 +37,6 @@ private:
 
 } } }
 
-#endif // POLYMAKE_PERL_COUT_BRIDGE_H
 
 // Local Variables:
 // mode:C++

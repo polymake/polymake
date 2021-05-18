@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,13 +15,13 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_POLY2LP_H__
-#define __POLYMAKE_POLY2LP_H__
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/Array.h"
+#include "polymake/Set.h"
 #include <fstream>
 
 namespace polymake { namespace polytope {
@@ -60,7 +60,7 @@ void print_row(std::ostream& os,
 }
 } // end anonymous namespace
 
-template<typename Scalar=Rational>
+template<typename Scalar, bool is_lp>
 void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
 {
    const Int is_feasible=p.give("FEASIBLE");
@@ -74,16 +74,25 @@ void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
       throw std::runtime_error("input is not FEASIBLE");
 
    Array<std::string> variable_names;
-   if (lp.get_attachment("VARIABLE_NAMES") >> variable_names) {
+   if (lp.get_attachment("COORDINATE_LABELS") >> variable_names) {
       if (variable_names.size() != n_variables)
-         throw std::runtime_error("dimension mismatch between the polytope and VARIABLE_NAMES");
+         throw std::runtime_error("dimension mismatch between the polytope and COORDINATE_LABELS");
    } else {
       variable_names.resize(n_variables);
       for (Int j=0; j < n_variables; ++j)
          variable_names[j]='x' + std::to_string(j+1);
    }
 
-   Array<bool> integers = lp.get_attachment("INTEGER_VARIABLES");
+   Array<bool> integers(LO.dim());
+   if(is_lp){
+      Array<bool> tmp = lp.get_attachment("INTEGER_VARIABLES");
+      integers = tmp;
+   } else {
+      Set<Int> tmp = lp.give("INTEGER_VARIABLES");
+      for(const auto& e : tmp){
+         integers[e] = true;
+      }
+   }
 
    os << std::setprecision(16)
       << (maximize ? "MAXIMIZE\n" : "MINIMIZE\n");
@@ -113,7 +122,6 @@ void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
 
 } }
 
-#endif // __POLYMAKE_POLY2LP_H__
 
 // Local Variables:
 // mode:C++

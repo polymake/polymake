@@ -13,6 +13,7 @@
    - Perl interpreter context explicitly passed into internal functions.
    - Special handling of serialized sparse containers.
    - Function for directly encoding into an IO stream.
+   - Saving an restoring comment blocks within objects.
    - Cosmetic changes fixing C++ warnings treated as errors.
 */
 
@@ -79,6 +80,7 @@
 #define F_RELAXED        0x00001000UL
 #define F_ALLOW_UNKNOWN  0x00002000UL
 #define F_ALLOW_TAGS     0x00004000UL
+#define F_WITH_COMMENTS  0x00010000UL
 #define F_HOOK           0x00080000UL // some hooks exist, so slow-path processing
 
 #define F_PRETTY    F_INDENT | F_SPACE_BEFORE | F_SPACE_AFTER
@@ -420,6 +422,7 @@ typedef struct
   UV limit;   // escape character values >= this value when encoding
 } enc_t;
 
+static const MGVTBL attached_comments_vtbl = { 0, 0, 0, 0, 0 };
 static const MGVTBL format_flags_vtbl = { 0, 0, 0, 0, 0 };
 
 INLINE U32
@@ -590,7 +593,7 @@ encode_str (enc_t *enc, const char *str, STRLEN len, int is_utf8)
 }
 
 INLINE void
-encode_indent (enc_t *enc, U32 format_flags)
+encode_indent (enc_t *enc, const U32 format_flags)
 {
   if (format_flags & F_INDENT)
     {
@@ -610,7 +613,7 @@ encode_space (enc_t *enc)
 }
 
 INLINE void
-encode_nl (enc_t *enc, U32 format_flags)
+encode_nl (enc_t *enc, const U32 format_flags)
 {
   if (format_flags & F_INDENT)
     {
@@ -620,7 +623,7 @@ encode_nl (enc_t *enc, U32 format_flags)
 }
 
 INLINE void
-encode_comma (enc_t *enc, U32 format_flags)
+encode_comma (enc_t *enc, const U32 format_flags)
 {
   encode_ch (enc, ',');
 
@@ -679,7 +682,7 @@ encode_av (enc_t *enc, AV *av)
 }
 
 INLINE void
-encode_colon (enc_t* enc, U32 format_flags)
+encode_colon (enc_t* enc, const U32 format_flags)
 {
   if (format_flags & F_SPACE_BEFORE) encode_space (enc);
   encode_ch (enc, ':');
@@ -687,8 +690,50 @@ encode_colon (enc_t* enc, U32 format_flags)
 }
 
 static void
-encode_hv_element (pTHX_ enc_t *enc, HV* hv, HE *he, const U32 format_flags)
+encode_hv_element (pTHX_ enc_t *enc, HV* hv, HE *he, const U32 format_flags, U32& between_elems)
 {
+  SV* val_sv = expect_false(SvMAGICAL (hv)) ? hv_iterval (hv, he) : HeVAL(he);
+
+  if (format_flags & F_WITH_COMMENTS) {
+    bool emitted_comments = false;
+
+    if (SvTYPE(val_sv) >= SVt_PVMG) {
+      if (MAGIC* mg = mg_findext(val_sv, PERL_MAGIC_ext, &attached_comments_vtbl)) {
+        SV* comments_sv = mg->mg_obj;
+        AV* comments_av;
+        if (comments_sv && SvROK(comments_sv) && SvTYPE(SvRV(comments_sv)) == SVt_PVAV &&
+            (comments_av = (AV*)SvRV(comments_sv), AvFILLp(comments_av) >= 0)) {
+
+          if (enc->indent == 1) {
+            // separate top-level commented entries with extra empty lines
+            if (between_elems)
+              encode_nl(enc, F_INDENT);
+            between_elems = 1;
+            emitted_comments = true;
+          }
+
+          for (SV **line_svp = AvARRAY(comments_av), **line_lastp = line_svp + AvFILLp(comments_av);
+               line_svp <= line_lastp;  ++line_svp) {
+            encode_indent(enc, format_flags);
+            SV* line_sv = *line_svp;
+            STRLEN comment_len;
+            const char* comment = SvPV(line_sv, comment_len);
+            if (comment[comment_len - 1] == '\n') --comment_len;
+            if (comment[comment_len - 1] == '\r') --comment_len;
+            encode_str(enc, comment, comment_len, SvUTF8(line_sv));
+            encode_nl(enc, F_INDENT);
+          }
+        }
+      }
+    }
+
+    if (!emitted_comments) {
+      if (between_elems == 1)
+        encode_nl(enc, F_INDENT);
+      between_elems = 2;
+    }
+  }
+
   encode_indent(enc, format_flags);
   encode_ch (enc, '"');
 
@@ -708,7 +753,7 @@ encode_hv_element (pTHX_ enc_t *enc, HV* hv, HE *he, const U32 format_flags)
 
   encode_ch (enc, '"');
   encode_colon(enc, format_flags);
-  encode_sv (enc, expect_false (SvMAGICAL (hv)) ? hv_iterval (hv, he) : HeVAL (he));
+  encode_sv (enc, val_sv);
 }
 
 // compare hash entries, used when all keys are bytestrings
@@ -731,7 +776,7 @@ he_cmp_fast (const void *a_, const void *b_)
 
 // compare hash entries, used when some keys are sv's or utf-x
 #ifdef PERL_IMPLICIT_CONTEXT
-# ifdef __APPLE__
+# if defined(__APPLE__) || defined(__FreeBSD__)
 static int
 he_cmp_slow_r (void* pi, const void* a, const void* b)
 {
@@ -765,12 +810,13 @@ encode_hv (enc_t *enc, HV *hv)
 
   encode_ch (enc, '{');
   const U32 format_flags = get_format_flags(aTHX_ enc, (SV*)hv);
+  U32 between_elems = 0;
 
   // for canonical output we have to sort by keys first
   // actually, this is mostly due to the stupid so-called
   // security workaround added somewhere in 5.8.x
   // that randomises hash orderings
-  if ((format_flags & F_CANONICAL) && !SvRMAGICAL (hv))
+  if ((format_flags & F_CANONICAL) && (!SvRMAGICAL(hv) || pm::perl::glue::get_monitored_magic((SV*)hv)))
     {
       SSize_t count = hv_iterinit (hv);
 
@@ -825,7 +871,7 @@ encode_hv (enc_t *enc, HV *hv)
               SAVEVPTR (PL_curcop);
               PL_curcop = &cop;
 #ifdef PERL_IMPLICIT_CONTEXT
-# ifdef __APPLE__
+# if defined(__APPLE__) || defined(__FreeBSD__)
               qsort_r (hes, count, sizeof (HE *), aTHX_ he_cmp_slow_r);
 # else
               qsort_r (hes, count, sizeof (HE *), he_cmp_slow_r, aTHX);
@@ -839,10 +885,10 @@ encode_hv (enc_t *enc, HV *hv)
 
           encode_nl(enc, format_flags);
           ++enc->indent;
-          encode_hv_element(aTHX_ enc, hv, hes[--count], format_flags);
+          encode_hv_element(aTHX_ enc, hv, hes[--count], format_flags, between_elems);
           while (count) {
             encode_comma(enc, format_flags);
-            encode_hv_element(aTHX_ enc, hv, hes[--count], format_flags);
+            encode_hv_element(aTHX_ enc, hv, hes[--count], format_flags, between_elems);
           }
 
           encode_nl(enc, format_flags);
@@ -857,10 +903,10 @@ encode_hv (enc_t *enc, HV *hv)
           {
             encode_nl(enc, format_flags);
             ++enc->indent;
-            encode_hv_element(aTHX_ enc, hv, he, format_flags);
+            encode_hv_element(aTHX_ enc, hv, he, format_flags, between_elems);
             while ((he = hv_iternext (hv))) {
               encode_comma(enc, format_flags);
-              encode_hv_element(aTHX_ enc, hv, he, format_flags);
+              encode_hv_element(aTHX_ enc, hv, he, format_flags, between_elems);
             }
 
             encode_nl(enc, format_flags);
@@ -1088,6 +1134,9 @@ encode_json (pTHX_ SV *scalar, JSON *json, PerlIO* ofp = nullptr)
 {
   enc_t enc;
 
+  if ((json->flags & (F_WITH_COMMENTS | F_INDENT)) == F_WITH_COMMENTS)
+    croak("comments can't be printed out when indentation is switched off");
+
   if (!(json->flags & F_ALLOW_NONREF) && json_nonref (aTHX_ scalar))
     croak ("hash- or arrayref expected (not a simple scalar, use allow_nonref to allow this)");
 
@@ -1138,6 +1187,9 @@ typedef struct
   I32 maxdepth; // recursion depth limit
 } dec_t;
 
+static SV *
+decode_str (dec_t *dec, const char delim = '"');
+
 INLINE void
 decode_comment (dec_t *dec)
 {
@@ -1147,18 +1199,20 @@ decode_comment (dec_t *dec)
     ++dec->cur;
 }
 
-INLINE void
-decode_ws (dec_t *dec)
+INLINE
+void decode_ws (dec_t *dec)
 {
+  AV* comments_av = nullptr;
+  const char* last_comment_end = nullptr;
   for (;;)
     {
       char ch = *dec->cur;
 
-      if (ch > 0x20)
+      if (ch > ' ')
         {
           if (expect_false (ch == '#'))
             {
-              if (dec->json.flags & F_RELAXED)
+              if (dec->json.flags & (F_RELAXED | F_WITH_COMMENTS))
                 decode_comment (dec);
               else
                 break;
@@ -1166,11 +1220,87 @@ decode_ws (dec_t *dec)
           else
             break;
         }
-      else if (ch != 0x20 && ch != 0x0a && ch != 0x0d && ch != 0x09)
+      else if (ch != ' ' && ch != '\n' && ch != '\r' && ch != '\t')
         break; // parse error, but let higher level handle it, gives better error messages
 
       ++dec->cur;
     }
+}
+
+static AV*
+decode_ws_with_comments(pTHX_ dec_t *dec)
+{
+  AV* comments_av = nullptr;
+  const char* last_comment_end = nullptr;
+  for (;;)
+    {
+      char ch = *dec->cur;
+
+      if (ch > ' ')
+        {
+          if (expect_false (ch == '#'))
+            {
+              if (dec->json.flags & F_WITH_COMMENTS) {
+                // only collect full-line comments, not the trailing ones
+                // note: we never call this at the beginning of the input stream, only within an object,
+                // therefore it's safe to look behind as long as we see white spaces
+                const char* eol = dec->cur;
+                do
+                  --eol;
+                while (*eol == ' ' || *eol == '\t');
+
+                // the usual EOL madness
+                if (*eol == '\n' || *eol == '\r') {
+
+                  // only collect contiguous comment blocks
+                  if (eol != last_comment_end && comments_av) {
+                    av_clear(comments_av);
+                  }
+
+                  SV* comment_line = decode_str(dec, *eol);
+                  last_comment_end = dec->cur - 1;
+
+                  if (comment_line) {
+                    sv_catpvn(comment_line, eol, 1);
+                    if (!comments_av) comments_av = newAV();
+                    av_push(comments_av, comment_line);
+                  }
+                } else {
+                  decode_comment(dec);
+                }
+              } else {
+                decode_comment(dec);
+              }
+            }
+          else
+            break;
+        }
+      else if (ch != ' ' && ch != '\n' && ch != '\r' && ch != '\t')
+        break; // parse error, but let higher level handle it, gives better error messages
+
+      ++dec->cur;
+    }
+
+  if (comments_av) {
+    // only keep non-empty comment blocks
+    for (SV **line_svp = AvARRAY(comments_av), **line_lastp = line_svp + AvFILLp(comments_av);
+         line_svp <= line_lastp;  ++line_svp) {
+      if (strspn(SvPVX(*line_svp), "# \t\n\r") < SvCUR(*line_svp))
+        return comments_av;
+    }
+    SvREFCNT_dec(comments_av);
+  }
+
+  return nullptr;
+}
+
+static void
+attach_comments(pTHX_ SV* val, AV* &comments_av)
+{
+  SV* comments_ref = newRV_noinc((SV*)comments_av);
+  sv_magicext(val, comments_ref, PERL_MAGIC_ext, &attached_comments_vtbl, nullptr, 0);
+  SvREFCNT_dec(comments_ref);  // compensate for inc() within sv_magicext
+  comments_av = nullptr;
 }
 
 #define ERR(reason) SB dec->err = reason; goto fail; SE
@@ -1211,7 +1341,7 @@ fail:
 }
 
 static SV *
-decode_str (dec_t *dec)
+decode_str (dec_t *dec, const char delim)
 {
   dTHX;
   SV *sv = 0;
@@ -1227,7 +1357,7 @@ decode_str (dec_t *dec)
         {
           unsigned char ch = *(unsigned char *)dec_cur++;
 
-          if (expect_false (ch == '"'))
+          if (expect_false (ch == delim))
             {
               --dec_cur;
               break;
@@ -1345,7 +1475,7 @@ decode_str (dec_t *dec)
           sv = newSVpvn (buf, len);
       }
     }
-  while (*dec_cur != '"');
+  while (*dec_cur != delim);
 
   ++dec_cur;
 
@@ -1572,10 +1702,10 @@ decode_hv (dec_t *dec)
   SV *sv;
   HV *hv = newHV ();
   AV* sparse_dict = nullptr;
+  AV* comments_av = nullptr;
 
   DEC_INC_DEPTH;
-  decode_ws (dec);
-
+  comments_av = decode_ws_with_comments(aTHX_ dec);
 
   if (*dec->cur == '}')
     ++dec->cur;
@@ -1620,6 +1750,8 @@ decode_hv (dec_t *dec)
                   hv_store_ent (hv, key, value, 0);
                   SvREFCNT_dec (key);
 
+                  if (comments_av) attach_comments(aTHX_ value, comments_av);
+
                   break;
                 }
               else if (*p == '"')
@@ -1644,6 +1776,8 @@ decode_hv (dec_t *dec)
 
                   hv_store (hv, key, len, value, 0);
 
+                  if (comments_av) attach_comments(aTHX_ value, comments_av);
+
                   break;
                 }
 
@@ -1664,7 +1798,7 @@ decode_hv (dec_t *dec)
 
         ++dec->cur;
 
-        decode_ws (dec);
+        comments_av = decode_ws_with_comments(aTHX_ dec);
 
         if (*dec->cur == '}' && dec->json.flags & F_RELAXED)
           {
@@ -1674,6 +1808,8 @@ decode_hv (dec_t *dec)
       }
 
   DEC_DEC_DEPTH;
+
+  SvREFCNT_dec(comments_av);
 
   sv = newRV_noinc ((SV *)hv);
 
@@ -1749,6 +1885,7 @@ decode_hv (dec_t *dec)
 
 fail:
   SvREFCNT_dec (hv);
+  SvREFCNT_dec(comments_av);
   DEC_DEC_DEPTH;
   return 0;
 }
@@ -1800,10 +1937,10 @@ decode_tag (dec_t *dec)
       ERR ("cannot decode perl-object (package does not exist)");
 
     GV *method = gv_fetchmethod_autoload (stash, "THAW", 0);
-    
+
     if (!method)
       ERR ("cannot decode perl-object (package does not have a THAW method)");
-    
+
     dSP;
 
     ENTER; SAVETMPS;
@@ -2230,6 +2367,7 @@ void ascii (JSON *self, int enable = 1)
         relaxed         = F_RELAXED
         allow_unknown   = F_ALLOW_UNKNOWN
         allow_tags      = F_ALLOW_TAGS
+        with_comments   = F_WITH_COMMENTS
 	PPCODE:
 {
         if (enable)
@@ -2256,6 +2394,7 @@ void get_ascii (JSON *self)
         get_relaxed         = F_RELAXED
         get_allow_unknown   = F_ALLOW_UNKNOWN
         get_allow_tags      = F_ALLOW_TAGS
+        get_with_comments   = F_WITH_COMMENTS
 	PPCODE:
         XPUSHs (boolSV (self->flags & ix));
 
@@ -2514,6 +2653,26 @@ PPCODE:
   } else {
     croak_xs_usage(cv, "\\@array || \\%hash, boolean");
   }
+}
+
+void get_attached_comments(SV* val)
+PPCODE:
+{
+  if (SvTYPE(val) >= SVt_PVMG) {
+    MAGIC* mg = mg_findext(val, PERL_MAGIC_ext, &attached_comments_vtbl);
+    if (mg && mg->mg_obj && SvROK(mg->mg_obj)) {
+      SV* ret = sv_mortalcopy(mg->mg_obj);
+      PUSHs(ret);
+    }
+  }
+}
+
+void attach_comments(SV* val, SV* comments_ref)
+PPCODE:
+{
+  if (!SvROK(comments_ref) || SvTYPE(SvRV(comments_ref)) != SVt_PVAV)
+    croak_xs_usage(cv, "$val, \\@array");
+  sv_magicext(val, comments_ref, PERL_MAGIC_ext, &attached_comments_vtbl, nullptr, 0);
 }
 
 =pod

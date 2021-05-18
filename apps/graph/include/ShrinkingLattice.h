@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_SHRINKING_LATTICE_H
-#define POLYMAKE_GRAPH_SHRINKING_LATTICE_H
+#pragma once
 
 #include "polymake/graph/Lattice.h"
 #include <algorithm>
@@ -89,4 +88,3 @@ public:
 
 } }
 
-#endif

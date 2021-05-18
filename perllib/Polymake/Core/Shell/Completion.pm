@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -366,7 +366,7 @@ my %completers = (
          } elsif (!defined($app_name) && $expr =~ /^\w*$/o) {
             push @proposals, matching_app_prefixes($ctx->shell, $app, $expr);
          }
-         $ctx->shell->completion_offset = $expr =~ /\b\w+$/o ? length($&) : length($expr) // 0;
+         $ctx->shell->completion_offset = $expr =~ /\b\w+$/o ? length($&) : 0;
          @proposals
       },
       help => sub {
@@ -595,20 +595,19 @@ my @line_completers = (
       'qualified variable name',
 
       qr{ (?: $statement_start_re (?'cmd' local | (?:re)?set_custom) $args_start_re)?
-          (?'type' (?'scalar'\$)|[\@%])
+          (?'sigil' $var_sigil_re)
           (?: (?'varname' $qual_id_re(?'qual'::)?)
               (?('scalar') (?('qual') | \s*\{\s* (?'keyquote' ['"])?(?'key' [\w-]*) )?) )? $}xo,
 
       sub {
          my ($shell) = @_;
-         my ($cmd, $type, $varname, $keyquote, $key) = @+{qw(cmd type varname keyquote key)};
+         my ($cmd, $sigil, $varname, $keyquote, $key) = @+{qw(cmd sigil varname keyquote key)};
 
          if (defined($key)) {
             # completing a hash key
-            my $i = 0;
-            if (my @custom_maps = grep { defined } map { $_->custom->find("%$varname", ++$i >= 3) }
-                                       $User::application, $Prefs, @{$User::application->linear_imported}) {
-               $shell->completion_proposals = [ sorted_uniq(sort( grep { index($_, $key)==0 } map { keys %{$_->default_value} } @custom_maps )) ];
+            if (my @custom_hash_topics = $User::application->help->find("custom", "%$varname")) {
+               $shell->completion_proposals = [ sorted_uniq(sort( grep { index($_, $key)==0 } map { $_->name }
+                                                                  map { @{$_->annex->{keys} // []} } @custom_hash_topics )) ];
             } elsif (defined(my $user_hash = find_user_variable('%', $varname))) {
                $shell->completion_proposals = [ sort( grep { index($_, $key)==0 } keys %$user_hash ) ];
             } else {
@@ -621,27 +620,21 @@ my @line_completers = (
 
          } else {
             # completing variable name
-            my $i = 0;
-            my @proposals = map { $_->custom->list_completions($type, $varname, ++$i >= 3) }
-                                $User::application, $Prefs, @{$User::application->linear_imported};
+            my @custom_proposals = grep { $sigil eq '$' or $sigil eq '@' ? substr($_,0,1) ne '$' : substr($_,0,1) eq '%' }
+                                   $User::application->help->list_completions("custom", ".$varname");
+            my @proposals = map { s/^./$sigil/r } @custom_proposals;
             if ($cmd eq "" || $cmd eq "local"
                   and
                 !@proposals || $varname !~ /::/) {
-               push @proposals, complete_user_variable_name($type, $varname);
+               push @proposals, complete_user_variable_name($sigil, $varname);
             }
             $shell->completion_proposals = [ sort(@proposals) ];
-            $shell->completion_offset = length($varname);
+            $shell->completion_offset = length($sigil) + length($varname);
             if ($cmd && @proposals == 1 && substr($proposals[0], -1) ne ":") {
-               $shell->completion_append_character = $cmd eq "reset_custom" ? ";" : "=";
-               if ($type eq '$') {
-                  foreach $type (qw(% @)) {
-                     $i = 0;
-                     if (grep { defined } map { $_->custom->find($type.$proposals[0], ++$i >= 3) }
-                              $User::application, $Prefs, @{$User::application->linear_imported}) {
-                        $shell->completion_append_character = $type eq '%' ? "{" : "[";
-                        last;
-                     }
-                  }
+               if ($sigil eq '$' && @custom_proposals == 1 && substr($custom_proposals[0], 0, 1) ne '$') {
+                  $shell->completion_append_character = substr($custom_proposals[0], 0, 1) eq '%' ? "{" : "[";
+               } else {
+                  $shell->completion_append_character = $cmd eq "reset_custom" ? ";" : "=";
                }
             }
          }
@@ -651,8 +644,8 @@ my @line_completers = (
          my ($start_pos) = capturing_group_boundaries('args_start');
          $start_pos //= $-[0];
          my $varname = $+{varname};
-         my $type = defined($+{key}) ? '%' : $+{type};
-         my @proposals = grep { defined } $User::application->help->find("custom", qr{\Q$type$varname\E});
+         my $sigil = defined($+{key}) ? '%' : $+{sigil};
+         my @proposals = grep { defined } $User::application->help->find("custom", qr{\Q$sigil$varname\E});
          ($start_pos, @proposals)
        }
    ),
@@ -1464,14 +1457,14 @@ sub try_param_completer {
 #
 
 sub complete_variable_name_in_pkg {
-   my ($pkg, $type, $prefix) = @_;
+   my ($pkg, $sigil, $prefix) = @_;
    my @proposals;
    while (my ($name, $glob) = each %$pkg) {
       if (length($prefix) ? index($name, $prefix) == 0 : $name !~ /^\./) {
-         if (defined_scalar($glob) && $type eq '$' or
-             defined(*{$glob}{ARRAY}) && ($type eq '@' || $type eq '$') or
-             defined(*{$glob}{HASH}) && ($type eq '%' || $type eq '$' || $name =~ /::$/)) {
-            push @proposals, $name;
+         if (defined_scalar($glob) && $sigil eq '$' or
+             defined(*{$glob}{ARRAY}) && ($sigil eq '@' || $sigil eq '$') or
+             defined(*{$glob}{HASH}) && ($sigil eq '%' || $sigil eq '$' || $name =~ /::$/)) {
+            push @proposals, $sigil.$name;
          }
       }
    }
@@ -1479,13 +1472,13 @@ sub complete_variable_name_in_pkg {
 }
 
 sub complete_user_variable_name {
-   my ($type, $prefix) = @_;
+   my ($sigil, $prefix) = @_;
    if ((my $pkg_end = rindex($prefix,"::")) > 0) {
       my $pkg = substr($prefix, 0, $pkg_end);
       my $symtab = eval { get_symtab("Polymake::User::$pkg") } or return;
-      map { "$pkg\::$_" } complete_variable_name_in_pkg($symtab, $type, substr($prefix, $pkg_end+2));
+      map { "$pkg\::$_" } complete_variable_name_in_pkg($symtab, $sigil, substr($prefix, $pkg_end+2));
    } else {
-      complete_variable_name_in_pkg(\%Polymake::User::,@_);
+      complete_variable_name_in_pkg(\%Polymake::User::, @_);
    }
 }
 

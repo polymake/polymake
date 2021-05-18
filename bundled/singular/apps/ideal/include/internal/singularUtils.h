@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_IDEAL_INTERNAL_SINGULAR_UTILS_H
-#define POLYMAKE_IDEAL_INTERNAL_SINGULAR_UTILS_H
+#pragma once
 
 // Singular includes
 #include "polymake/ideal/internal/singularInclude.h"
@@ -47,4 +46,3 @@ inline int safe_cast(Int x)
 } // end namespace polymake
 
 
-#endif

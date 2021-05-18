@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Integer.h
     @brief Implementation of pm::Integer class
 */
 
-#ifndef POLYMAKE_INTEGER_H
-#define POLYMAKE_INTEGER_H
 
 #include "polymake/internal/operations.h"
 #include "polymake/internal/comparators.h"
@@ -1989,7 +1988,6 @@ namespace polymake {
    using pm::Integer;
 }
 
-#endif // POLYMAKE_INTEGER_H
 
 // Local Variables:
 // mode:C++

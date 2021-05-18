@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,8 +23,7 @@ namespace pm { namespace perl {
 namespace {
 
 glue::cached_cv load_data_cv{ "Polymake::User::load_data" },
-                save_data_cv{ "Polymake::User::save_data" },
-                get_custom_cv{ "Polymake::Core::Application::get_custom_var" };
+                save_data_cv{ "Polymake::User::save_data" };
 }
 
 PropertyValue::PropertyValue(const PropertyValue& x)
@@ -62,11 +61,13 @@ void PropertyValue::save_data_impl(const std::string& filename, const std::strin
 PropertyValue get_custom(const AnyString& name, const AnyString& key)
 {
    dTHX;
-   PmStartFuncall(2);
+   PmStartFuncall(3);
+   SV* const app = glue::get_current_application(aTHX);
+   PUSHs(app);
    mPUSHp(name.ptr, name.len);
    if (key) mPUSHp(key.ptr, key.len);
    PUTBACK;
-   return PropertyValue(glue::call_func_scalar(aTHX_ get_custom_cv), ValueFlags::allow_undef);
+   return PropertyValue(glue::call_method_scalar(aTHX_ "get_custom_var"), ValueFlags::allow_undef);
 }
 
 FunCall::FunCall(bool is_method, ValueFlags val_flags_, const AnyString& name, Int reserve)

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MATROID_CHECK_AXIOMS_H
-#define POLYMAKE_MATROID_CHECK_AXIOMS_H
+#pragma once
 
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
@@ -121,7 +120,6 @@ bool check_flat_axiom_impl(const Array<SetType>& F, bool verbose = false)
 
 } }
 
-#endif // POLYMAKE_MATROID_CHECK_AXIOMS_H
 
 // Local Variables:
 // mode:C++

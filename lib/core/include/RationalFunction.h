@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_RATIONAL_FUNCTION_H
-#define POLYMAKE_RATIONAL_FUNCTION_H
+#pragma once
 
 #include "polymake/Polynomial.h"
 
@@ -756,7 +755,6 @@ namespace std {
    void swap(pm::RationalFunction<Coefficient,Exponent>& x1, pm::RationalFunction<Coefficient,Exponent>& x2) { x1.swap(x2); }
 }
 
-#endif // POLYMAKE_RATIONAL_FUNCTION_H
 
 // Local Variables:
 // mode:C++

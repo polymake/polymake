@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2020
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2021
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -14,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_CONTAINS_H
-#define POLYMAKE_CONTAINS_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -453,4 +453,3 @@ bool polytope_contained_in_ball(BigObject p_in, Vector<Scalar> c, Scalar r)
 
 
 }}
-#endif // POLYMAKE_CONTAINS_H

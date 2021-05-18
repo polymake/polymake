@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_CONTAINER_UNION_H
-#define POLYMAKE_CONTAINER_UNION_H
+#pragma once
 
 #include "polymake/internal/type_union.h"
 #include "polymake/internal/iterators.h"
@@ -1118,7 +1117,6 @@ using pm::ContainerUnion;
 
 }
 
-#endif // POLYMAKE_CONTAINER_UNION_H
 
 // Local Variables:
 // mode:C++

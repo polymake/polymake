@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef PROJECTION_HEADER
-#define PROJECTION_HEADER
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Rational.h"
@@ -102,4 +101,3 @@ void process_rays(BigObject& p_in, Int first_coord, const Array<Int>& indices, O
 } // end namespace polytope
 } // end namespace polymake
 
-#endif

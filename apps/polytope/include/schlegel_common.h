@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_SCHLEGEL_COMMON_H
-#define POLYMAKE_POLYTOPE_SCHLEGEL_COMMON_H
+#pragma once
 
 #include "polymake/GenericMatrix.h"
 #include "polymake/GenericVector.h"
@@ -70,7 +69,6 @@ E schlegel_nearest_neighbor_crossing (const GenericMatrix<FMatrix,E>& F,
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_SCHLEGEL_COMMON_H
 
 // Local Variables:
 // mode:C++

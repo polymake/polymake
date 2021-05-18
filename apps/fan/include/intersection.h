@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_INTERSECTION_H
-#define POLYMAKE_POLYTOPE_INTERSECTION_H
+#pragma once
 
 #include "polymake/linalg.h"
 #include "polymake/Vector.h"
@@ -89,7 +88,6 @@ rays_of_intersection(const GenericMatrix<TMatrix, Rational>& V,
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_INTERSECTION_H
 
 // Local Variables:
 // mode:C++

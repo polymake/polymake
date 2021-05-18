@@ -18,7 +18,7 @@
 #  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
 #
 #  ---
-#  Copyright (c) 2016-2020
+#  Copyright (c) 2016-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -70,7 +70,7 @@ object RationalCurve {
    # A linear combination can be created using rational numbers, "+","+" and "-" in the obvious way, 
    # e.g. "2*(1,2,5) + 1*(3,4,7) - 2(1,2) (The "*" is optional)
    # Of course, each set should contain at least two elements. If you don't specify N_LEAVES, it is
-   # set to be the largest leaf index occuring in the sets.
+   # set to be the largest leaf index occurring in the sets.
    # Partitions needn't be irredundant and coefficients can be any rational number. If the resulting 
    # element is not in the moduli space, an error is thrown.
    property INPUT_STRING : String;
@@ -169,7 +169,7 @@ object RationalCurve {
       $this->INPUT_COEFFS = new Vector<Rational>(\@input_coeffs);
    }
 
-   # If no leaf number is given, it is assumed to be the maximal element occuring in the sets
+   # If no leaf number is given, it is assumed to be the maximal element occurring in the sets
    rule N_LEAVES : INPUT_SETS {
       $this->N_LEAVES = $this->INPUT_SETS->cols-1;
    }

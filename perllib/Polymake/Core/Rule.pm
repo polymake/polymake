@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -281,6 +281,15 @@ sub new {
    my %seen;
    parse_input($self, $parts[1], \%seen);
    parse_output($self, $parts[0], \%seen);
+
+   # to print warnings for plain subobjects as rule-targets
+   #   if ($enable_plausibility_checks) {
+   #      foreach my $output (@{$self->output}) {
+   #         if (($output->[-1]->flags & (Property::Flags::is_subobject | Property::Flags::is_subobject_array)) == Property::Flags::is_subobject) {
+   #            warn_print( "rule target ", Property::print_path($output), " is a subobject which is deprecated; at ", $self->source_location );
+   #         }
+   #      }
+   #   }
 
    if ($enable_plausibility_checks && !defined($self->code)) {
       if (@{$self->input}>1 || @{$self->output}>1) {

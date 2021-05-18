@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_FLINTPOLYNOMIAL_H
-#define POLYMAKE_FLINTPOLYNOMIAL_H
+#pragma once
 
 #ifndef POLYMAKE_WITH_FLINT
 
@@ -758,4 +757,3 @@ namespace polymake {
 
 #endif
 
-#endif

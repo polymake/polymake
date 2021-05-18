@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -94,7 +94,7 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# "
                   "# The vertices in the selected facets are identified with each other according to their order in the facet\n"
                   "# (that is, in icreasing index order). The glueing facet iteself is not included in the connected sum.\n"
-                  "#  The option //permutation// allows to get an alternative identification. It should specify a\n"
+                  "#  The option //permutation// allows one to get an alternative identification. It should specify a\n"
                   "# permutation of the vertices of the second facet.\n"
                   "# "
                   "# The vertices of the new complex get the original labels with ''_1'' or ''_2'' appended, according to the input complex\n"

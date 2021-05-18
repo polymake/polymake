@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -263,7 +263,7 @@ sub import {
                       }
                       my $val = "\$kw[2*$index+1]";
                       if ($code eq '@') {
-                         $val = "(ref($val) eq 'ARRAY' ? $val : [$val])";
+                         $val = "(CORE::ref($val) eq 'ARRAY' ? $val : [$val])";
                       }
                       if ($key_in_expr) {
                          if (defined($merge_expr = delete $options{merge})) {
@@ -278,7 +278,7 @@ sub import {
                    }
                 }
                 if ($add_to_keys <= 0 && defined($set_filter = delete $options{set_filter})) {
-                   unless (is_string($set_filter) || ref($set_filter) eq "CODE") {
+                   unless (is_string($set_filter) || is_code($set_filter)) {
                       croak "set_filter option for the field $name must refer to a sub or a method name";
                    }
                 }
@@ -397,15 +397,15 @@ _#_0_#_
       if ($keyed_args) {
          $proc_keys=define_function($pkg, $proc_kw_name,
             sub {
-               my ($args, $kw, $post_merge, $trailing_list)=@_;
-               $#$kw=$cnt-1;
-               for (my $i=$max_arg; $i<=$#$args; ++$i) {
-                  my $field=$args->[$i];
+               my ($args, $kw, $post_merge, $trailing_list) = @_;
+               $#$kw = $cnt-1;
+               for (my $i = $max_arg; $i <= $#$args; ++$i) {
+                  my $field = $args->[$i];
                   if (is_string($field) && defined (my $k=$keys{$field}) && $i<$#$args) {
                      $kw->[2*$k]=$field; $kw->[2*$k+1]=$args->[++$i];
-                  } elsif (ref($field) eq "HASH") {
-                     while (my ($kn, $kv)=each %{$field}) {
-                        if (defined (my $k=$keys{$kn})) {
+                  } elsif (is_hash($field)) {
+                     while (my ($kn, $kv) = each %{$field}) {
+                        if (defined(my $k = $keys{$kn})) {
                            if (defined($post_merge) && defined($merger->[$k]) && defined($kw->[2*$k])) {
                               push @$post_merge, $k, $kn, $kv;
                            } else {
@@ -413,7 +413,7 @@ _#_0_#_
                            }
                         } else {
                            local $Carp::CarpLevel=1;
-                           my $accessor=UNIVERSAL::can($pkg,$kn);
+                           my $accessor = UNIVERSAL::can($pkg,$kn);
                            if (defined($accessor) && get_field_index($accessor)>=0) {
                               croak "$pkg\::$msg_constr_name - member $kn can't be initialized with a keyword argument";
                            } else {
@@ -421,17 +421,17 @@ _#_0_#_
                            }
                         }
                      }
-                  } elsif (defined $trailing_list) {
-                     @$trailing_list=splice @$args, $i;
+                  } elsif (defined($trailing_list)) {
+                     @$trailing_list = splice @$args, $i;
                      last;
                   } else {
-                     local $Carp::CarpLevel=1;
+                     local $Carp::CarpLevel = 1;
                      my $accessor;
                      croak( "$pkg\::$msg_constr_name - ", 
                             $i==$#$args
                             ? "keyword $field without value" :
                             is_string($field)
-                            ? ( defined($accessor=UNIVERSAL::can($pkg,$field)) && get_field_index($accessor)>=0
+                            ? ( defined($accessor = UNIVERSAL::can($pkg,$field)) && get_field_index($accessor)>=0
                                 ? "member $field can't be initialized with a keyword argument"
                                 : "unknown keyword $field" )
                             : "expected keyword or HASH, got ".(ref($field) || "'$field'") );
@@ -467,7 +467,7 @@ _#_2_#_
       if ($check_arg) {
          $new_text .= <<"_#_3_#_";
    if ($check_arg) {
-      Polymake::croak( "usage: $msg_constr_name ", ref(\$_[0]) || \$_[0], '($signature)' );
+      Polymake::croak( "usage: $msg_constr_name ", CORE::ref(\$_[0]) || \$_[0], '($signature)' );
    }
 _#_3_#_
       }
@@ -495,7 +495,6 @@ _#_6_#_
       $new_text .= <<"_#_7_#_";
 }
 _#_7_#_
-
       eval $new_text;
       if ($@) {
          my @lines = (undef, split /(?:\#\#\#<\d+>)?\n/, $new_text);      # leading undef makes the line numbers = array index
@@ -505,19 +504,19 @@ _#_7_#_
       if ($merger_changed) {
          define_function($symtab, "merge",
             sub : method {
-               my $this=shift;
-               for (my $i=0; $i<=$#_; ++$i) {
-                  my $field=$_[$i];
-                  if (is_string($field) && defined (my $k=$keys{$field}) && $i<$#_) {
+               my $this = shift;
+               for (my $i = 0; $i <= $#_; ++$i) {
+                  my $field = $_[$i];
+                  if (is_string($field) && defined(my $k = $keys{$field}) && $i < $#_) {
                      if (defined($merger->[$k])) {
-                        $this->[$k]=$merger->[$k]->($this,$field,$_[++$i],$this->[$k]);
+                        $this->[$k] = $merger->[$k]->($this, $field, $_[++$i], $this->[$k]);
                      } else {
-                        $this->$field=$_[++$i];
+                        $this->$field = $_[++$i];
                      }
-                  } elsif (ref($field) eq "HASH") {
+                  } elsif (is_hash($field)) {
                      $this->merge(%$field);
                   } else {
-                     local $Carp::CarpLevel=1;
+                     local $Carp::CarpLevel = 1;
                      croak( "$pkg\::merge - ",
                             $i==$#_ ? "keyword $field without value" :
                             is_string($field) ? "unknown keyword $field" :
@@ -560,7 +559,7 @@ sub _new { &{UNIVERSAL::can($_[0], "__new") // &complain } }
 sub merge_options {
    my $hash=shift;
    for (my $i=0; $i<=$#_; ++$i) {
-      if (ref($_[$i]) eq "HASH") {
+      if (is_hash($_[$i])) {
          push %$hash, %{$_[$i]};
       } else {
          $hash->{$_[$i]}=$_[$i+1];

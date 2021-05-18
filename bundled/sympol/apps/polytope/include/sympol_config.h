@@ -1,5 +1,4 @@
-#ifndef POLYMAKE_SYMPOL_CONFIG_H
-#define POLYMAKE_SYMPOL_CONFIG_H
+#pragma once
 #include "sympol/config.h"
 
 // we want to use plain sympol without any dependencies
@@ -9,4 +8,3 @@
 #undef HAVE_BLISS
 #undef HAVE_NAUTY
 
-#endif

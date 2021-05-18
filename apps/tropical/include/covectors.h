@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TROPICAL_COVECTORS_H
-#define POLYMAKE_TROPICAL_COVECTORS_H
+#pragma once
 
 #include "polymake/tropical/arithmetic.h"
 #include "polymake/linalg.h"
@@ -182,7 +181,6 @@ IncidenceMatrix<> generalized_apex_covector(const GenericVector<VectorTop, Tropi
 
 } }
 
-#endif
 
 // Local Variables:
 // mode:C++

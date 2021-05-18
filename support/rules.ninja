@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -82,7 +82,12 @@ rule staticlib
 # link a shared module
 rule sharedmod
   command = ${CCWRAPPER} ${CXX} ${LDsharedFLAGS} ${ARCHFLAGS} -o $out $in ${LDmodeFLAGS} ${LDextraFLAGS} ${LIBSextra} ${LDFLAGS} ${LIBS}
-  description = LD $out
+  description = LINK $out
+
+# link a test executable
+rule testexe
+  command = ${CCWRAPPER} ${CXX} ${ARCHFLAGS} -o $out $in ${LDmodeFLAGS} ${LDextraFLAGS} ${LIBSextra} ${LDFLAGS} ${LIBS}
+  description = LINK $out
 
 # create an empty file as a timestamp of an accomplished task or as a placeholder for something missing
 rule emptyfile
@@ -118,12 +123,12 @@ rule inspect
 
 # generate a cpperl module from the input list (JSON)
 rule gen_cpperl_mod
-  command = ${PERL} ${root}/support/generate_cpperl_modules.pl --gen-rules ${builddir}/cpperl/gen.ninja ${CPPERLextraFlags} $in $out
+  command = ${PERL} ${root}/support/generate_cpperl_modules.pl --gen-rules ${buildroot}/cpperl/gen.ninja ${CPPERLextraFlags} $in $out
   description = GENERATE C++ modules from $in
   restat = 1
 
 # regenerate included target lists if necessary
-build ${builddir}/targets.ninja: gen_targets ${config.file} | ${root}/support/generate_ninja_targets.pl
+build ${buildroot}/targets.ninja: gen_targets ${config.file} | ${root}/support/generate_ninja_targets.pl
 
 # generate some source files
 rule gen_sources

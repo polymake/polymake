@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -24,19 +24,16 @@ CONFIGURE_OPT {
    find_program($viewer, qw( gv evince kghostview ggv okular ghostview open ), { prompt => "a PostScript viewer program" });
 }
 
-# @topic custom
-# All numeric constants defined here are in postscript points (1/72")
-
-# height of DIN A4 sheet
+# height of paper sheet, in postscript points (1/72"); default = DIN A4 sheet
 custom $Hpaper=841;
 
-# width of DIN A4 sheet
+# width of paper sheet, in postscript points (1/72"); default = DIN A4 sheet
 custom $Wpaper=595;
 
-# vertical margin
+# vertical margin, in postscript points (1/72")
 custom $Hmargin=50;
 
-# horizontal margin
+# horizontal margin, in postscript points (1/72")
 custom $Wmargin=30;
 
 # text labels

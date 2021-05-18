@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2018
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2021
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -14,6 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 #include "polymake/client.h"
 #include "polymake/Map.h"
 #include "polymake/group/orbit.h"

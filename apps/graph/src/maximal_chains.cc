@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -49,7 +49,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "# The result always includes an artificial top node."
                           "# @param Lattice<Decoration> lattice"
                           "# @return Lattice<BasicDecoration> Faces are sets of nodes of elements in the original"
-                          "# lattice forming a chain, ranks are lenghts of chains"
+                          "# lattice forming a chain, ranks are lengths of chains"
                           "# @example [application polytope] The following prints all faces with their ranks of the lattice of"
                           "# chains of the face lattice of the 0-simplex (a single point):"
                           "# > print lattice_of_chains(simplex(0)->HASSE_DIAGRAM)->DECORATION;"

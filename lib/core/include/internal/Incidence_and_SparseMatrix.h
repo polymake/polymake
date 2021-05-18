@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_INCIDENCE_AND_SPARSE_MATRIX_H
-#define POLYMAKE_INTERNAL_INCIDENCE_AND_SPARSE_MATRIX_H
+#pragma once
 
 namespace pm {
 
@@ -199,7 +198,6 @@ namespace polymake {
    using pm::index_matrix;
 }
 
-#endif // POLYMAKE_INTERNAL_INCIDENCE_AND_SPARSE_MATRIX_H
 
 // Local Variables:
 // mode:C++

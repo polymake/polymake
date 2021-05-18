@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_SELECTED_SUBSET_H
-#define POLYMAKE_SELECTED_SUBSET_H
+#pragma once
 
 #include "polymake/GenericSet.h"
 #include "polymake/internal/iterator_filters.h"
@@ -261,7 +260,6 @@ using pm::fold_ranges;
 
 } // end namespace polymake
 
-#endif // POLYMAKE_SELECTED_SUBSET_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -185,7 +185,7 @@ BigObject check_fan(const Matrix<Coord>& i_rays, const IncidenceMatrix<>& i_cone
 UserFunctionTemplate4perl("# @category Consistency check"
                           "# Checks whether a given set of //rays// together with a list //cones//"
                           "# defines a polyhedral fan."
-                          "# If this is the case, the ouput is the [[PolyhedralFan]] defined by //rays//"
+                          "# If this is the case, the output is the [[PolyhedralFan]] defined by //rays//"
                           "# as [[INPUT_RAYS]], //cones// as [[INPUT_CONES]], //lineality_space// as"
                           "# [[LINEALITY_SPACE]] if this option is given."
                           "# @param Matrix rays"

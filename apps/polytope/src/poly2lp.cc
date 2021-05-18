@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -23,13 +23,29 @@ namespace polymake { namespace polytope {
 template<typename Scalar>
 Int poly2lp(BigObject p, BigObject lp, const bool maximize, const std::string& file)
 {
+   if(!(lp.isa("LinearProgram") || lp.isa("MixedIntegerLinearProgram"))){
+      throw std::runtime_error("Second argument must be a (MixedInteger)LinearProgram");
+   }
+
+   bool is_lp = lp.isa("LinearProgram");
+   
    if (file.empty() || file=="-") {
-      print_lp<Scalar>(p, lp, maximize, perl::cout);
+      if(is_lp){
+         print_lp<Scalar, true>(p, lp, maximize, perl::cout);
+      } else {
+         print_lp<Scalar, false>(p, lp, maximize, perl::cout);
+      }
+      return 1;
    } else {
       std::ofstream os(file.c_str());
-      print_lp<Scalar>(p, lp, maximize, os);
+      os.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+      if(is_lp){
+         print_lp<Scalar, true>(p, lp, maximize, os);
+      } else {
+         print_lp<Scalar, false>(p, lp, maximize, os);
+      }
+      return 1;
    }
-   return 1;
 }
 
 UserFunctionTemplate4perl("# @category Optimization"
@@ -39,11 +55,14 @@ UserFunctionTemplate4perl("# @category Optimization"
                           "# the output will contain an additional section 'GENERAL',"
                           "# allowing for IP computations in CPLEX."
                           "# If the polytope is not FEASIBLE, the function will throw a runtime error."
+                          "# Alternatively one can also provide a //MILP//, instead of a //LP// with 'INTEGER_VARIABLES' attachment."
                           "# @param Polytope P"
                           "# @param LinearProgram LP default value: //P//->LP"
                           "# @param Bool maximize produces a maximization problem; default value: 0 (minimize)"
                           "# @param String file default value: standard output",
-                          "poly2lp<Scalar>(Polytope<Scalar>; LinearProgram=$_[0]->LP, $=0, $='')");
+                          "poly2lp<Scalar>(Polytope<Scalar>; $=$_[0]->LP, $=0, $='')");
+
+
 } }
 
 // Local Variables:

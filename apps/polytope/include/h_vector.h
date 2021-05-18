@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_H_VECTOR_H
-#define POLYMAKE_POLYTOPE_H_VECTOR_H
+#pragma once
 
 #include "polymake/Vector.h"
 #include "polymake/Integer.h"
@@ -34,7 +33,6 @@ bool m_sequence(Vector<Integer> h);
 
 } } // namespaces
 
-#endif // POLYMAKE_POLYTOPE_H_VECTOR_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_RANDOM_SUBSET_H
-#define POLYMAKE_RANDOM_SUBSET_H
+#pragma once
 
 #include "polymake/IndexedSubset.h"
 #include "polymake/RandomGenerators.h"
@@ -351,7 +350,6 @@ namespace polymake {
    using pm::random_permutation;
 }
 
-#endif // POLYMAKE_RANDOM_SUBSET_H
 
 // Local Variables:
 // mode:C++

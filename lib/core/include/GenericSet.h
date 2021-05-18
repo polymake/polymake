@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,6 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file GenericSet.h
     @brief Declaration of pm::GenericSet class
 
@@ -24,8 +25,6 @@
  *  Functions and operations for GenericSets
  *  @{
  */
-#ifndef POLYMAKE_GENERIC_SET_H
-#define POLYMAKE_GENERIC_SET_H
 
 #include "polymake/internal/SeriesRaw.h"
 #include "polymake/GenericIO.h"
@@ -34,21 +33,10 @@
 namespace pm {
 
 template <typename E, typename Comparator = operations::cmp> class Set;
-template <typename E, typename Comparator = operations::cmp> class PowerSet;
 
 template <typename SetRef1, typename SetRef2, typename Controller> class LazySet2;
 template <typename Eref, typename Comparator> class SingleElementSetCmp;
 template <typename SetRef> class Complement;
-
-template <typename E, typename Comparator, typename Etag = typename object_traits<E>::generic_tag>
-struct persistent_set {
-   using type = Set<E, Comparator>;
-};
-
-template <typename Set, typename Comparator>
-struct persistent_set<Set, Comparator, is_set> {
-   using type = PowerSet<typename Set::element_type, Comparator>;
-};
 
 template <typename TSet, typename E=typename TSet::element_type, typename Comparator=typename TSet::element_comparator>
 class GenericSet;
@@ -81,7 +69,7 @@ public:
    static_assert(!std::is_same<Comparator, operations::cmp>::value || is_ordered<E>::value, "elements must have a total ordering");
    static_assert(!is_among<E, bool, int>::value, "invalid Set element type");
 
-   using persistent_type = typename persistent_set<E, Comparator>::type;
+   using persistent_type = Set<E, Comparator>;
    /// @ref generic "generic type"
    using generic_type = GenericSet;
    /// @ref generic "top type"
@@ -420,7 +408,7 @@ struct generic_of_subsets {
 template <typename Subsets, typename Source>
 struct generic_of_subsets<Subsets, Source, std::enable_if_t<is_generic_set<Source>::value>> {
    using subset_element_comparator = typename Source::element_comparator;
-   using type = GenericSet<Subsets, typename persistent_set<typename Source::element_type, subset_element_comparator>::type, operations::cmp>;
+   using type = GenericSet<Subsets, Set<typename Source::element_type, subset_element_comparator>, operations::cmp>;
 };
 
 template <typename Subset, typename Source>
@@ -964,7 +952,6 @@ namespace polymake {
    }
 }
 
-#endif // POLYMAKE_GENERIC_SET_H
 
 // Local Variables:
 // mode:C++

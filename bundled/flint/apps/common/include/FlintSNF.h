@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_COMMON_FLINTSNF_H
-#define POLYMAKE_COMMON_FLINTSNF_H
+#pragma once
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -90,4 +89,3 @@ SparseMatrix<Integer> smith_normal_form_flint(const GenericMatrix<MatrixType>& m
 } }
 
 
-#endif

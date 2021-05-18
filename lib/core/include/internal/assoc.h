@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_ASSOC_H
-#define POLYMAKE_INTERNAL_ASSOC_H
+#pragma once
 
 #include <stdexcept>
 
@@ -221,7 +220,7 @@ struct hash_func<TMap, is_map> {
       size_t a(1);
       // we cannot depend on the keys being visited in any particular order because
       // the Map might be a hash_map, so we need a commutative and associative operation
-      for (const auto e : m)
+      for (const auto& e : m)
          a += key_hasher(e.first) + mapped_hasher(e.second);
       return a;
    }
@@ -238,7 +237,6 @@ using pm::DefaultValueTag;
 using pm::no_match;
 }
 
-#endif // POLYMAKE_INTERNAL_ASSOC_H
 
 // Local Variables:
 // mode:C++

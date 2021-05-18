@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -92,7 +92,7 @@ BigObject truncation(BigObject p_in, const GenericSet<TSet>& trunc_vertices, Opt
       copy_range(entire(rows(VIF.minor(All,~keys(vertex_map)))), rows(VIF_out).begin());
 
    Int new_facet = n_facets;
-   for (const auto vm : vertex_map) {
+   for (const auto& vm : vertex_map) {
       Int new_vertex = vm.second;
       for (auto nb = entire(G.adjacent_nodes(vm.first));  !nb.at_end();  ++nb, ++new_vertex) {
          // the new vertex inherits the ridge from the truncated vertex,
@@ -146,7 +146,7 @@ BigObject truncation(BigObject p_in, const GenericSet<TSet>& trunc_vertices, Opt
       if (orth.cols() != 0) orth.col(0).fill(0);
 
       auto new_facet_it = rows(F_out).begin() + n_facets;
-      for (const auto vm : vertex_map) {
+      for (const auto& vm : vertex_map) {
          const Int v_cut_off = vm.first;
          Matrix<Scalar> basis(G.out_degree(v_cut_off), V.cols());
          const bool simple_vertex = basis.rows()+AH.rows() == V.cols()-1;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_PLAIN_PARSER_H
-#define POLYMAKE_INTERNAL_PLAIN_PARSER_H
+#pragma once
 
 #include "polymake/internal/comparators_basic_defs.h"
 #include "polymake/meta_list.h"
@@ -49,7 +48,12 @@ protected:
    ostream* os;
 public:
    explicit PlainPrinter(ostream& os_arg)
-      : os(&os_arg) { }
+      : os(&os_arg) {}
+
+   void set_ostream(ostream& os_arg)
+   {
+      os = &os_arg;
+   }
 
    template <typename Data>
    void fallback(const Data& x) { *os << x; }
@@ -714,13 +718,6 @@ public:
    }
 };
 
-namespace perl {
-
-// loop through perl STDOUT
-extern std::ostream cout;
-
-}
-
 } // end namespace pm
 
 namespace polymake {
@@ -734,7 +731,6 @@ using pm::wrap;
 
 }
 
-#endif // POLYMAKE_INTERNAL_PLAIN_PARSER_H
 
 // Local Variables:
 // mode:C++

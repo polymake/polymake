@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file EquivalenceRelation.h
     @brief Implementation of polymake::EquivalenceRelation class
  */
 
-#ifndef POLYMAKE_EQUIVALENCE_RELATION_H
-#define POLYMAKE_EQUIVALENCE_RELATION_H
 
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
@@ -269,7 +268,6 @@ namespace polymake {
    using pm::EquivalenceRelation;
 }
 
-#endif // POLYMAKE_EQUIVALENCE_RELATION_H
 
 
 // Local Variables:

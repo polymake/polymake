@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -205,7 +205,9 @@ sub equal_nested_lists {
 
 sub equal_nested_elements {
    my ($e1, $e2) = @_;
-   if (is_array($e1)) {
+   if (is_object($e1)) {
+      is_object($e2) && eval { $e1 == $e2 }
+   } elsif (is_array($e1)) {
       is_array($e2) && equal_nested_lists($e1, $e2)
    } elsif (is_hash($e1)) {
       is_hash($e2) && equal_nested_hashes($e1, $e2)
@@ -214,7 +216,7 @@ sub equal_nested_elements {
    } elsif (is_numeric($e1)) {
       is_numeric($e2) && $e1 == $e2
    } elsif (defined($e1)) {
-      defined($e1) && $e1 eq $e2
+      defined($e2) && !is_object($e2) && $e1 eq $e2
    } else {
       !defined($e2)
    }

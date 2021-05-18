@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file FaceMap.h
     @brief This file contains the namespace face_map
  */
 
-#ifndef POLYMAKE_FACE_MAP_H
-#define POLYMAKE_FACE_MAP_H
 
 #include "polymake/internal/AVL.h"
 #include "polymake/GenericSet.h"
@@ -330,7 +329,6 @@ namespace polymake {
    using pm::FaceMap;
 }
 
-#endif // POLYMAKE_FACE_MAP_H
 
 // Local Variables:
 // mode:C++

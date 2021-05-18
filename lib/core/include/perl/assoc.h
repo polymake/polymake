@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_ASSOC_H
-#define POLYMAKE_PERL_ASSOC_H
+#pragma once
 
 #include "polymake/internal/iterators.h"
 #include "polymake/perl/constants.h"
@@ -100,7 +99,6 @@ delayed_eraser<Container> delayed_erase(Container& c, const Key& key)
 
 } }
 
-#endif // POLYMAKE_PERL_ASSOC_H
 
 // Local Variables:
 // mode:C++

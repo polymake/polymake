@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_IS_SPHERE_H
-#define POLYMAKE_TOPAZ_IS_SPHERE_H
+#pragma once
 
 #include "polymake/IndexedSubset.h"
 #include "polymake/Integer.h"
@@ -47,7 +46,6 @@ Int is_ball_or_sphere_h(const Complex& C, const pm::SharedRandomState& random_so
 
 } }
 
-#endif // POLYMAKE_TOPAZ_IS_SPHERE_H
 
 // Local Variables:
 // mode:C++

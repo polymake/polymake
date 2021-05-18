@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -32,7 +32,7 @@ property N_HILBERT_BASIS : Int;
 
 
 # @category Lattice points in cones
-# Generators for the [[HILBERT_BASIS]] of a posiibly non-pointed cone 
+# Generators for the [[HILBERT_BASIS]] of a posiibly non-pointed cone
 # the first matrix is a Hilbert basis of a pointed part of the cone
 # the second matrix is a lattice basis of the lineality space
 # note: the pointed part used in this property need not be the same as the one described by [[RAYS]] or [[INPUT_RAYS]]
@@ -43,7 +43,7 @@ property HILBERT_BASIS_GENERATORS : Array<Matrix<Integer>> {
   sub canonical { &canonicalize_empty_matrices }
 
   # FIXME This test is too restrictive
-  sub equal { 
+  sub equal {
     my ($a, $b) = @_;
     return equal_up_to_row_permutation($a->[0],$b->[0]) && equal_up_to_row_permutation($a->[1],$b->[1]);
   }
@@ -80,12 +80,12 @@ property LATTICE_POINTS_GENERATORS : Array<Matrix<Integer>> {
 
     sub canonical { &canonicalize_empty_matrices }
 
-    sub equal { 
+    sub equal {
         my ($a, $b) = @_;
         return equal_up_to_row_permutation($a->[0],$b->[0]) && equal_up_to_row_permutation($a->[1],$b->[1]) && equal_up_to_row_permutation($a->[2],$b->[2]);
     }
 };
-    
+
 # @category Lattice points in polytopes
 # The lattice points on the boundary of the polytope, including the vertices.
 property BOUNDARY_LATTICE_POINTS : Matrix<Integer> {
@@ -96,29 +96,29 @@ property BOUNDARY_LATTICE_POINTS : Matrix<Integer> {
 # @category Lattice points in polytopes
 # The number of [[BOUNDARY_LATTICE_POINTS]]
 property N_BOUNDARY_LATTICE_POINTS : Integer;
-    
+
 # @category Lattice points in polytopes
 # The lattice points strictly in the interior of the polytope
 property INTERIOR_LATTICE_POINTS : Matrix<Integer> {
 
     sub equal { &equal_up_to_row_permutation; }
 }
-    
+
 # @category Lattice points in polytopes
 # The number of [[INTERIOR_LATTICE_POINTS]]
 property N_INTERIOR_LATTICE_POINTS : Integer;
-    
+
 
 # @category Geometry
 # The cone of all Minkowski summands of the polytope P.
-# Up to scaling, a polytope S is a Minkowski summand of P if and only if 
-# the edge directions of S are a subset of those of P, 
-# and the closing condition around any 2-face of P is preserved. 
-# Coordinates of the cone correspond to the rescaled lengths 
-# of the edges of the graph of P (in the order given by the property [[EDGES]] of the [[GRAPH]] of P). 
-# The Minkowski cone is defined as the intersection of all 
+# Up to scaling, a polytope S is a Minkowski summand of P if and only if
+# the edge directions of S are a subset of those of P,
+# and the closing condition around any 2-face of P is preserved.
+# Coordinates of the cone correspond to the rescaled lengths
+# of the edges of the graph of P (in the order given by the property [[EDGES]] of the [[GRAPH]] of P).
+# The Minkowski cone is defined as the intersection of all
 # equations given by the closing condition around 2-faces with the positive orthant.
-# For more information see e.g. 
+# For more information see e.g.
 # Klaus Altmann: The versal deformation of an isolated toric Gorenstein singularity
 property MINKOWSKI_CONE : polytope::Cone<Rational>;
 
@@ -153,16 +153,16 @@ object_specialization Polytope::Lattice {
 # @category Lattice points in cones
 # The polytope is __Gorenstein__ if a dilation of the polytope is [[REFLEXIVE]] up to translation.
     property GORENSTEIN : Bool;
-    
+
 # @category Lattice points in cones
 # If the polytope is [[GORENSTEIN]] then this is the multiple such that the polytope is [[REFLEXIVE]].
     property GORENSTEIN_INDEX : Integer;
-    
+
 # @category Lattice points in cones
 # If the polytope is [[GORENSTEIN]], then this is the unique interior lattice point
 # in the multiple of the polytope that is [[REFLEXIVE]].
     property GORENSTEIN_VECTOR : Vector<Integer>;
-    
+
 # @category Lattice points in cones
 # The polytope is __canonical__ if there is exactly one interior lattice point.
     property CANONICAL : Bool;
@@ -194,7 +194,7 @@ object_specialization Polytope::Lattice {
 
 # @category Lattice points in cones
 # The polytope is __normal__ if the Hilbert basis of the cone spanned by P x {1} is at height 1.
-# Equivalently points in integral dilates of P are postive integral sums of lattice points of P.
+# Equivalently points in integral dilates of P are positive integral sums of lattice points of P.
 # @depends 4ti2 or libnormaliz
     property NORMAL : Bool;
 
@@ -205,7 +205,7 @@ object_specialization Polytope::Lattice {
 # @category Lattice points in cones
 # The maximal integral width of the polytope with respect to the facet normals.
     property FACET_WIDTH : Integer;
-    
+
 # @category Lattice points in cones
 # The integral width of the polytope with respect to each facet normal.
     property FACET_WIDTHS : Vector<Integer>;
@@ -219,7 +219,7 @@ object_specialization Polytope::Lattice {
     property SMOOTH : Bool;
 
 # @category Lattice points in cones
-# The polytope is __spanning__ if the lattice points generate the lattice 
+# The polytope is __spanning__ if the lattice points generate the lattice
     property SPANNING : Bool;
 
 # @category Lattice points in cones
@@ -242,33 +242,7 @@ object_specialization Polytope::Lattice {
 }
 
 
-# @category Lattice points in cones
-# The Groebner basis of the homogeneous toric ideal associated to the polytope,
-# the term order is given in matrix form.
-declare object GroebnerBasis {
-
-# The Groebner basis for a defined term order.
-    property BASIS : Matrix<Integer>;
-
-# The term order in matrix form;
-# if not square, then a tie breaker is used.
-    property TERM_ORDER_MATRIX : Matrix<Integer>;
-
-# A term order by name;
-# allowed acronyms are ''lex'', ''deglex'' and ''degrevlex''.
-    property TERM_ORDER_NAME : String;
-
-    rule initial : TERM_ORDER_NAME {
-        $this->TERM_ORDER_NAME =~ /^(lex|deglex|degrevlex)$/ or croak ("unknown term order")
-    }
-}
-
-
 object_specialization Polytope::Lattice {
-
-# @category Lattice points in cones
-# The Groebner basis for the toric ideal associated to the lattice points in the polytope using any term order.
-  property GROEBNER_BASIS : GroebnerBasis : multiple;
 
   property GRAPH {
 
@@ -282,6 +256,43 @@ object_specialization Polytope::Lattice {
     # the lattice edge length of an edge is one less than the number of lattice points on that edge
     property LATTICE_ACCUMULATED_EDGE_LENGTHS : Map<Integer,Int>;
   }
+
+  # @category Lattice points in cones
+  # The toric ideal of the lattice polytope. Roughly speaking, this is an
+  # algebraic structure associated with the vertices of the lattice polytope,
+  # which contains rich information about the combinatorics and geometry of
+  # the polytope.
+  #
+  # The toric ideal is represented by a groebner basis, so, in order to compute
+  # the toric ideal of a lattice polytope, one additionally needs to specify
+  # the term order. See the example for details.
+  #
+  # @example [notest] The following computes the groebner basis of the toric
+  #          ideal of the square in lex order. This requires example 4ti2 to be
+  #          configured.
+  # > $p = cube(2);
+  # > print $p->TORIC_IDEAL->GROEBNER(ORDER_NAME=>"lp")->BINOMIAL_BASIS;
+  # | 0 0 0 0 0 0 1 -2 1
+  # | 0 0 0 0 1 -1 -1 1 0
+  # | 0 0 0 0 1 -1 0 -1 1
+  # | 0 0 0 1 -2 1 0 0 0
+  # | 0 0 0 1 -1 0 -1 1 0
+  # | 0 0 0 1 0 -1 -1 0 1
+  # | 0 0 1 0 -2 0 1 0 0
+  # | 0 0 1 0 -1 -1 0 1 0
+  # | 0 0 1 0 0 -2 0 0 1
+  # | 0 1 -1 -1 1 0 0 0 0
+  # | 0 1 -1 0 -1 1 0 0 0
+  # | 0 1 0 -1 -1 0 1 0 0
+  # | 0 1 0 0 -2 0 0 1 0
+  # | 0 1 0 0 -1 -1 0 0 1
+  # | 1 -2 1 0 0 0 0 0 0
+  # | 1 -1 0 -1 1 0 0 0 0
+  # | 1 0 -1 -1 0 1 0 0 0
+  # | 1 0 0 -2 0 0 1 0 0
+  # | 1 0 0 -1 -1 0 0 1 0
+  # | 1 0 0 0 -2 0 0 0 1
+  property TORIC_IDEAL : ideal::Ideal;
 }
 
 
@@ -309,12 +320,12 @@ object Cone<Rational> {
   property HOMOGENEOUS : Bool;
 
 # @category Lattice points in cones
-# A grading for the monoid given by the intersection of the cone with the 
+# A grading for the monoid given by the intersection of the cone with the
 # lattice Z^d, should be positive for all generators.
 #
 # If this property is not specified by the user there are two defaults:
 #     For rational polytopes the affine hyperplane defined by (1,0,\ldots,0) will be used.
-#     For [[HOMOGENEOUS]] cones the affine hyperplane containing the primitive generators 
+#     For [[HOMOGENEOUS]] cones the affine hyperplane containing the primitive generators
 #     will be used.
   property MONOID_GRADING : Vector<Integer>;
 
@@ -327,21 +338,36 @@ object Cone<Rational> {
 }
 
 # @category Lattice points in cones
-# Hilbert series of the monoid, given by the intersection of the cone with 
+# Hilbert series of the monoid, given by the intersection of the cone with
 # the lattice Z^d with respect to the [[MONOID_GRADING]]
 # @depends libnormaliz
   property HILBERT_SERIES : RationalFunction;
 
 # @category Lattice points in cones
 # The coefficients of the Hilbert polynomial,
-# the h^*-polynomial for lattice polytopes, 
-# with respect to the [[MONOID_GRADING]]
+# the h^*-polynomial for lattice polytopes,
+# with respect to the [[MONOID_GRADING]],
 # starting at the constant coefficient.
 # For lattice polytopes the length of this vector is [[CONE_DIM]].
 # In general the length is one less than the degree of the
 # denominator of the [[HILBERT_SERIES]].
 # @depends latte or libnormaliz
   property H_STAR_VECTOR : Vector<Integer>;
+
+# @category Lattice points in cones
+# The Hilbert polynomial,
+# the h^*-polynomial for lattice polytopes. The degree is at most
+# on less then the h^*-vector.
+# @depends latte or libnormaliz
+  property H_STAR_POLYNOMIAL : UniPolynomial<Rational>;
+
+# @category Lattice points in cones
+# The ideal whose vanishing set is the affine toric variety given
+# by the cone.
+# In other words the rows of its [[ideal::Ideal::BINOMIAL_GENERATORS]] give
+# the relations between the Hilbert basis elements.
+# @depends 4ti2
+  property CONE_TORIC_IDEAL : ideal::Ideal;
 
 }
 

@@ -10,5 +10,7 @@
   {"args": ["PuiseuxFraction<Min, Rational, Rational>", "void", "void", "void"], "func": "beneath_beyond_find_vertices", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "beneath_beyond_find_vertices:T1.B.x.o", "tp": "1"},
   {"args": ["PuiseuxFraction<Min, Rational, Rational>", "void", "void", "void"], "func": "beneath_beyond_find_facets", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "beneath_beyond_find_facets:T1.B.x.o", "tp": "1"},
   {"args": ["Rational", "void"], "func": "create_beneath_beyond_solver", "include": ["polymake/Rational.h"], "sig": "create_convex_hull_solver#beneath_beyond.convex_hull:T1.x", "tp": "1"},
+  {"args": ["PuiseuxFraction<Max, Rational, Rational>", "void", "void", "void"], "func": "beneath_beyond_find_vertices", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "beneath_beyond_find_vertices:T1.B.x.o", "tp": 1},
+  {"args": ["perl::Canned<const Matrix<PuiseuxFraction<Max, Rational, Rational>>&>", "void"], "func": "placing_triangulation", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "placing_triangulation.X.o"},
  null ],
 "version": 3}

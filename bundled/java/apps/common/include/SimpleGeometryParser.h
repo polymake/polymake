@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_COMMON_SIMPLE_GEOMETRY_PARSER_H
-#define POLYMAKE_COMMON_SIMPLE_GEOMETRY_PARSER_H
+#pragma once
 
 #include "polymake/Map.h"
 #include "polymake/Matrix.h"
@@ -241,7 +240,6 @@ void SimpleGeometryParser::loop(pm::socketstream& js, Window& W)
 
 } }
 
-#endif // POLYMAKE_COMMON_SIMPLE_GEOMETRY_PARSER_H
 
 // Local Variables:
 // mode:C++

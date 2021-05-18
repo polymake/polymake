@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,13 +15,12 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file TropicalNumber.h
     @brief Implementation of pm::TropicalNumber class
 */
 
 
-#ifndef POLYMAKE_TROPICALNUMBER_H
-#define POLYMAKE_TROPICALNUMBER_H
 
 #include "polymake/internal/converters.h"
 #include "polymake/internal/comparators.h"
@@ -563,7 +562,6 @@ namespace polymake {
    using pm::TropicalNumber;
 }
 
-#endif // POLYMAKE_TROPICALNUMBER_H
 
 // Local Variables:
 // mode:C++

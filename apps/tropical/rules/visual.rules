@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -37,6 +37,12 @@ options %decorations = (
 
    # [complete color] Flexible<Color> color of the finite [[PSEUDOVERTICES]] of a polytope
    PseudovertexColor => $Visual::Color::vertices,
+   
+   # String Labels of [[PSEUDOVERTICES]] of a polytope
+   PseudovertexLabels => 'hidden',        
+   
+   # Flexible<Float> Thickness of [[PSEUDOVERTICES]] of a tropical polytope
+   PseudovertexThickness => undef,
 );
 
 object Polytope {
@@ -67,7 +73,13 @@ user_method VISUAL(%Visual::TropicalPolytope::decorations) {
    my $vertices = new Matrix<Scalar>($this->PSEUDOVERTICES->minor($used_pvs,All));
    my $cells = $this->POLYTOPE_MAXIMAL_COVECTOR_CELLS->minor(All, $used_pvs);
 
+   # the order is crucial here
    my @pseudovertex_colors = pseudovertex_colors($this->POINTS, $vertices, delete $decor->{PseudovertexColor}, delete $decor->{GeneratorColor});
+   foreach (keys %$decor) {
+      $decor->{s/Pseudovertex/Vertex/r} = delete $decor->{$_};
+   }
+   my @codedecor = Visual::get_code_decor_keys($decor, "Vertex");
+   $decor = scalar(@codedecor) ? Visual::decor_subset($decor,$used_pvs,\@codedecor) : $decor;
 
    $vertices = tdehomog($vertices,$chart);
 
@@ -88,6 +100,10 @@ user_method VISUAL_SUBDIVISION(%Visual::TropicalPolytope::decorations) {
    my $vertices = tdehomog($this->PSEUDOVERTICES,$chart);
    my $cells = $this->MAXIMAL_COVECTOR_CELLS;
    my @pseudovertex_colors = pseudovertex_colors($this->POINTS, $this->PSEUDOVERTICES, delete $decor->{PseudovertexColor}, delete $decor->{GeneratorColor});
+   foreach (keys %$decor) {
+      $decor->{s/Pseudovertex/Vertex/r} = delete $decor->{$_};
+   }
+
    my $p = new fan::PolyhedralComplex(VERTICES=>$vertices, MAXIMAL_POLYTOPES=>$cells);
    $p->VISUAL(VertexColor => \@pseudovertex_colors, $decor);
 }

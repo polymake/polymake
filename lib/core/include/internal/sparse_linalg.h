@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_SPARSE_LINALG_H
-#define POLYMAKE_INTERNAL_SPARSE_LINALG_H
+#pragma once
 
 #include "polymake/vector"
 
@@ -167,7 +166,6 @@ lin_solve(SparseMatrix<E> A, Vector<E> B)
 
 } // end namespace pm
 
-#endif // POLYMAKE_INTERNAL_SPARSE_LINALG_H
 
 // Local Variables:
 // mode:C++

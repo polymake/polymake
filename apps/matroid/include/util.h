@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MATROID_UTIL_H
-#define POLYMAKE_MATROID_UTIL_H
+#pragma once
 
 namespace polymake { namespace matroid {
 
@@ -94,7 +93,6 @@ shift_elements(const Container& sets, const Int n)
 
 }}
 
-#endif // POLYMAKE_MATROID_UTIL_H
 
 // Local Variables:
 // mode:C++

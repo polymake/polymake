@@ -12,5 +12,7 @@
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<Matrix<Rational>>&>>", "void"], "func": "col", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "kind": "meth", "ret": "lvalue", "sig": "col:F:M14.x"},
   {"args": ["perl::AnchorArg<perl::Canned<Wary<Matrix<TropicalNumber<Min, Rational>>>&>>", "void"], "func": "col", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "kind": "meth", "ret": "lvalue", "sig": "col:F:M14.x"},
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<Matrix<double>>&>>", "void"], "func": "col", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "kind": "meth", "ret": "lvalue", "sig": "col:F:M14.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<Matrix<double>>>>", "void"], "func": "col", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "kind": "meth", "ret": "lvalue", "sig": "col:F:M14.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<Matrix<Int>>&>>", "void"], "func": "col", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "kind": "meth", "ret": "lvalue", "sig": "col:F:M14.x"},
  null ],
 "version": 3}

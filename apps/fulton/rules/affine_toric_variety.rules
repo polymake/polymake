@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -25,6 +25,11 @@ declare object_specialization AffineNormalToricVariety = NormalToricVariety {
    # I.e., intersect this cone with the lattice, take the semigroup algebra over
    # it and take the spectrum.
    property WEIGHT_CONE : Cone;
+
+   # The toric ideal defining the variety.
+   property TORIC_IDEAL : ideal::Ideal;
+
+   rule TORIC_IDEAL = WEIGHT_CONE.CONE_TORIC_IDEAL;
 
    property DIVISOR {
 

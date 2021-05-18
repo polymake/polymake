@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -71,11 +71,15 @@ declare $non_quote_re=qr{ [^"'] }x;
 # anything but a quote character or white space
 declare $non_quote_space_re=qr{ [^"'\s] }x;
 
-# a sequence of symbols not being delimiters (paired brackets or quotes), escaped delimiters, or arrows
-my $non_delims=qr{(?: [^()\[\]{}<>'"\#]++
-                    | (?<=\\)(?<!\\\\) [()\[\]{}<>"'\#]
-                    | (?<=[-=])(?<!<=) >
-                   )*+ }x;
+# a sequence of characters not being delimiters (paired brackets or quotes), escaped delimiters, or arrows
+my $non_delim_chars = qr( [^()\[\]{}<>'"\#]++
+                          | (?<=\\)(?<!\\\\) [()\[\]{}<>"'\#]
+                          | (?<=[-=])(?<!<=) > )x;
+
+my $non_delim = qr{(?: $non_delim_chars )*+ }xo;
+
+# same in a multi-line string, including comments
+my $non_delim_multi = qr{(?: $non_delim_chars | (?m:\#.*\n) )*+ }xo;
 
 declare $single_quoted_re=qr{(?: [^']+ | (?<=\\)(?<!\\\\) ' )*+}x;
 declare $double_quoted_re=qr{(?: [^"]+ | (?<=\\)(?<!\\\\) " )*+}x;
@@ -89,24 +93,31 @@ declare $quoted_re=qr{(?: ' (?'quoted' $single_quoted_re) ' |
 
 # an expression in parentheses, braces, brackets, or quotes
 # 1 capturing group
-declare $confined_re=qr{ ( \( $non_delims (?: (?-1) $non_delims )* \) |
-                           \[ $non_delims (?: (?-1) $non_delims )* \] |
-                           \{ $non_delims (?: (?-1) $non_delims )* \} |
-                            < $non_delims (?: (?-1) $non_delims )*  > |
-                            $anon_quoted_re                            ) }xo;
+declare $confined_re = qr{ ( \( $non_delim (?: (?-1) $non_delim )* \) |
+                             \[ $non_delim (?: (?-1) $non_delim )* \] |
+                             \{ $non_delim (?: (?-1) $non_delim )* \} |
+                              < $non_delim (?: (?-1) $non_delim )*  > |
+                              $anon_quoted_re ) }xo;
+
+# same in a multi-line string, including comments
+declare $confined_multiline_re = qr{ ( \( $non_delim_multi (?: (?-1) $non_delim_multi )* \) |
+                                       \[ $non_delim_multi (?: (?-1) $non_delim_multi )* \] |
+                                       \{ $non_delim_multi (?: (?-1) $non_delim_multi )* \} |
+                                        < $non_delim_multi (?: (?-1) $non_delim_multi )*  > |
+                                        $anon_quoted_re ) }xo;
 
 # a piece of code with proper nested embraced and quoted subexpressions
 # 1 capturing group
-declare $balanced_re=qr{ $non_delims (?: $confined_re $non_delims )* }xo;
+declare $balanced_re=qr{ $non_delim (?: $confined_re $non_delim )* }xo;
 
 # as above, but allowing some unmatched open braces
 # used in TAB completion
-declare $open_balanced_re=qr{ (?: $non_delims (?: \( (?: $balanced_re \) )?+ |
-                                                  \[ (?: $balanced_re \] )?+ |
-                                                  \{ (?: $balanced_re \} )?+ |
-                                                   < (?: $balanced_re  > )?+ |
-                                                   $anon_quoted_re           |
-                                                   $ ) )* }xo;
+declare $open_balanced_re=qr{ (?: $non_delim (?: \( (?: $balanced_re \) )?+ |
+                                                 \[ (?: $balanced_re \] )?+ |
+                                                 \{ (?: $balanced_re \} )?+ |
+                                                  < (?: $balanced_re  > )?+ |
+                                                  $anon_quoted_re           |
+                                                  $ ) )* }xo;
 
 # a piece of code with all quoted strings properly closed
 declare $quote_balanced_re=qr{ $non_quote_re* (?: $anon_quoted_re $non_quote_re* )* }xo;
@@ -179,17 +190,8 @@ declare $directory_re=qr{ ^(.*) / [^/]+$ }x;
 # directory part of a command, expecting trailing arguments
 declare $directory_of_cmd_re=qr{ ^(.*) / [^/]+ (?: $ | \s)}x;
 
-# an empty line
-declare $empty_line_re=qr{^ [ \t]* \n}xm;
-
-# an empty line or separator (a line of hashes)
-declare $empty_or_separator_line=qr{^ (?: [ \t]* | \#{2,} ) \n}xm;
-
 # an empty line with possible comments
 declare $nonsignificant_line_re=qr{^ [ \t]* (?:\#.*)? $}xm;
-
-# a line with some contents (like perl code)
-declare $significant_line_re=qr{^ [ \t]* (?! $ | \#) }xm;
 
 # beginning of a complete statement
 declare $statement_start_re=qr{(?: ^ | [;\}] )\s*}x;
@@ -201,6 +203,9 @@ declare $args_start_re=qr{(?'args_start' \s+ | \s*\(\s* )}x;
 # This pattern tries hard to recognize commas within type expressions,
 # while all other < and > signs being interpreted as comparsion operators
 declare $expression_re=qr{ (?: (?! <) $confined_re | (?> \$$qual_id_re | $type_re ) | [^,'"()\[\]{}]*+ )+ }xo;
+
+# variable sigil (scalar, array or hash)
+declare $var_sigil_re=qr{(?: (?'scalar'\$)|[\@%] )}xo;
 
 # end of a source file
 declare $end_of_source_file="__END__";

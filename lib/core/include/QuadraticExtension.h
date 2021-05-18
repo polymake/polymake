@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_QUADRATIC_EXTENSION_H
-#define POLYMAKE_QUADRATIC_EXTENSION_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/AccurateFloat.h"
@@ -897,7 +896,6 @@ namespace std {
    };
 }
 
-#endif // POLYMAKE_QUADRATIC_EXTENSION_H
 
 // Local Variables:
 // mode:C++

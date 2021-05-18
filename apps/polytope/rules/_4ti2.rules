@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -47,54 +47,33 @@ label _4ti2
 
 object_specialization Polytope::Lattice {
 
-    rule GROEBNER_BASIS.BASIS : LATTICE_POINTS_GENERATORS, GROEBNER_BASIS.TERM_ORDER_MATRIX | GROEBNER_BASIS.TERM_ORDER_NAME {
+    # Writes the Groebner basis of the lattice polytope into BINOMIAL_GENERATORS.
+    rule TORIC_IDEAL.GROEBNER.BINOMIAL_BASIS : LATTICE_POINTS_GENERATORS, TORIC_IDEAL.GROEBNER.ORDER_MATRIX | TORIC_IDEAL.GROEBNER.ORDER_NAME {
         my $tempname=new Tempfile;
-        my $lp = $this->LATTICE_POINTS_GENERATORS->[0]->rows;
-        my ($term_order, $given) = $this->GROEBNER_BASIS->give_with_name("TERM_ORDER_MATRIX | TERM_ORDER_NAME");
-
-        if ($given eq "TERM_ORDER_NAME") {
-            if ($term_order eq 'lex') {
-                $term_order=unit_matrix<Int>($lp);
-            } elsif ($term_order eq 'deglex') {
-                $term_order = new Matrix<Int>($lp,$lp);
-                $term_order->row(0) = ones_vector<Int>($lp);
-                foreach (1..$lp-1) { $term_order->elem($_, $_-1) = 1; }
-            } else {
-                ## must be 'degrevlex', otherwise the initial rule had fired alarm
-                $term_order = new Matrix<Int>($lp,$lp);
-                $term_order->row(0) = ones_vector<Int>($lp);
-                foreach (1..$lp-1) { $term_order->elem($_, $lp-$_) = -1; }
-            }
-        }
-        # write all lattice points into $tempname.cost
-        groebner_write($tempname, 'cost', $term_order);
-        groebner_run($this, $tempname);
+        my $pts = $this->LATTICE_POINTS_GENERATORS->[0];
+        my $npts = $pts->rows;
+        my ($term_order, $given) = $this->TORIC_IDEAL->GROEBNER->give_with_name("ORDER_MATRIX | ORDER_NAME");
+        groebner_term_order($tempname,$term_order,$given,$npts);
+        $this->TORIC_IDEAL->GROEBNER->BINOMIAL_BASIS = groebner_run($pts, $tempname);
     }
     precondition : BOUNDED;
     weight 5.10;
 
 
-    rule GROEBNER_BASIS(new).BASIS : LATTICE_POINTS_GENERATORS {
-        groebner_run($this, new Tempfile);
+    # Compute Groebner Basis using default ordering.
+    # The help text claims to use degrevlex by default but the result seems to be 'ls'
+    rule TORIC_IDEAL.GROEBNER(new).BINOMIAL_BASIS, TORIC_IDEAL.GROEBNER(new).ORDER_NAME : LATTICE_POINTS_GENERATORS {
+        my $bb = groebner_run($this->LATTICE_POINTS_GENERATORS->[0], new Tempfile);
+        $this->TORIC_IDEAL->GROEBNER->ORDER_NAME = "ls";
+        $this->TORIC_IDEAL->GROEBNER->BINOMIAL_BASIS= $bb;
     }
     precondition : BOUNDED;
     weight 5.10;
+
 
 }
 
 object Cone<Rational> {
-
-#    rule _4ti2.hilbert, _4ti2.integer_points: HILBERT_BASIS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
-#        my $tempname = new Tempfile;
-#        
-#        zsolve_print($tempname,$this);
-#        
-#        _4ti2_run($zsolve,$tempname);
-#        
-#        zsolve_parse($tempname,$this,hilb=>1);
-#    }
-#    precondition : POINTED;
-#    weight 5.65;
 
     rule _4ti2.hilbert, _4ti2.integer_points: HILBERT_BASIS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
         my $tempname=new Tempfile;
@@ -108,18 +87,37 @@ object Cone<Rational> {
         if ( $n_ineq == 0 ) {
             my $cad = $this->CONE_AMBIENT_DIM;
             my $rays = new Matrix<Integer>(0,$cad);
-            my $lin = unit_matrix<Integer>($cad); 
+            my $lin = unit_matrix<Integer>($cad);
             $this->HILBERT_BASIS_GENERATORS=[$rays , $lin];
             return;
         }
-        
+
         zsolve_print($tempname, $this);
-        
+
         _4ti2_run($zsolve,$tempname);
-        
+
         zsolve_parse($tempname, $this, hilb=>1);
     }
-    weight 5.35;   
+    weight 5.35;
+
+
+   # Use 4ti2 to compute the toric ideal of a cone.
+   rule _4ti2.toric_ideal : CONE_TORIC_IDEAL.GROEBNER.BINOMIAL_BASIS : HILBERT_BASIS_GENERATORS, CONE_TORIC_IDEAL.GROEBNER.ORDER_MATRIX | CONE_TORIC_IDEAL.GROEBNER.ORDER_NAME {
+        my $tempname=new Tempfile;
+        my $pts = $this->HILBERT_BASIS_GENERATORS->[0];
+        my $npts = $pts->rows();
+        my ($term_order, $given) = $this->CONE_TORIC_IDEAL->GROEBNER->give_with_name("ORDER_MATRIX | ORDER_NAME");
+        groebner_term_order($tempname,$term_order,$given,$npts);
+        $this->CONE_TORIC_IDEAL->GROEBNER->BINOMIAL_BASIS = groebner_run($pts, $tempname);
+   }
+
+   # Compute Groebner Basis using default ordering.
+   # The help text claims to use degrevlex by default but the result seems to be 'ls'
+   rule _4ti2.toric_ideal : CONE_TORIC_IDEAL.GROEBNER(new).BINOMIAL_BASIS, CONE_TORIC_IDEAL.GROEBNER(new).ORDER_NAME : HILBERT_BASIS_GENERATORS {
+       my $bb = groebner_run($this->HILBERT_BASIS_GENERATORS->[0], new Tempfile);
+       $this->CONE_TORIC_IDEAL->GROEBNER->ORDER_NAME = "ls";
+       $this->CONE_TORIC_IDEAL->GROEBNER->BINOMIAL_BASIS= $bb;
+   }
 
 
 }
@@ -128,14 +126,63 @@ object Polytope<Rational> {
 
     rule _4ti2.integer_points: LATTICE_POINTS_GENERATORS : CONE_AMBIENT_DIM , FACETS | INEQUALITIES {
         my $tempname=new Tempfile;
-        
+
         zsolve_print($tempname, $this, polytope=>1);
-        
+
         _4ti2_run($zsolve,$tempname);
-        
+
         zsolve_parse($tempname, $this, polytope=>1);
     }
-    weight 5.35;   
+    weight 5.35;
+
+}
+
+sub groebner_term_order {
+   my ($tempname, $term_order, $given, $lp) = @_;
+   if ($given eq "ORDER_NAME") {
+       if ($term_order eq 'lp') {
+           # lexicographical ordering
+           $term_order=unit_matrix<Int>($lp);
+       } elsif ($term_order eq 'Lp') {
+           # can't find the meaning of this in singular
+           # and since rp exist this is propaly wrong
+       } elsif ($term_order eq 'Dp') {
+           # degree lexicographical ordering
+           $term_order = new Matrix<Int>($lp,$lp);
+           $term_order->row(0) = ones_vector<Int>($lp);
+           foreach (1..$lp-1) { $term_order->elem($_, $_-1) = 1; }
+       } elsif ($term_order eq 'dp') {
+           # degree reverse lexicographical ordering
+           $term_order = new Matrix<Int>($lp,$lp);
+           $term_order->row(0) = ones_vector<Int>($lp);
+           foreach (1..$lp-1) { $term_order->elem($_, $lp-$_) = -1; }
+       } elsif ($term_order eq 'rp') {
+           # reverse lexicographical ordering
+           $term_order = new Matrix<Int>($lp,$lp);
+           foreach (0..$lp-1) { $term_order->elem($_, $lp-1-$_) = 1; }
+       } elsif ($term_order eq 'ls') {
+           # negative lexicographical ordering
+           $term_order= -unit_matrix<Int>($lp);
+       } elsif ($term_order eq 'rs') {
+           # negative reverse lexicographical ordering
+           $term_order = new Matrix<Int>($lp,$lp);
+           foreach (0..$lp-1) { $term_order->elem($_, $lp-1-$_) = -1; }
+       } elsif ($term_order eq 'ds') {
+           # negative degree reverse lexicographical ordering
+           $term_order = new Matrix<Int>($lp,$lp);
+           $term_order->row(0) = -ones_vector<Int>($lp);
+           foreach (1..$lp-1) { $term_order->elem($_, $lp-$_) = 1; }
+       } else {
+           # has to be 'Ds' since the initial rull of Groebner
+           # allows no other
+           # negative degree lexicographical ordering
+           $term_order = new Matrix<Int>($lp,$lp);
+           $term_order->row(0) = -ones_vector<Int>($lp);
+           foreach (1..$lp-1) { $term_order->elem($_, $lp-$_) = -1; }
+       }
+   }
+   # write termorder into $tempname.cost
+   groebner_write($tempname, 'cost', $term_order);
 }
 
 sub groebner_write {
@@ -150,10 +197,10 @@ sub groebner_write {
 }
 
 sub groebner_run {
-    my ($this, $tempname)=@_;
+    my ($pts, $tempname)=@_;
 
     # write all lattice points into $tempname.mat
-    groebner_write($tempname, 'mat', transpose($this->LATTICE_POINTS_GENERATORS->[0]));
+    groebner_write($tempname, 'mat', transpose($pts));
 
     # run groebner with standard precision
     my $runarb = 0;
@@ -191,16 +238,12 @@ sub groebner_run {
       or die "can't open output file $tempname.gro: $!";
     my $dimline = <$outfile>;
     my @gromat=();
-    my $i;
     while (<$outfile>) {
         my @vec = split;
         push @gromat, \@vec;
-        $i++;
-    }
-    if ($i > 0) {
-        $this->GROEBNER_BASIS->BASIS = \@gromat;
     }
     close $outfile;
+    return @gromat > 0 ? new Matrix(\@gromat) : new Matrix(0,$pts->rows());
 }
 
 sub _4ti2_run {
@@ -215,7 +258,7 @@ sub _4ti2_run {
 
 sub zsolve_print {
     my ($tempname, $this, %flags) = @_;
-    
+
     # prepare data: ineq / eq
     my $dim = $this->CONE_AMBIENT_DIM;
     if ($flags{polytope}) { --$dim; }
@@ -223,7 +266,7 @@ sub zsolve_print {
     my $F=$this->give("FACETS | INEQUALITIES");
     my $n_ineq = $F->rows;
     my $facets = dense(eliminate_denominators_in_rows($F));
-    
+
     if (!check_int_limit($facets)) {
         die("input values exceed int limits");
     }
@@ -237,8 +280,8 @@ sub zsolve_print {
             die("input values exceed int limits");
         }
     }
- 
-    # matrix file 
+
+    # matrix file
     open(my $M, ">$tempname.mat")
         or die "can't create temporary file $tempname.mat: $!";
     if ($flags{polytope}) {
@@ -256,7 +299,7 @@ sub zsolve_print {
         my $rhs= zero_vector<Integer>($n_lines);
         print $R "1 $n_lines\n", $rhs, " ";
     }
-    
+
     # relations file
     open(my $E, ">$tempname.rel")
         or die "can't create temporary file $tempname.rel: $!";
@@ -281,7 +324,7 @@ sub zsolve_print {
 
 sub zsolve_parse {
     my ($tempname, $this, %flags) = @_;
-    
+
     my (@rays, @points, @lineality);
     my $is_polytope = $flags{polytope};
 
@@ -293,7 +336,7 @@ sub zsolve_parse {
 
     while (<$outfile>) {
         next if /^$/;
-        # read one point and append to output 
+        # read one point and append to output
         push @rays, [ $is_polytope ? (0, split) : split ];
     }
     close $outfile;

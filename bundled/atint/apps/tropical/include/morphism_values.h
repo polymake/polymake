@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -26,8 +26,7 @@
 	Deals with computing values of morphisms from matrix representations and vice versa.
 	*/
 
-#ifndef POLYMAKE_ATINT_MORPHISM_VALUES_H 
-#define POLYMAKE_ATINT_MORPHISM_VALUES_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
@@ -70,4 +69,3 @@ namespace polymake { namespace tropical {
 
 }}
 
-#endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_BISECTOR_H
-#define POLYMAKE_POLYTOPE_BISECTOR_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
@@ -45,7 +44,6 @@ bisector(const GenericVector<Vector1,Scalar>& F1, const GenericVector<Vector2,Sc
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_BISECTOR_H
 
 // Local Variables:
 // mode:C++

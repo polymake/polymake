@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -450,6 +450,34 @@ sub add_fallback {
 }
 ####################################################################################
 # private:
+sub analyze_typecheck {
+   my ($arg_list, $arg, $min, $tparams, $final_typecheck) = @_;
+   my @typecheck;
+
+   if (defined($tparams)) {
+      push @typecheck, TypecheckFlags::has_sub, \&check_explicit_typelist, @$tparams;
+   }
+
+   add_final_typecheck($arg_list, $arg, $min, \@typecheck, $final_typecheck)
+      if defined($final_typecheck);
+
+   @typecheck ? \@typecheck : undef
+}
+####################################################################################
+# private:
+sub add_final_typecheck {
+   my ($arg_list, $arg, $min, $typecheck, $final_typecheck) = @_;
+
+   # final typecheck applies if the resolving procedure can stop after this argument
+   my $elem;
+   do { ++$arg } while ($arg < $min && !ref($elem = $arg_list->[$arg]) && $elem eq '$');
+   if ($arg >= $min) {
+      $typecheck->[0] |= TypecheckFlags::has_final_sub;
+      splice @$typecheck, 1, 0, $final_typecheck;
+   }
+}
+####################################################################################
+# private:
 sub analyze_signature_element {
    my ($arg_list, $arg, $min, $method_context_pkg, $final_typecheck)=@_;
    my ($arg_type, $pkg, @typecheck);
@@ -483,14 +511,10 @@ sub analyze_signature_element {
    } else {
       defined($pkg=$arg_type) or croak( "unknown type in signature" );
    }
-   if (defined $final_typecheck) {
-      # final typecheck applies if the resolving procedure can stop after this argument
-      do { ++$arg } while ($arg<$min && !ref($elem=$arg_list->[$arg]) && $elem eq '$');
-      if ($arg >= $min) {
-         $typecheck[0] |= TypecheckFlags::has_final_sub;
-         splice @typecheck, 1, 0, $final_typecheck;
-      }
-   }
+
+   add_final_typecheck($arg_list, $arg, $min, \@typecheck, $final_typecheck)
+      if defined($final_typecheck);
+
    ($pkg, @typecheck ? \@typecheck : undef);
 }
 ####################################################################################
@@ -556,17 +580,10 @@ sub add_instance {
       unshift @arg_list, $pkg;
       $method_context_pkg=$pkg;
    }
-   my ($signature, @last_glob, $sibling_node, $backtrack_node, $typecheck, $arg_pkg, $final_typecheck, $node);
-   if (defined $tparams) {
-      $typecheck=[ TypecheckFlags::has_sub, \&check_explicit_typelist, @$tparams ];
-   }
-   $final_typecheck=pop(@arg_list) if @arg_list && is_code($arg_list[-1]);
-   if (defined($final_typecheck) && !@arg_list) {
-      $typecheck //= [ 0 ];
-      $typecheck->[0] |= TypecheckFlags::has_final_sub;
-      splice @$typecheck, 1, 0, $final_typecheck;
-   }
-   my $arg= $is_method && !defined($root_node) ? 0 : -1;
+   my ($signature, @last_glob, $sibling_node, $backtrack_node, $arg_pkg, $final_typecheck, $node);
+   $final_typecheck = pop(@arg_list) if @arg_list && is_code($arg_list[-1]);
+   my $arg = $is_method && !defined($root_node) ? 0 : -1;
+   my $typecheck = analyze_typecheck(\@arg_list, $arg, $min, $tparams, $final_typecheck);
    $node_type //= "Polymake::Overload::Node";
 
    if (defined($root_node)) {

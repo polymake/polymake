@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -33,7 +33,7 @@ user_method LATTICE(%Visual::PointSet::decorations) {
     }
     my $vert = $P->VERTICES;
     my $lp = $P->LATTICE_POINTS;
-    my $nlv = new Matrix<Float>([grep {!is_integral($_)} @$vert]);
+    my $nlv = new Matrix<Float>(map { convert_to<Float>($_) } grep {!is_integral($_)} @$vert);
     my $points = new Matrix<Float>(0,$P->CONE_DIM);
     $points /= convert_to<Float>($P->LATTICE_POINTS) if ($P->N_LATTICE_POINTS);
     $points /= $nlv if ($nlv->rows);

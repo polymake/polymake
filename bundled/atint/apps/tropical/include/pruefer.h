@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -26,8 +26,7 @@
 	Contains functions handling pruefer sequences.
 	*/
 
-#ifndef POLYMAKE_ATINT_PRUEFER_H
-#define POLYMAKE_ATINT_PRUEFER_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -139,4 +138,3 @@ BigObject complex_from_prueferSequences(Int n, const Matrix<Int>& pseq)
 
 } }
 
-#endif // PRUEFER_H

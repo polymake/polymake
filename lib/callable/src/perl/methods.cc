@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -95,7 +95,7 @@ void Main::call_app_method(const char* method, const AnyString& arg)
 {
    dTHX;
    PmStartFuncall(2);
-   SV* const app=glue::get_current_application(aTHX);
+   SV* const app = glue::get_current_application(aTHX);
    PUSHs(app);
    mPUSHp(arg.ptr, arg.len);
    PUTBACK;
@@ -105,7 +105,9 @@ void Main::call_app_method(const char* method, const AnyString& arg)
 void Main::set_custom_var(const AnyString& name, const AnyString& key, Value& x)
 {
    dTHX;
-   PmStartFuncall(3);
+   PmStartFuncall(4);
+   SV* const app = glue::get_current_application(aTHX);
+   PUSHs(app);
    mPUSHp(name.ptr, name.len);
    if (key.ptr) mPUSHp(key.ptr, key.len);
    PUSHs(x.get_temp());
@@ -116,7 +118,9 @@ void Main::set_custom_var(const AnyString& name, const AnyString& key, Value& x)
 void Main::reset_custom(const AnyString& name, const AnyString& key)
 {
    dTHX;
-   PmStartFuncall(2);
+   PmStartFuncall(3);
+   SV* const app = glue::get_current_application(aTHX);
+   PUSHs(app);
    mPUSHp(name.ptr, name.len);
    if (key.ptr) mPUSHp(key.ptr, key.len);
    PUTBACK;
@@ -138,7 +142,9 @@ void Scope::prefer_now(const AnyString& labels) const
 void Scope::set_custom_var(const AnyString& name, const AnyString& key, Value& x) const
 {
    dTHX;
-   PmStartFuncall(3);
+   PmStartFuncall(4);
+   SV* const app = glue::get_current_application(aTHX);
+   PUSHs(app);
    mPUSHp(name.ptr, name.len);
    if (key.ptr) mPUSHp(key.ptr, key.len);
    PUSHs(x.get_temp());

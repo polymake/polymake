@@ -1,0 +1,6 @@
+{"app": "polytope",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "minkowski_sum_fukuda", "include": ["polymake/Rational.h", "polymake/polytope/minkowski_sum_fukuda.h"], "sig": "minkowski_sum_fukuda:T1.B", "tp": 1},
+  {"args": ["QuadraticExtension<Rational>", "void"], "func": "minkowski_sum_fukuda", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/polytope/minkowski_sum_fukuda.h"], "sig": "minkowski_sum_fukuda:T1.B", "tp": 1},
+ null ],
+"version": 3}

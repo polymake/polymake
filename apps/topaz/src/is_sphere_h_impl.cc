@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -158,7 +158,7 @@ Int is_ball_or_sphere_h(const Lattice<BasicDecoration>& HD, const pm::SharedRand
   std::list<Set<Int>> S;
   Int v = 0;
 
-  for (const auto f : HD.nodes_of_rank(HD.rank()-2)) {
+  for (const auto f : HD.nodes_of_rank(HD.rank()-1)) {
     S.push_back(HD.face(f));
     const Int w = HD.face(f).back();
     if (w>=v)

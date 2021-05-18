@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,7 +21,7 @@
 #include "polymake/Matrix.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Set.h"
-#include "polymake/PowerSet.h"
+#include "polymake/FacetList.h"
 #include "polymake/hash_map"
 #include "polymake/Graph.h"
 #include "polymake/common/labels.h"
@@ -104,7 +104,7 @@ BigObject face(BigObject p_in, const Set<Int>& some_rays, OptionSet options)
    const Set<Int>& rays_of_face = fp.first;
    const Set<Int>& facets_containing_face = fp.second;
    Set<Int> facet_candidates = sequence(0, n_facets) - facets_containing_face; // facet indices
-   PowerSet<Int> facets_of_face;
+   FacetList facets_of_face;
    for (auto f = entire(facet_candidates); !f.at_end(); ++f)
       facets_of_face.insertMax(rays_of_face * RIF.row(*f)); // sets of ray indices
    const Int n_rays_of_face = rays_of_face.size(), n_facets_of_face = facets_of_face.size();
@@ -114,9 +114,9 @@ BigObject face(BigObject p_in, const Set<Int>& some_rays, OptionSet options)
    for (auto v = entire(rays_of_face); !v.at_end(); ++v)
       relabel[*v]=idx++;
 
-   IncidenceMatrix<> rif_face(n_facets_of_face,n_rays_of_face);
+   IncidenceMatrix<> rif_face(n_facets_of_face, n_rays_of_face);
    idx = 0;
-   for (auto f = entire(facets_of_face); !f.at_end(); ++f, ++idx)
+   for (auto f = entire(lex_ordered(facets_of_face)); !f.at_end(); ++f, ++idx)
       for (auto v = entire(*f); !v.at_end(); ++v)
          rif_face(idx,relabel[*v])=1;
    
@@ -125,7 +125,7 @@ BigObject face(BigObject p_in, const Set<Int>& some_rays, OptionSet options)
 
    if (!options["no_coordinates"]) {
       const Matrix<Scalar> R=p_in.give("RAYS"),
-                             LS=p_in.give("LINEALITY_SPACE");
+                          LS=p_in.give("LINEALITY_SPACE");
 
       p_out.take("RAYS") << R.minor(rays_of_face,All);
       p_out.take("LINEALITY_SPACE") << LS;

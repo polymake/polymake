@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_CONVEX_HULL_H
-#define POLYMAKE_POLYTOPE_CONVEX_HULL_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -200,7 +199,6 @@ std::pair<Bitset, Set<Int>> get_non_redundant_inequalities(const GenericMatrix<M
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_CONVEX_HULL_H
 
 // Local Variables:
 // mode:C++

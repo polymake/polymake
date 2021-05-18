@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_TREE_ITERATORS_H
-#define POLYMAKE_INTERNAL_TREE_ITERATORS_H
+#pragma once
 
 #include "polymake/internal/iterators.h"
 
@@ -53,7 +52,6 @@ struct iterator_cross_const_helper< std::__tree_const_iterator<Tp,NodePtr,DiffTy
 #endif
 
 }
-#endif // POLYMAKE_INTERNAL_TREE_ITERATORS_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -42,35 +42,18 @@ sub application_from_object {
 }
 
 sub set_custom {
-   my $name = shift;
-   if (@_==1 && substr($name, 0, 1) eq '@' && is_array($_[0])) {
-      $User::application->_set_custom($Core::Prefs->custom, $name, @{$_[0]});
-   } elsif (@_==1 && substr($name, 0, 1) eq '%' && is_hash($_[0])) {
-      $User::application->_set_custom($Core::Prefs->custom, $name, %{$_[0]});
-   } elsif (@_) {
-      $User::application->_set_custom($Core::Prefs->custom, $name, @_);
-   } else {
-      die "set_custom: value missing\n";
-   }
+   my $item = &Core::Application::get_custom_item;
+   $item->set_value(splice @_, 2);
 }
 
 sub reset_custom {
-   my $name = shift;
-   $User::application->_reset_custom($Core::Prefs->custom, $name, @_);
+   my $item = &Core::Application::get_custom_item;
+   $item->reset_value(splice @_, 2);
 }
 
 sub local_custom {
-   my $var = $User::application->find_custom_var(shift, $Core::Prefs->custom);
-   local with($Scope->locals) {
-      no strict 'refs';
-      $var->prefix eq '$'
-      ? (local ${$var->name} = $_[0]) :
-      $var->prefix eq '@'
-      ? (local ref *{$var->name} = $_[0]) :
-      @_==2
-      ? (local ref *{$var->name} = $_[0])
-      : (local ${$var->name}{$_[0]} = $_[1]);
-   }
+   my $item = &Core::Application::get_custom_item;
+   $item->set_local_value($Scope, splice @_, 2);
 }
 
 sub shell_enable {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_QUOTIENT_SPACE_TOOLS_H
-#define POLYMAKE_POLYTOPE_QUOTIENT_SPACE_TOOLS_H
+#pragma once
 
 #include "polymake/hash_set"
 #include "polymake/Set.h"
@@ -67,7 +66,6 @@ Array<Array<Int>> induced_symmetry_group_generators(Int n_,
       
 } } // end namespaces
 
-#endif // POLYMAKE_POLYTOPE_QUOTIENT_SPACE_TOOLS_H
 
 // Local Variables:
 // mode:C++

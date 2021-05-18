@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -26,8 +26,7 @@
 	Implements the pullback of RationalFunction via a Morphism
 	*/
 
-#ifndef POLYMAKE_ATINT_PULLBACK_H
-#define POLYMAKE_ATINT_PULLBACK_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -132,4 +131,3 @@ BigObject pullback(BigObject morphism, BigObject function)
 
 } }
 
-#endif

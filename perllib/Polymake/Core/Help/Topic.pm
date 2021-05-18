@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -574,7 +574,7 @@ sub list_matching_leaves {
 
 sub list_matching_children {
    my ($self, $prefix) = @_;
-   @{$self->topics}{ grep { $_ ne "any" && index($_, $prefix) == 0 } @{$self->toc} };
+   @{$self->topics}{ grep { index($_, $prefix) == 0 && $_ ne "any" } @{$self->toc} };
 }
 
 sub list_matching_topics {

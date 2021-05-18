@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,7 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_@{[ $vars->{guard_name} ]}_H
+#pragma once
+
 #define POLYMAKE_@{[ $vars->{guard_name} ]}_H
 
 #include_next "@{[ $vars->{include_file} ]}"
@@ -25,8 +26,6 @@ namespace polymake { namespace perl_bindings {
 ///==== Automatically generated contents follow.    Please do not delete this line. ====
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } }
-
-#endif // POLYMAKE_@{[ $vars->{guard_name} ]}_H
 
 // Local Variables:
 // mode:C++

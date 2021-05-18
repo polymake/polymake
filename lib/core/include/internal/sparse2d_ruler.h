@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_SPARSE2D_RULER_H
-#define POLYMAKE_INTERNAL_SPARSE2D_RULER_H
+#pragma once
 
 #include "polymake/internal/iterators.h"
 
@@ -217,7 +216,6 @@ struct spec_object_traits< sparse2d::ruler<Container, prefix_data> > : spec_obje
 
 }
 
-#endif // POLYMAKE_INTERNAL_SPARSE2D_RULER_H
 
 // Local Variables:
 // mode:C++

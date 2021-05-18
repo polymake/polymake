@@ -1,6 +1,7 @@
-/* Copyright (c) 1997-2020
-   Ewgenij Gawrilow, Michael Joswig (Technische Universitaet Berlin, Germany)
-   http://www.polymake.org
+/* Copyright (c) 1997-2021
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -14,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_OPTIMAL_CONTAINS_H
-#define POLYMAKE_OPTIMAL_CONTAINS_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -216,16 +216,16 @@ std::pair<Scalar,Vector<Scalar>> optimal_contains_dual_dual(BigObject p_in, BigO
                            F_in.rows() );
   
   for(int i=0; i<F_out.rows(); i++){
-    //the coefficent for s
+    //the coefficient for s
     F_new(i,1) = F_out(i,0);
     
     for(int j=1; j<F_out.cols(); ++j){
-      // the coefficents for t
+      // the coefficients for t
       F_new(i,1+j) = -F_out(i,j);
     }
     
     for(int l=0; l<F_in.rows(); ++l){
-      // the coefficents for D
+      // the coefficients for D
       F_new(i, 1 + F_out.cols() + i*F_in.rows() +l ) = - F_in(l,0);
     }
   }
@@ -648,4 +648,3 @@ std::pair<Scalar,Vector<Scalar>> minimal_ball(BigObject p_in)
 
 }}
 
-#endif // POLYMAKE_OPTIMAL_CONTAINS_H

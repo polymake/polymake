@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -104,13 +104,14 @@ rule MIN_WEIGHTS : VECTORS, MAXIMAL_CELLS {
     my $minus_ones = new Vector<Rational>(-ones_vector<Rational>($secTineqs->rows()));
     my $positive_orthant = zero_vector<Rational>|unit_matrix<Rational>($n_vectors);
     my $ineqs = ($minus_ones|$secTineqs) / $positive_orthant; # shifted ineqs intersected with positive orthant
-    my $C = new Cone(INEQUALITIES=>$ineqs);
+    my $eqs = zero_vector<Rational> | $secT->EQUATIONS;
+    my $C = new Cone(INEQUALITIES=>$ineqs, EQUATIONS=>$eqs);
     my $inner = primitive($C->REL_INT_POINT);
     my $objective = 0|ones_vector<Rational>($n_vectors);
     my $val = $objective * $inner;
     $ineqs = new Matrix($ineqs / new Vector($val | -ones_vector<Rational>($n_vectors)));
     my $ilp = new polytope::MixedIntegerLinearProgram<Rational>(LINEAR_OBJECTIVE=>$objective);
-    my $secTilp = new polytope::Polytope(INEQUALITIES=>$ineqs,MILP=>$ilp);
+    my $secTilp = new polytope::Polytope(INEQUALITIES=>$ineqs, EQUATIONS=>$eqs, MILP=>$ilp);
     $this->MIN_WEIGHTS = $secTilp->MILP->MINIMAL_SOLUTION->slice(~[0]);
 }
 weight 6.10;

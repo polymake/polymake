@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -32,19 +32,16 @@ CONFIGURE {
    }
 }
 
-# @topic custom
-# The first two numeric constants defined here are in postscript points (1/72"). The following one are in px and are scaled to match the DIN A4 sheet.
-
-# height of DIN A4 sheet
+# height of paper sheet, in postscript points (1/72"); default = DIN A4 sheet
 custom $Hpaper=841;
 
-# width of DIN A4 sheet
+# width of paper sheet, in postscript points (1/72"); default = DIN A4 sheet
 custom $Wpaper=595;
 
-# vertical margin
+# vertical margin, in postscript points (1/72")
 custom $Hmargin=50;
 
-# horizontal margin
+# horizontal margin, in postscript points (1/72")
 custom $Wmargin=30;
 
 # text labels

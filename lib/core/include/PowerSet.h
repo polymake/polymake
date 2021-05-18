@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POWERSET_H
-#define POLYMAKE_POWERSET_H
+#pragma once
 
 #include "polymake/vector"
 #include "polymake/Set.h"
@@ -498,9 +497,10 @@ auto all_subsets(Container&& c)
 {
    return AllSubsets<add_const_t<Container>>(std::forward<Container>(c));
 }
-
-template <typename PowerSet, typename ElementSet>
-Int insertMax(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
+
+template <typename ElementSet, typename Top, typename E, typename Comparator>
+std::enable_if_t<is_generic_set<ElementSet, E, Comparator>::value, Int>
+insertMax(Set<ElementSet>& power_set, const GenericSet<Top, E, Comparator>& element_set_arg)
 {
    const auto& element_set = diligent(element_set_arg);
    if (element_set.empty())
@@ -520,8 +520,9 @@ Int insertMax(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg
    return 1;
 }
 
-template <typename PowerSet, typename ElementSet>
-Int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg)
+template <typename ElementSet, typename Top, typename E, typename Comparator>
+std::enable_if_t<is_generic_set<ElementSet, E, Comparator>::value, Int>
+insertMin(Set<ElementSet>& power_set, const GenericSet<Top, E, Comparator>& element_set_arg)
 {
    const auto& element_set = diligent(element_set_arg);
    if (element_set.empty())
@@ -541,112 +542,22 @@ Int insertMin(PowerSet& power_set, const GenericSet<ElementSet>& element_set_arg
    return 1;
 }
 
-/** @class PowerSet
-    @brief A Set with elements of type Set<E>, providing methods for adding elements while preserving subset or superset independence.
-    @c Comparator is a functor defining a total ordering on Set<E>.
-*/
+template <typename E, typename Comparator = operations::cmp>
+using PowerSet = Set<Set<E, Comparator>>;
 
-template <typename E, typename Comparator>
-class PowerSet : public Set<Set<E, Comparator>> {
-   typedef Set<Set<E, Comparator>> base_t;
-public:
-   /// Create as empty.
-   PowerSet() {}
-
-   /// Create from a Set of Sets.
-   template <typename Top>
-   PowerSet(const GenericSet<Top, Set<E, Comparator>>& S)
-      : base_t(S) {}
-
-   /** @brief Reads subsets from an input sequence.
-       They must be sorted lexicographically.
-   */
-   template <typename Iterator>
-   PowerSet(Iterator first, Iterator last)
-   {
-      std::copy(first, last, std::back_inserter(*this));
-   }
-
-   /// Create from an iterator.
-   template <typename Iterator>
-   explicit PowerSet(Iterator&& src,
-                     typename std::enable_if<assess_iterator<Iterator, check_iterator_feature, end_sensitive>::value &&
-                                             assess_iterator_value<Iterator, isomorphic_types, Set<E>>::value,
-                                             void**>::type=nullptr)
-      : base_t(std::forward<Iterator>(src)) {}
-
-   /// Compare two PowerSets.
-   template <typename TSet2>
-   PowerSet& operator= (const GenericSet<TSet2, Set<E, Comparator>>& S)
-   {
-      base_t::operator=(S);
-      return *this;
-   }
-
-   /** @brief Adds an independent subset.
-
-       The new subset will not be added if there already is another subset that includes the given one.
-       All subsets in the %PowerSet that are included in the new one are removed.
-       @return 1 new subset inserted, smaller subsets possibly deleted.
-       @return  0 new subset not inserted, because the same subset was already there
-       @return -1 new subset not inserted, because there already is a bigger one
-   */
-   template <typename TSet2>
-   Int insertMax(const GenericSet<TSet2, E, Comparator>& s)
-   {
-      return pm::insertMax(*this, s);
-   }
-
-   /** @brief Adds an independent subset.
-
-       The new subset will not be added if there already is another subset that is contained in the given one.
-       All subsets in the %PowerSet that contain the new one are removed.
-       @return  1 new subset inserted, larger subsets possibly deleted
-       @return  0 new subset not inserted, because the same subset was already there
-       @return -1 new subset not inserted, because there already is a smaller one
-   */
-   template <typename TSet2>
-   Int insertMin(const GenericSet<TSet2, E, Comparator>& s)
-   {
-      return pm::insertMin(*this, s);
-   }
-};
 
 /// Gather all independent intersections of subsets from the given PowerSet.
-template <typename Iterator>
-PowerSet<typename iterator_traits<Iterator>::value_type::element_type,
-         typename iterator_traits<Iterator>::value_type::element_comparator>
-ridges(Iterator set)
+template <typename Top, typename ElementSet, typename = std::enable_if_t<is_generic_set<ElementSet>::value>>
+PowerSet<typename ElementSet::element_type, typename ElementSet::element_comparator>
+ridges(const GenericSet<Top, ElementSet>& power_set)
 {
-   typedef typename iterator_traits<Iterator>::value_type::element_type element_type;
-   typedef typename iterator_traits<Iterator>::value_type::element_comparator element_comparator;
-   PowerSet<element_type, element_comparator> R;
-   for (; !set.at_end(); ++set) {
-      Iterator set2=set;
-      for (++set2; !set2.at_end(); ++set2) {
-         Set<element_type> ridge = (*set) * (*set2);
-         R.insertMax(ridge);
-      }
+   PowerSet<typename ElementSet::element_type, typename ElementSet::element_comparator> R;
+   for (auto it = power_set.top().begin(), end = power_set.top().end();  it != end; ++it) {
+      auto it2 = it;
+      for (++it2; it2 != end; ++it2)
+         insertMax(R, (*it) * (*it2));
    }
    return R;
-}
-
-template <typename E, typename Comparator, typename Permutation>
-PowerSet<E,Comparator> permuted(const PowerSet<E,Comparator>& s, const Permutation& perm)
-{
-   PowerSet<E, Comparator> result;
-   for (auto it = entire(s);  !it.at_end();  ++it)
-      result += permuted(*it,perm);
-   return result;
-}
-
-template <typename E, typename Comparator, typename Permutation>
-PowerSet<E,Comparator> permuted_inv(const PowerSet<E,Comparator>& s, const Permutation& perm)
-{
-   PowerSet<E, Comparator> result;
-   for (auto it = entire(s);  !it.at_end();  ++it)
-      result += permuted_inv(*it,perm);
-   return result;
 }
 
 } // end namespace pm
@@ -664,7 +575,6 @@ namespace polymake {
    using pm::all_subsets;
 }
 
-#endif // POLYMAKE_POWERSET_H
 
 // Local Variables:
 // mode:C++

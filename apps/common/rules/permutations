@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -36,8 +36,6 @@ function permuted(Vector, *) : c++;
 # Create a new Set consisting of images of the original Set elements under the given permutation.
 function permuted(Set, *) : c++;
 
-function permuted(PowerSet, *) : c++;
-
 # Like permuted(), treating the given permutation as an inverted one.
 function permuted_inv(Array, *) : c++ (include => "polymake/permutations.h");
 
@@ -45,15 +43,16 @@ function permuted_inv(Vector, *) : c++;
 
 function permuted_inv(Set, *) : c++;
 
-function permuted_inv(PowerSet, *) : c++;
-
 # Apply the given permutation to every element of an Array
 # (the elements are supposed to be permutable containers).
-function permuted_elements(Array, $) {
-   my ($array, $perm)=@_;
-   local $Core::PropertyType::trusted_value=1;
-   $array->type->construct->([ map { permuted($_,$perm) } @$array ]);
-}
+function permuted_elements(Array, *) : c++ (include => "polymake/permutations.h");
+
+function permuted_elements(Set, *) : c++ (include => "polymake/permutations.h");
+
+# Like permuted_elements(), treating the given permutation as an inverted one.
+function permuted_elements_inv(Array, *) : c++ (include => "polymake/permutations.h");
+
+function permuted_elements_inv(Set, *) : c++ (include => "polymake/permutations.h");
 
 # Create a new matrix by permuting the rows of the given one.
 function permuted_rows(Matrix, *) : c++;

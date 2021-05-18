@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -27,7 +27,7 @@ namespace polymake { namespace matroid {
 BigObject uniform_matroid(const Int r, const Int n)
 {
    if (n < 1)
-      throw std::runtime_error("uniform_matroid: at least 1 element requiered");
+      throw std::runtime_error("uniform_matroid: at least 1 element required");
    if (r < 0 || r > n)
       throw std::runtime_error("uniform_matroid: 0 <= r <= n required");
 

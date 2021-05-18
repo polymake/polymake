@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MATROID_BASES_FROM_LOF_H
-#define POLYMAKE_MATROID_BASES_FROM_LOF_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/Set.h"
@@ -49,7 +48,6 @@ Array<Set<Int>> bases_from_lof_impl(const graph::Lattice<graph::lattice::BasicDe
 
 } }
 
-#endif // POLYMAKE_MATROID_BASES_FROM_LOF_H
 
 // Local Variables:
 // mode:C++

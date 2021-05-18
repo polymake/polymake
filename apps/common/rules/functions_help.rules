@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -121,7 +121,7 @@
 # Make the production rules, user functions, or methods (further called //items//)
 # matching the given //label_expression// be preferred over competing rules (functions, methods).
 #
-# The new preference list is also saved in your personal file ''~/.polymake/prefer.pl''
+# The new preference list is also saved in your personal file ''~/.polymake/settings''
 # It remains active in all forthcoming sessions until you revoke it with another
 # //prefer// or [[reset_preference]] command.
 #
@@ -162,7 +162,7 @@
 # otherwise the preferences are neutralized, i.e. all competing items (rules/methods/etc.) get equal ranks.
 #
 # This change is permanent, the former settings are wiped out from your preference file
-# ''~/.polymake/prefer.pl''
+# ''~/.polymake/settings''
 #
 # @param [complete Core::Preference(reset)] String label_expression "label" or "label.sublevels" or "*.sublevels" or "*" or "all"
 #  Two last forms match all preference lists visible from the current application.
@@ -180,7 +180,7 @@
 # @category Basic
 #
 # Set the custom variable, array, hash, or hash element to a new value and store it perpetually
-# in your personal settings file ''~/.polymake/customize.pl''
+# in your personal settings file ''~/.polymake/settings''
 #
 # @param Any assignment following expressions are allowed:
 #  ''$var=value;''
@@ -193,7 +193,7 @@
 # @category Basic
 #
 # Reset the custom variable, array, hash, or hash element to the default value(s) as defined in the rule base
-# and store it perpetually in your personal settings file ''~/.polymake/customize.pl''
+# and store it perpetually in your personal settings file ''~/.polymake/settings''
 # @param Any variable following expressions are allowed:
 #  ''$var;''
 #  ''@array;''
@@ -403,14 +403,12 @@
 # @topic core/functions/export_configured ($;%)
 # @category Interactive
 # Saves all custom variables having non-defalt values in a file.
-# This includes all results of automatic or manual rule configuration.
+# This includes all results of successful automatic or manual rule configuration.
 # The obtained file can be edited manually, if needed, and used as a global configuration
 # source (see also [[wiki:howto/configure|How to configure polymake for a group of users]]).
 # @param [complete file] String filename where to store the settings
-# @option Bool merge_with_global include the settings inherited from *your* global
-#  configuration in the resulting file
-# @option Bool only_configured do not export the status of unconfigured
-#  or only partially configured rulefiles
+# @option Bool include_imported include settings imported from *your* global configuration;
+#  by default, only your private settings will be exported.
 # @option String suppress regular expression matching fully qualified names of custom variables
 #  that should not be exported
 

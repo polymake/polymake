@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_GMPXX_TRAITS_H
-#define POLYMAKE_INTERNAL_GMPXX_TRAITS_H
+#pragma once
 
 #include "polymake/internal/iterators.h"
 
@@ -28,7 +27,6 @@ struct has_value_type<__gmp_expr<T1, T2>> : std::false_type {};
 
 } // end namespace pm
 
-#endif // POLYMAKE_INTERNAL_GMPXX_TRAITS_H
 
 // Local Variables:
 // mode:C++

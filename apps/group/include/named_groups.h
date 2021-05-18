@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GROUP_NAMED_GROUPS_H
-#define POLYMAKE_GROUP_NAMED_GROUPS_H
+#pragma once
 
 #include "polymake/group/group_tools.h"
 #include "polymake/AccurateFloat.h"
@@ -43,7 +42,6 @@ BigObject dihedral_group(Int n2);
 
 } }
 
-#endif // POLYMAKE_GROUP_NAMED_GROUPS_H
 
 // Local Variables:
 // mode:C++

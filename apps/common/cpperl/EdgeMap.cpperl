@@ -33,5 +33,6 @@
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<EdgeMap<Undirected, double>>&>>", "void", "void"], "include": ["polymake/Graph.h"], "op": "cal", "ret": "lvalue", "sig": "cal:O:F:M14.x.x"},
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<EdgeMap<Directed, Int>>&>>", "void", "void"], "include": ["polymake/Graph.h"], "op": "cal", "ret": "lvalue", "sig": "cal:O:F:M14.x.x"},
   {"class": "EdgeMap<Directed, Matrix<Rational>>", "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "pkg": "Polymake::common::EdgeMap_A_Directed_I_Matrix_A_Rational_I_NonSymmetric_Z_Z"},
+  {"class": "EdgeMap<Undirected, Array<Int>>", "include": ["polymake/Array.h", "polymake/Graph.h"], "pkg": "Polymake::common::EdgeMap_A_Undirected_I_Array__Int_Z"},
  null ],
 "version": 3}

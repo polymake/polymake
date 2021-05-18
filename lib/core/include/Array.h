@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Array.h
     @brief Implementation of pm::Array class
 */
 
-#ifndef POLYMAKE_ARRAY_H
-#define POLYMAKE_ARRAY_H
 
 #include "polymake/internal/shared_object.h"
 #include "polymake/internal/converters.h"
@@ -237,7 +236,6 @@ template <typename E> inline
 void swap(pm::Array<E>& a1, pm::Array<E>& a2) { a1.swap(a2); }
 }
 
-#endif // POLYMAKE_ARRAY_H
 
 // Local Variables:
 // mode:C++

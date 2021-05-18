@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_COMMON_FLINT_FACTORIZATION_H
-#define POLYMAKE_COMMON_FLINT_FACTORIZATION_H
+#pragma once
 
 #include "polymake/Map.h"
 #include "polymake/Integer.h"
@@ -34,4 +33,3 @@ std::pair<Integer, Integer> factor_out_squares(const Integer&);
 }
 } // pm
 
-#endif

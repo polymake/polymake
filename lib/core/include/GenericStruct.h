@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GENERIC_STRUCT_H
-#define POLYMAKE_GENERIC_STRUCT_H
+#pragma once
 
 #include "polymake/internal/operations.h"
 #include "polymake/internal/comparators.h"
@@ -157,7 +156,6 @@ void swap(pm::GenericStruct<Struct>& s1, pm::GenericStruct<Struct>& s2)
 
 }
 
-#endif // POLYMAKE_GENERIC_STRUCT_H
 
 // Local Variables:
 // mode:C++

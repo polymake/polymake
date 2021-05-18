@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_HEAP_H
-#define POLYMAKE_HEAP_H
+#pragma once
 
 #include "polymake/vector"
 #include "polymake/internal/comparators.h"
@@ -226,7 +225,6 @@ namespace polymake {
    using pm::Heap;
 }
 
-#endif // POLYMAKE_HEAP_H
 
 // Local Variables:
 // mode:C++

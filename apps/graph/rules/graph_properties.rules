@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -121,7 +121,7 @@ object Graph<Undirected> {
 
 # The connected components.
 # Every row contains nodes from a single component.
-# @example The following prints the connected components of two seperate triangles:
+# @example The following prints the connected components of two separate triangles:
 # > $g = new Graph<Undirected>(ADJACENCY=>[[1,2],[0,2],[0,1],[4,5],[3,5],[3,4]]);
 # > print $g->CONNECTED_COMPONENTS;
 # | {0 1 2}
@@ -129,7 +129,7 @@ object Graph<Undirected> {
 property CONNECTED_COMPONENTS : IncidenceMatrix;
 
 # Number of [[CONNECTED_COMPONENTS]] of the graph.
-# @example The following prints the number of connected components of two seperate 
+# @example The following prints the number of connected components of two separate 
 # triangles:
 # > $g = new Graph<Undirected>(ADJACENCY=>[[1,2],[0,2],[0,1],[4,5],[3,5],[3,4]]);
 # > print $g->N_CONNECTED_COMPONENTS;
@@ -182,7 +182,7 @@ property CONNECTIVITY : Int;
 # > $g = new Graph<Undirected>(ADJACENCY=>[[1,2],[0,2],[0,1,3],[2,4,5],[3,5],[3,4]]);
 # > print $g->MAX_CLIQUES;
 # | {{0 1 2} {2 3} {3 4 5}}
-property MAX_CLIQUES : PowerSet;
+property MAX_CLIQUES : Set<Set<Int>>;
 
 # How many times a node of a given degree occurs
 # @example The following prints how often each degree of a node in the complete bipartite graph

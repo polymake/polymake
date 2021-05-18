@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_IDEAL_INTERNAL_SINGULAR_RING_MANAGER_H
-#define POLYMAKE_IDEAL_INTERNAL_SINGULAR_RING_MANAGER_H
+#pragma once
 
 
 // polymake includes
@@ -81,5 +80,4 @@ namespace singular {
 } // end namespace ideal
 } // end namespace polymake
 
-#endif
 

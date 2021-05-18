@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_INNER_POINT_H
-#define POLYMAKE_POLYTOPE_INNER_POINT_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -65,7 +64,6 @@ Vector<Coord> inner_point_from_facets(const GenericMatrix<MatrixType, Coord>& F)
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_INNER_POINT_H
 
 
 // Local Variables:

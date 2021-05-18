@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_COMMON_FIND_MATRIX_ROW_PERMUTATION_H
-#define POLYMAKE_COMMON_FIND_MATRIX_ROW_PERMUTATION_H
+#pragma once
 
 #include "polymake/GenericMatrix.h"
 #include "polymake/permutations.h"
@@ -47,7 +46,6 @@ find_matrix_row_permutation(const GenericMatrix<Matrix1, E>& M1, const GenericMa
 
 } }
 
-#endif // POLYMAKE_COMMON_FIND_MATRIX_ROW_PERMUTATION_H
 
 // Local Variables:
 // mode:C++

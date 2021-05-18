@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -23,7 +23,6 @@ function induced_orbits_on_vectors<Scalar>(Array<Matrix<Scalar>>, Matrix<Scalar>
     my ($gens, $vecs) = @_;
     return group::induced_orbits_on_vectors_impl<Scalar>($gens, $vecs);
 }
-   
 
 object Cone {
 
@@ -170,18 +169,33 @@ object Cone {
    #
    # induce RAYS_ACTION
    #
-   rule GROUP.INPUT_RAYS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, INPUT_RAYS {
+   rule GROUP.INPUT_RAYS_ACTION.GENERATORS : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, INPUT_RAYS {
       $this->GROUP->INPUT_RAYS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "INPUT_RAYS", "input_ray_action", "induced from coordinate action", 1);
    }
    weight 1.10;
 
-   rule GROUP.RAYS_ACTION : GROUP.FACETS_ACTION, FACETS_THRU_RAYS {
+   rule GROUP.INPUT_RAYS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, INPUT_RAYS {
+      $this->GROUP->INPUT_RAYS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->HOMOGENEOUS_COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->INPUT_RAYS, homogeneous_action=>1);
+   }
+   weight 1.10;
+
+   rule GROUP.RAYS_ACTION.GENERATORS : GROUP.FACETS_ACTION.GENERATORS, FACETS_THRU_RAYS {
       $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "FACETS_ACTION", "FACETS_THRU_RAYS", "ray_action", "induced from facet action", 0);
    }
    weight 1.10;
 
-   rule GROUP.RAYS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, RAYS {
+   rule GROUP.RAYS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.FACETS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, FACETS_THRU_RAYS {
+      $this->GROUP->RAYS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->FACETS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->FACETS_THRU_RAYS, homogeneous_action=>0);
+   }
+   weight 1.10;
+
+   rule GROUP.RAYS_ACTION.GENERATORS : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, RAYS {
       $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "RAYS", "ray_action", "induced from homogeneous coordinate action", 1);
+   }
+   weight 1.10;
+
+   rule GROUP.RAYS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, RAYS {
+      $this->GROUP->RAYS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->HOMOGENEOUS_COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->RAYS, homogeneous_action=>1);
    }
    weight 1.10;
 
@@ -189,21 +203,32 @@ object Cone {
    #
    # induce FACETS_ACTION
    #
-   rule GROUP.FACETS_ACTION : GROUP.RAYS_ACTION, RAYS_IN_FACETS {
+   rule GROUP.FACETS_ACTION.GENERATORS : GROUP.RAYS_ACTION.GENERATORS, RAYS_IN_FACETS {
       $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "RAYS_ACTION", "RAYS_IN_FACETS", "facet_action", "induced from ray action", 0);
    }
    weight 1.10;
 
-   rule GROUP.FACETS_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, FACETS {
+   rule GROUP.FACETS_ACTION.GENERATORS : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, FACETS {
       $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACETS", "facet_action", "induced from homogeneous coordinate action", 1, \&canonicalize_facets);
    }
    weight 1.10;
 
+   rule GROUP.FACETS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.RAYS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, RAYS_IN_FACETS {
+      $this->GROUP->FACETS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->RAYS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->RAYS_IN_FACETS, homogeneous_action=>0);
+   }
+   weight 1.10;
+
+   rule GROUP.FACETS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, FACETS {
+      $this->GROUP->FACETS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->HOMOGENEOUS_COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->FACETS, homogeneous_action=>1);
+   }
+   weight 1.10;
 
    #
    # induce MATRIX_ACTION
    #
-   rule GROUP.MATRIX_ACTION : GROUP.INPUT_RAYS_ACTION, INPUT_RAYS {
+
+   sub induced_matrix_action_kernel {
+       my $this = shift;
        my $kernel = new Matrix<Scalar>;
        if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
            $kernel /= $ls;
@@ -211,48 +236,52 @@ object Cone {
        if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
            $kernel /= $ls;
        }
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INPUT_RAYS_ACTION", "INPUT_RAYS", $kernel);
+       return $kernel;
    }
 
-   rule GROUP.MATRIX_ACTION : GROUP.RAYS_ACTION, RAYS {
-       my $kernel = new Matrix<Scalar>;
-       if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
-           $kernel /= $ls;
-       }
-       if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
-           $kernel /= $ls;
-       }
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "RAYS_ACTION", "RAYS", $kernel);
+   rule GROUP.MATRIX_ACTION.GENERATORS : GROUP.INPUT_RAYS_ACTION.GENERATORS, INPUT_RAYS {
+       group::induce_matrix_action_generators($this, "MATRIX_ACTION", "INPUT_RAYS_ACTION", "INPUT_RAYS", induced_matrix_action_kernel($this));
    }
 
-   rule GROUP.MATRIX_ACTION : GROUP.INEQUALITIES_ACTION, INEQUALITIES {
-       my $kernel = new Matrix<Scalar>;
-       if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
-           $kernel /= $ls;
-       }
-       if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
-           $kernel /= $ls;
-       }
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "INEQUALITIES_ACTION", "INEQUALITIES", $kernel);
+   rule GROUP.MATRIX_ACTION.CONJUGACY_CLASS_REPRESENTATIVES : GROUP.INPUT_RAYS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, INPUT_RAYS {
+       group::induce_matrix_action_conjugacy_class_representatives($this, "MATRIX_ACTION", "INPUT_RAYS_ACTION", "INPUT_RAYS", induced_matrix_action_kernel($this));
    }
 
-   rule GROUP.MATRIX_ACTION : GROUP.FACETS_ACTION, FACETS {
-       my $kernel = new Matrix<Scalar>;
-       if (defined(my $ls = $this->lookup("LINEAR_SPAN"))) {
-           $kernel /= $ls;
-       }
-       if (defined(my $ls = $this->lookup("LINEALITY_SPACE"))) {
-           $kernel /= $ls;
-       }
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "FACETS_ACTION", "FACETS", $kernel);
+   rule GROUP.MATRIX_ACTION.GENERATORS : GROUP.RAYS_ACTION.GENERATORS, RAYS {
+       group::induce_matrix_action_generators($this, "MATRIX_ACTION", "RAYS_ACTION", "RAYS", induced_matrix_action_kernel($this));
    }
-   
+
+   rule GROUP.MATRIX_ACTION.CONJUGACY_CLASS_REPRESENTATIVES : GROUP.RAYS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, RAYS {
+       group::induce_matrix_action_conjugacy_class_representatives($this, "MATRIX_ACTION", "RAYS_ACTION", "RAYS", induced_matrix_action_kernel($this));
+   }
+
+   rule GROUP.MATRIX_ACTION.GENERATORS : GROUP.INEQUALITIES_ACTION.GENERATORS, INEQUALITIES {
+       group::induce_matrix_action_generators($this, "MATRIX_ACTION", "INEQUALITIES_ACTION", "INEQUALITIES", induced_matrix_action_kernel($this));
+   }
+
+   rule GROUP.MATRIX_ACTION.CONJUGACY_CLASS_REPRESENTATIVES : GROUP.INEQUALITIES_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, INEQUALITIES {
+       group::induce_matrix_action_conjugacy_class_representatives($this, "MATRIX_ACTION", "INEQUALITIES_ACTION", "INEQUALITIES", induced_matrix_action_kernel($this));
+   }
+
+   rule GROUP.MATRIX_ACTION.GENERATORS : GROUP.FACETS_ACTION.GENERATORS, FACETS {
+       group::induce_matrix_action_generators($this, "MATRIX_ACTION", "FACETS_ACTION", "FACETS", induced_matrix_action_kernel($this));
+   }
+
+   rule GROUP.MATRIX_ACTION.CONJUGACY_CLASS_REPRESENTATIVES : GROUP.FACETS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, FACETS {
+       group::induce_matrix_action_conjugacy_class_representatives($this, "MATRIX_ACTION", "FACETS_ACTION", "FACETS", induced_matrix_action_kernel($this));
+   }
+
    #
    # Others
    #
 
-   rule GROUP.INEQUALITIES_ACTION : GROUP.HOMOGENEOUS_COORDINATE_ACTION, INEQUALITIES {
+   rule GROUP.INEQUALITIES_ACTION.GENERATORS: GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, INEQUALITIES {
       $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from homogeneous coordinate action", 1, \&canonicalize_facets);
+   }
+   weight 1.10;
+
+   rule GROUP.INEQUALITIES_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.HOMOGENEOUS_COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, INEQUALITIES {
+      $this->GROUP->INEQUALITIES_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->HOMOGENEOUS_COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->INEQUALITIES, homogeneous_action=>1);
    }
    weight 1.10;
 
@@ -260,7 +289,7 @@ object Cone {
    # Orbits induced by coordinate actions
    #
 
-   rule INPUT_RAYS, GROUP.INPUT_RAYS_ACTION.ORBITS, GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.INPUT_RAYS_GENERATORS {
+   rule INPUT_RAYS, GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.INPUT_RAYS_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "HOMOGENEOUS_COORDINATE_ACTION", "INPUT_RAYS_GENERATORS", homog_action => 1);
       $this->INPUT_RAYS = $pts;
       $this->GROUP->INPUT_RAYS_ACTION = $a;
@@ -268,7 +297,7 @@ object Cone {
    weight 2.10;
 #    incurs PointsPerm;
 
-   rule INPUT_RAYS, GROUP.INPUT_RAYS_ACTION.ORBITS, GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.MATRIX_ACTION.GENERATORS, GROUP.MATRIX_ACTION.INPUT_RAYS_GENERATORS {
+   rule INPUT_RAYS, GROUP.INPUT_RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.MATRIX_ACTION.GENERATORS, GROUP.MATRIX_ACTION.INPUT_RAYS_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "MATRIX_ACTION", "INPUT_RAYS_GENERATORS", homog_action => 0);
       $this->INPUT_RAYS = $pts;
       $this->GROUP->INPUT_RAYS_ACTION = $a;
@@ -276,7 +305,7 @@ object Cone {
    weight 2.10;
 #    incurs PointsPerm;
    
-   rule RAYS, GROUP.RAYS_ACTION.ORBITS, GROUP.RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.RAYS_GENERATORS {
+   rule RAYS, GROUP.RAYS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.RAYS_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "HOMOGENEOUS_COORDINATE_ACTION", "RAYS_GENERATORS", homog_action => 1);
       $this->RAYS = $pts;
       $this->GROUP->RAYS_ACTION = $a;
@@ -284,24 +313,20 @@ object Cone {
    weight 2.10;
    incurs VertexPerm;
 
-   rule INEQUALITIES, GROUP.INEQUALITIES_ACTION.ORBITS, GROUP.INEQUALITIES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.INEQUALITIES_GENERATORS {
+   rule INEQUALITIES, GROUP.INEQUALITIES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.INEQUALITIES_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "HOMOGENEOUS_COORDINATE_ACTION", "INEQUALITIES_GENERATORS", homog_action => 1);
       $this->INEQUALITIES = $pts;
       $this->GROUP->INEQUALITIES_ACTION = $a;
    }
    weight 2.10;
 
-   rule FACETS, GROUP.FACETS_ACTION.ORBITS, GROUP.FACETS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.FACETS_GENERATORS {
+   rule FACETS, GROUP.FACETS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, GROUP.HOMOGENEOUS_COORDINATE_ACTION.FACETS_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACETS_GENERATORS", homog_action => 1);
       $this->FACETS = $pts;
       $this->GROUP->FACETS_ACTION = $a;
    }
    weight 2.10;
    incurs FacetPerm;
-
-   rule GROUP.IMPLICIT_SET_ACTION.CHARACTER : GROUP.PERMUTATION_ACTION.GENERATORS, GROUP.PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, GROUP.IMPLICIT_SET_ACTION.DOMAIN_NAME {
-      $this->CHARACTER = implicit_character($this);
-   }
 
 }
 
@@ -350,39 +375,59 @@ object Polytope {
    }
 
 
-   rule GROUP.POINTS_ACTION : GROUP.COORDINATE_ACTION, POINTS {
+   rule GROUP.POINTS_ACTION.GENERATORS: GROUP.COORDINATE_ACTION.GENERATORS, POINTS {
       $this->GROUP->POINTS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "POINTS", "points_action", "induced from coordinate_action");
    }
    weight 1.10;
 
-   rule GROUP.POINTS_ACTION : GROUP.PERMUTATION_ACTION.GENERATORS {
-      $this->GROUP->POINTS_ACTION = $this->GROUP->PERMUTATION_ACTION;
+   rule GROUP.POINTS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, POINTS{
+      $this->GROUP->POINTS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = induced_permutations($this->GROUP->COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->POINTS, homogeneous_action=>0);
    }
-   weight 0.10;
+   weight 1.10;
+
+   rule GROUP.POINTS_ACTION.GENERATORS = GROUP.PERMUTATION_ACTION.GENERATORS;
    precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_POINTS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_POINTS }
 
-   rule GROUP.VERTICES_ACTION : GROUP.COORDINATE_ACTION, VERTICES {
+   rule GROUP.POINTS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES = GROUP.PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES;
+   precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_POINTS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_POINTS }
+
+   rule GROUP.VERTICES_ACTION.GENERATORS : GROUP.COORDINATE_ACTION.GENERATORS, VERTICES {
       $this->GROUP->VERTICES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "VERTICES", "vertices_action", "induced from coordinate_action");
    }
    weight 1.10;
 
-   rule GROUP.VERTICES_ACTION : GROUP.PERMUTATION_ACTION.GENERATORS {
-      $this->GROUP->VERTICES_ACTION = $this->GROUP->PERMUTATION_ACTION;
+   rule GROUP.VERTICES_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, VERTICES {
+      $this->GROUP->VERTICES_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->VERTICES, homogeneous_action=>0);
    }
-   weight 0.10;
+   weight 1.10;
+
+   rule GROUP.VERTICES_ACTION.GENERATORS = GROUP.PERMUTATION_ACTION.GENERATORS;
    precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VERTICES { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VERTICES }
 
-   rule GROUP.FACETS_ACTION : GROUP.COORDINATE_ACTION, FACETS {
+   rule GROUP.VERTICES_ACTION.CONJUGACY_CLASS_REPRESENTATIVES = GROUP.PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES;
+   precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VERTICES { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VERTICES }
+
+   rule GROUP.FACETS_ACTION.GENERATORS : GROUP.COORDINATE_ACTION.GENERATORS, FACETS {
       $this->GROUP->FACETS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "FACETS", "facets_action", "induced from coordinate_action", 0, \&canonicalize_facets);
    }
    weight 1.10;
 
-   rule GROUP.INEQUALITIES_ACTION : GROUP.COORDINATE_ACTION, INEQUALITIES {
+   rule GROUP.FACETS_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, FACETS {
+      $this->GROUP->FACETS_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->FACETS, homogeneous_action=>0);
+   }
+   weight 1.10;
+
+   rule GROUP.INEQUALITIES_ACTION.GENERATORS : GROUP.COORDINATE_ACTION.GENERATORS, INEQUALITIES {
       $this->GROUP->INEQUALITIES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "INEQUALITIES", "inequalities_action", "induced from coordinate_action", 0, \&canonicalize_facets);
    }
    weight 1.10;
 
-   rule POINTS, GROUP.POINTS_ACTION.ORBITS, GROUP.POINTS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.POINTS_GENERATORS {
+   rule GROUP.INEQUALITIES_ACTION.CONJUGACY_CLASS_REPRESENTATIVES: GROUP.COORDINATE_ACTION.CONJUGACY_CLASS_REPRESENTATIVES, INEQUALITIES {
+      $this->GROUP->INEQUALITIES_ACTION->CONJUGACY_CLASS_REPRESENTATIVES = group::induced_permutations($this->GROUP->COORDINATE_ACTION->CONJUGACY_CLASS_REPRESENTATIVES, $this->INEQUALITIES, homogeneous_action=>1);
+   }
+   weight 1.10;
+
+   rule POINTS, GROUP.POINTS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.POINTS_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "COORDINATE_ACTION", "POINTS_GENERATORS", homog_action => 0);
       $this->POINTS = $pts;
       $this->GROUP->POINTS_ACTION = $a;
@@ -390,7 +435,7 @@ object Polytope {
    weight 2.10;
 #   incurs PointsPerm;
 
-   rule VERTICES, GROUP.VERTICES_ACTION.ORBITS, GROUP.VERTICES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.VERTICES_GENERATORS {
+   rule VERTICES, GROUP.VERTICES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.VERTICES_GENERATORS {
       my ($pts, $a) = induced_orbits($this, "COORDINATE_ACTION", "VERTICES_GENERATORS", homog_action => 0);
       $this->VERTICES = $pts;
       $this->GROUP->VERTICES_ACTION = $a;
@@ -398,14 +443,14 @@ object Polytope {
    weight 2.10;
    incurs VertexPerm;
 
-   rule INEQUALITIES, GROUP.INEQUALITIES_ACTION.ORBITS, GROUP.INEQUALITIES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.INEQUALITIES_GENERATORS {
+   rule INEQUALITIES, GROUP.INEQUALITIES_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.INEQUALITIES_GENERATORS {
        my ($pts, $a) = induced_orbits($this, "COORDINATE_ACTION", "INEQUALITIES_GENERATORS", homog_action => 0);
        $this->INEQUALITIES = $pts;
        $this->GROUP->INEQUALITIES_ACTION = $a;
    }
    weight 2.10;
 
-   rule FACETS, GROUP.FACETS_ACTION.ORBITS, GROUP.FACETS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.FACETS_GENERATORS {
+   rule FACETS, GROUP.FACETS_ACTION.EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX : GROUP.COORDINATE_ACTION.GENERATORS, GROUP.COORDINATE_ACTION.FACETS_GENERATORS {
        my ($pts, $a) = induced_orbits($this, "COORDINATE_ACTION", "FACETS_GENERATORS", homog_action => 0);
        $this->FACETS = $pts;
        $this->GROUP->FACETS_ACTION = $a;
@@ -489,15 +534,18 @@ object VectorConfiguration {
     }
     weight 1.10;
 
-    
-   rule GROUP.VECTOR_ACTION : GROUP.PERMUTATION_ACTION.GENERATORS, GROUP.PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES {
-      $this->GROUP->VECTOR_ACTION = $this->GROUP->PERMUTATION_ACTION;
-   }
-   weight 0.10;
+   rule GROUP.VECTOR_ACTION.GENERATORS = GROUP.PERMUTATION_ACTION.GENERATORS;
    precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VECTORS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VECTORS }
 
-   rule GROUP.MATRIX_ACTION : GROUP.VECTOR_ACTION, VECTORS {
-       $this->GROUP->MATRIX_ACTION = group::induce_matrix_action($this, "VECTOR_ACTION", "VECTORS", new Matrix<Scalar>());
+   rule GROUP.VECTOR_ACTION.CONJUGACY_CLASS_REPRESENTATIVES = GROUP.PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES;
+   precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_VECTORS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_VECTORS }
+
+   rule GROUP.MATRIX_ACTION.GENERATORS : GROUP.VECTOR_ACTION.GENERATORS, VECTORS {
+       group::induce_matrix_action_generators($this, "MATRIX_ACTION", "VECTOR_ACTION", "VECTORS", new Matrix<Scalar>());
+   }
+
+   rule GROUP.MATRIX_ACTION.CONJUGACY_CLASS_REPRESENTATIVES : GROUP.VECTOR_ACTION.GENERATORS, VECTORS {
+       group::induce_matrix_action_conjugacy_class_representatives($this, "MATRIX_ACTION", "VECTOR_ACTION", "VECTORS", new Matrix<Scalar>());
    }
 
    rule GROUP.MATRIX_ACTION.IRREDUCIBLE_DECOMPOSITION : GROUP.MATRIX_ACTION.CHARACTER, GROUP.CHARACTER_TABLE, GROUP.CONJUGACY_CLASS_SIZES, GROUP.ORDER {
@@ -760,7 +808,7 @@ user_function orbit_polytope<Scalar>(Matrix<Scalar>, group::MatrixActionOnVector
 # @param Polytope P a polytope with a matrix action, or a group::Group g with a permutation action
 # @param Int i the index of the desired isotypic component
 # @return polytope::PointConfiguration<Float>
-# @example Consider the symmetry group of the cyclic polytope c(4,10) in the Carathéodory realization.
+# @example [notest] Consider the symmetry group of the cyclic polytope c(4,10) in the Carathéodory realization.
 # > $p = cyclic_caratheodory(4,10,group=>1);
 # For i=4, we obtain a 10-gon:
 # > print isotypic_configuration($p,4)->POINTS;

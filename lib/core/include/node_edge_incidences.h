@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_NODE_EDGE_INCIDENCES_H
-#define POLYMAKE_NODE_EDGE_INCIDENCES_H
+#pragma once
 
 #include "polymake/SparseMatrix.h"
 #include "polymake/Graph.h"
@@ -55,7 +54,6 @@ namespace polymake {
 using pm::node_edge_incidences;
 }
 
-#endif // POLYMAKE_NODE_EDGE_INCIDENCES_H
 
 // Local Variables:
 // mode:C++

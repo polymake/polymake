@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_FINITE_FIELDS_H
-#define POLYMAKE_TOPAZ_FINITE_FIELDS_H
+#pragma once
 
 #include "polymake/internal/converters_basic_defs.h"
 #include <iostream>
@@ -122,7 +121,6 @@ struct spec_object_traits<polymake::topaz::GF2_old>
 
 }
 
-#endif // POLYMAKE_TOPAZ_FINITE_FIELDS_H
 
 // Local Variables:
 // mode:C++

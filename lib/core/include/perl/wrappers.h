@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_WRAPPERS_H
-#define POLYMAKE_PERL_WRAPPERS_H
+#pragma once
 
 /* The following classes are designed solely for the automatically generated wrapper files.
    If you use them in a manually written code, you are doing it at your own risk!
@@ -1637,7 +1636,6 @@ struct OperatorCallerName4perl(cal) : public FunctionCaller {
 
 } }
 
-#endif // POLYMAKE_PERL_WRAPPERS_H
 
 // Local Variables:
 // mode:C++

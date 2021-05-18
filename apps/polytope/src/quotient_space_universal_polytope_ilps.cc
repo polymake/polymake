@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -154,10 +154,10 @@ quotient_space_simplexity_ilp(Int d
 
    if (filename.size()) {
       if (filename == "-") {
-         print_lp<Scalar>(q, lp, false, perl::cout);
+         print_lp<Scalar, true>(q, lp, false, perl::cout);
       } else {
          std::ofstream os(filename.c_str());
-         print_lp<Scalar>(q, lp, false, os);
+         print_lp<Scalar, true>(q, lp, false, os);
       }
    }
    return q;

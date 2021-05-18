@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -22,12 +22,13 @@ package Polymake::Core::Preference;
 use constant clock_start => 100000000;
 my $clock = clock_start;
 my $compile_clock = 0;
+use constant settings_key => "_preferences";
 
 use Polymake::Enum Mode => {
    strict => 0,
    create => 1,    # allow to create new sublevels
    rules => 2,     # 'prefer' statement comes from the rules
-   global => 4,    # 'prefer' statement comes from a global preference file
+   imported => 4,  # 'prefer' statement comes from an imported settings file
 };
 
 ####################################################################################
@@ -477,27 +478,27 @@ sub list_completions {
 # => 0 - partially (not all controls or not all children)
 # => 2 - fully
 sub status {
-   my ($self)=@_;
-   my $status=3;
+   my ($self, $clock) = @_;
+   my $status = 3;
    foreach my $list (keys %{$self->controls}) {
-      $status &= ($list->ordered && $list->labels->[0]->clock==$self->clock) ? 2 : 1
-      or return 0;
+      $status &= ($list->ordered && $list->labels->[0]->clock == $clock) ? 2 : 1
+        or do { keys %{$self->controls}; return 0; };
    }
 
    foreach my $c (values %{$self->children}) {
-      $status &= status($c)
-      or last;
+      $status &= status($c, $clock)
+        or do { keys %{$self->children}; return 0; };
    }
 
    $status
 }
 ####################################################################################
 sub add_to_pref_tree {
-   my ($self, $list)=@_;
+   my ($self, $list) = @_;
    if (is_array($list)) {
       push @$list, $self;
    } else {
-      while (my ($name, $c)=each %{$self->children}) {
+      while (my ($name, $c) = each %{$self->children}) {
          if (!exists $list->{$name} || is_array($list->{$name})) {
             push @{$list->{$name}}, $c;
          } elsif ($list->{$name}) {
@@ -508,14 +509,14 @@ sub add_to_pref_tree {
 }
 ####################################################################################
 sub subtract {
-   my ($self, $clock, $new_wildcard, $wildcard_cmp, $tree)=@_;
+   my ($self, $clock, $new_wildcard, $wildcard_cmp, $tree) = @_;
 
    if ($self->clock != $clock) {
       # already involved in the new pref list - nothing to do
       return;
    }
 
-   if (defined (my $subtree=$tree->{$self->name})) {
+   if (defined(my $subtree = $tree->{$self->name})) {
       if ($subtree) {
          # positive result already known
          add_to_pref_tree($self, $subtree);
@@ -526,28 +527,28 @@ sub subtract {
       return;
    }
 
-   if ($wildcard_cmp<=0  and
-       ($wildcard_cmp=prefix_cmp($self->wildcard_name, $new_wildcard, ".")) == 2) {
+   if ($wildcard_cmp <= 0  and
+       ($wildcard_cmp = prefix_cmp($self->wildcard_name, $new_wildcard, ".")) == 2) {
       # no intersection with new pref list - remains in effect
-      $tree->{$self->name}=[ $self ];
+      $tree->{$self->name} = [ $self ];
       return;
    }
 
-   my $status=status($self);
+   my $status = status($self, $clock);
    if ($status & 1) {
       # completely out of control
-      $tree->{$self->name}=0;
+      $tree->{$self->name} = 0;
       neutralize_controls($self, 1);
 
-   } elsif ($status) {
-      if ($wildcard_cmp>0) {
+   } elsif ($status != 0) {
+      if ($wildcard_cmp > 0) {
          # this branch has survived
-         $tree->{$self->name}=[ $self ];
+         $tree->{$self->name} = [ $self ];
       }
 
    } else {
       # injured - handle children individually
-      my $subtree=$tree->{$self->name}={ };
+      my $subtree = $tree->{$self->name} = { };
       neutralize_controls($self);
       subtract($_, $clock, $new_wildcard, $wildcard_cmp, $subtree) for values %{$self->children};
    }
@@ -611,17 +612,20 @@ sub subtract {
 sub toString {
    my ($self) = @_;
    if (@{$self->labels} == 1) {
-      '"' . $self->labels->[0]->full_name . '"'
+      $self->labels->[0]->full_name
    } else {
-      '"' . $self->labels->[0]->wildcard_name . " " . join(", ", map { $_->parent_name } @{$self->labels}) . '"'
+      $self->labels->[0]->wildcard_name . " " . join(", ", map { $_->parent_name } @{$self->labels})
    }
+}
+sub toQuotedString {
+   '"' . &toString . '"'
 }
 ####################################################################################
 sub belongs_to {
    my ($self, $app) = @_;
    my $answer = false;
    foreach my $label (@{$self->labels}) {
-      if (defined $label->application)  {
+      if (defined($label->application))  {
          if ($label->application == $app) {
             $answer = true;
          } else {
@@ -647,19 +651,16 @@ sub visible_from {
 package Polymake::Core::Preference::perApplication;
 
 use Polymake::Struct (
-   [ new => '$$' ],
-   [ '$handler' => 'weak(#1)' ],
-   [ '$application' => 'weak(#2)' ],
+   [ new => '$' ],
+   [ '$application' => 'weak(#1)' ],
    '@imported',                      # perApplication objects of imported applications
    '%labels',
    '@default_prefs',
-   '$global_commands',
-   '$private_commands',
 );
 
 ####################################################################################
 sub find_label {
-   my ($self, $name, $create)=@_;
+   my ($self, $name, $create) = @_;
    ($name, my @sublevels) = split /\./, $name;
    my $label = $self->labels->{$name};
    unless ($label) {
@@ -677,7 +678,7 @@ sub find_label {
 ####################################################################################
 # private:
 sub list_completions {
-   my ($self, $expr)=@_;
+   my ($self, $expr) = @_;
    if (length($expr)) {
       if ($expr =~ s/^\*\.($hier_id_re)\s+//o) {
          my @sublevels=split /\./, $1, -1;
@@ -706,7 +707,7 @@ sub list_completions {
 ####################################################################################
 # private:
 sub parse_label_expr {
-   my ($self, $expr, $mode)=@_;
+   my ($self, $expr, $mode) = @_;
    my (@err, @l);
    my $create_sublevels = $mode & Mode::create;
 
@@ -730,7 +731,7 @@ sub parse_label_expr {
       } else {
          warn_print( "stored preference statements for label", @err > 1 && "s", " @err\n",
                      "are not in effect - probably excluded by auto-configuration" );
-         $self->handler->need_save = true;
+         $Prefs->changed = true;
       }
    }
 
@@ -741,31 +742,31 @@ sub add_preference {
    my ($self, $expr, $mode) = @_;
    my @l = &parse_label_expr or return;
    my $pref = new List($mode & Mode::rules ? ++$compile_clock : ++$clock, @l);
-   $pref->provenience = $mode & (Mode::rules + Mode::global);
+   $pref->provenience = $mode & (Mode::rules + Mode::imported);
 
    if ($mode & Mode::rules) {
       push @{$self->default_prefs}, $pref;
       # activate this preference right now if the application
       # is already active, otherwise end_loading will do this
-      if (contains($self->handler->applications,$self)) {
-         $self->handler->activate(false, $pref);
+      if (contains($Prefs->applications,$self)) {
+         $Prefs->activate(false, $pref);
       }
    } else {
-      if (defined (my $dominating = $self->handler->check_repeating($pref))) {
+      if (defined(my $dominating = $Prefs->check_repeating($pref))) {
          if ($mode == Mode::create) {
             # loading private file
-            warn_print( "preference list ", $pref->toString, " ignored since another list ", $dominating->toString, " is already in effect" );
-            $self->handler->need_save = true;
+            warn_print( "preference list ", $pref->toQuotedString, " ignored since another list ", $dominating->toQuotedString, " is already in effect" );
+            $Prefs->changed = true;
          }
          return;
       }
-      $self->handler->need_save = true if $mode == Mode::strict;
-      $self->handler->activate(false, $pref);
+      $Prefs->changed = true if $mode == Mode::strict;
+      $Prefs->activate(false, $pref);
    }
 }
 ####################################################################################
 sub set_temp_preference {
-   my ($self, $scope, $expr)=@_;
+   my ($self, $scope, $expr) = @_;
    my @l = parse_label_expr($self, $expr, Mode::rules);
    local with($scope->locals) {
       local scalar ++$clock;
@@ -776,7 +777,7 @@ sub set_temp_preference {
 ####################################################################################
 # private:
 sub matching_default_prefs {
-   my ($self, $expr)=@_;
+   my ($self, $expr) = @_;
    my @matched;
    if ($expr =~ /^ $hier_id_re $/xo) {
       foreach my $pref (@{$self->default_prefs}) {
@@ -822,123 +823,56 @@ sub matching_default_prefs {
 ####################################################################################
 sub list_active {
    my ($self) = @_;
-   map { $_->toString . (($_->provenience == Mode::rules) ? " (#)" : ($_->provenience == Mode::global) ? " (G)" : "") }
-   grep { $_->visible_from($self->application) } @{$self->handler->active_prefs};
+   map { $_->toQuotedString . (($_->provenience == Mode::rules) ? " (#)" : ($_->provenience == Mode::imported) ? " (I)" : "") }
+   grep { $_->visible_from($self->application) } @{$Prefs->active_prefs};
 }
 ####################################################################################
-# private:
-sub parse_piece {
-   my ($self, $text, $mode) = @_;
-   while ($text =~ s/^[ \t]* prefer \s+ (['"])?(.*?)(?(1)\1) [ \t]* ;? (?= \s*$ )//xm) {
-      add_preference($self, $2, $mode);
-   }
-   $text;
-}
-
 sub end_loading {
    my ($self) = @_;
-   push @{$self->handler->applications}, $self;
+   push @{$Prefs->applications}, $self;
 
-   $self->handler->activate(false, @{$self->default_prefs});
-
-   my $text = parse_piece($self, delete $self->handler->global_pieces->{$self->application->name}, Mode::create | Mode::global);
-   if ($text =~ $significant_line_re) {
-      $self->global_commands = $text;
+   $Prefs->activate(false, @{$self->default_prefs});
+   if (defined(my $imported_list = $Prefs->imported_prefs->{$self->application->name})) {
+      add_preference($self, $_, Mode::create + Mode::imported) for @$imported_list;
    }
-   $text = parse_piece($self, delete $self->handler->private_pieces->{$self->application->name}, Mode::create);
-   if ($text =~ $significant_line_re) {
-      $self->private_commands = $text;
+   if (defined(my $private_list = $Prefs->private_prefs->{$self->application->name})) {
+      add_preference($self, $_, Mode::create) for @$private_list;
    }
-}
-####################################################################################
-sub user_commands {
-   my ($self) = @_;
-   $self->global_commands . $self->private_commands
 }
 ####################################################################################
 
 package Polymake::Core::Preference;
 
 use Polymake::Struct (
-   [ '$private_file' => 'undef' ],      # Customize::File
-   [ '$custom' => 'undef' ],            # Customize::perApplication for User custom variables
-   '@applications',                     # perApplication
-   '%global_pieces',                    # package => global file fragment
-   '%private_pieces',                   # package => private file fragment
-   '$need_save',                        # boolean
+   '@applications',                  # perApplication
+   '$changed',                       # boolean
    '@active_prefs',
+   '%imported_prefs',
+   '%private_prefs',
 );
 
-sub load_private {
-   my ($self, $filename) = @_;
-   if (-f $filename) {
-      if (defined ($self->private_file = new Customize::File($filename))) {
-         $self->private_pieces = $self->private_file->pieces;
-         $self->need_save = !defined($Version) || $self->private_file->version lt $VersionNumber;
-         add AtEnd("Preference", sub { $self->save if $self->need_save }, before => "Customize");
-      }
-   } else {
-      $self->need_save = true;
-      add AtEnd("Preference", sub { $self->save($filename) }, before => "Customize");
-   }
-}
+add_settings_callback sub {
+   my ($settings) = @_;
+   $settings->add_item(settings_key, $Prefs->private_prefs,
+      "Active non-default preferences by application",
+      UserSettings::Item::Flags::hidden,
+      exporter => sub {
+         $Prefs->export_active($_[0])
+      },
+      importer => sub {
+         my ($value, $is_imported) = @_;
+         if ($is_imported) {
+            while (my ($app, $list) = each %$value) {
+               push @{$Prefs->imported_prefs->{$app} //= [ ]}, @$list;
+            }
+         } else {
+            push %{$Prefs->private_prefs}, %$value;
+         }
+      });
+   add AtEnd("Preference", sub { $Prefs->prepare_stored if $Prefs->changed }, before => "Settings");
+};
 
-*load_global=\&Customize::load_global;
-
-sub create_custom {
-   my ($self, $pkg) = @_;
-   if (defined (my $global = delete $Custom->global_pieces->{$pkg})) {
-      substr($self->global_pieces->{$pkg}, 0, 0) .= $global;
-   }
-   $self->custom = new Customize::perApplication(@_);
-   delete $self->private_pieces->{$pkg};
-   $self->custom
-}
-
-sub app_handler { new perApplication(@_) }
-
-my $sep_line = "\n#########################################\n";
-
-my $preface = <<".";
-#########################################################################
-#
-#  This file contains preference settings that were in effect
-#  as you closed your last polymake session.
-#
-#  Initially it contains copies of "prefer" commands scattered over the
-#  rule files.  They are commented out, since they come into action
-#  as soon as the rule files are loaded.
-#
-#  Later on, each interactive "prefer" command you type in the polymake
-#  shell is also recorded here, in the chronological order.
-#  Prior commands having lost any effect are wiped out from the file
-#  automatically.
-#
-#  You can also edit this file manually, including or deleting "prefer"
-#  commands, or even other commands recognized by the interactive shell.
-#  But never edit it while polymake processes are running, otherwise
-#  you risk to do it in vain as all your changes may be overwritten.
-#
-#  To revert to the default preferences later, comment out or delete
-#  your changes, or execute the interactive command 'reset_preference'.
-#
-#  Please be aware that this file is interpreted by polymake after all
-#  rule files, unlike "customize.pl".
-#
-#########################################################################
-#
-#  The rule files are rescanned for new preference lists as soon as you
-#  run a polymake version newer than recorded here, or use an application
-#  for the first time.
-#  If you have inserted new "prefer" commands in the rules and want them
-#  to appear here right now, comment out the following line and rerun polymake.
-\$version=v$Version;
-
-#########################################
-#
-#  Settings common for all applications
-
-.
+sub app_handler { new perApplication($_[1]) }
 
 ####################################################################################
 sub activate {
@@ -983,7 +917,7 @@ sub reset {
                      $p->provenience = Mode::rules if $cmp == 0;
                      false
                   } else {
-                     $self->need_save = true
+                     $self->changed = true
                   }
                } @prefs);
 
@@ -1010,7 +944,7 @@ sub reset {
          }
       }
       if ($matched) {
-         $self->need_save = true;
+         $self->changed = true;
          ++$clock;
       } else {
          croak( "no active or default preferences matching '$expr'" );
@@ -1025,11 +959,11 @@ sub reset_all {
       if ($pref->provenience != Mode::rules && $pref->visible_from($app)) {
          $pref->deactivate;
          splice @{$self->active_prefs}, $i, 1;
-         $self->need_save = true;
+         $self->changed = true;
       }
    }
    foreach (reverse($app->prefs, @{$app->prefs->imported})) {
-      activate($self, true, grep { !check_repeating($self,$_) and $self->need_save = true } @{$_->default_prefs});
+      activate($self, true, grep { !check_repeating($self,$_) and $self->changed = true } @{$_->default_prefs});
    }
 }
 ####################################################################################
@@ -1044,11 +978,11 @@ sub obliterate_extension {
       if ($cnt == @{$pref->labels}) {
          $pref->deactivate;
          splice @{$self->active_prefs}, $i, 1;
-         $self->need_save = true;
+         $self->changed = true;
       } elsif ($cnt) {
          splice @{$self->active_prefs}, $i, 1;
          activate($self, false, new List(++$clock, grep { $_->extension != $ext } @{$pref->labels}));
-         $self->need_save = true;
+         $self->changed = true;
       }
    }
 }
@@ -1056,58 +990,45 @@ sub obliterate_extension {
 sub obliterate_application {
    my ($self, $per_app) = @_;
    delete_from_list($self->applications, $per_app)
-     and $self->need_save = true;
+     and $self->changed = true;
 }
 ####################################################################################
-# private:
-sub clean_borders {
-   my ($text) = @_;
-   if (defined($text)) {
-      $text =~ s/\A (?: $empty_or_separator_line )+ //xom;
-      $text =~ s/(?: $empty_or_separator_line )+ \Z//xom;
-   }
-   $text;
-}
-
-sub save {
-   my ($self, $filename) = @_;
-   if (!defined($filename)) {
-      die "no preference file to save\n" unless $self->private_file;
-      $filename = $self->private_file->filename;
-   }
-   my ($pf, $pf_k) = new OverwriteFile($filename);
-   print $pf $preface;
-   $self->custom->printMe($pf);
-   print $pf $sep_line;
-
-   my @active_prefs = @{$self->active_prefs};
+sub serialize_active {
+   my ($self, $out, $exclude_provenience) = @_;
+   my @active_prefs = grep { !($_->provenience & $exclude_provenience) } @{$self->active_prefs};
    foreach my $per_app (@{$self->applications}) {
-      print $pf "application ", $per_app->application->name, ";\n";
-
+      my $app = $per_app->application;
+      my @list;
       for (my $i = 0; $i <= $#active_prefs; ) {
          my $pref = $active_prefs[$i];
-         if ($pref->provenience != Mode::global && $pref->belongs_to($per_app->application)) {
-            print $pf "\n", ($pref->provenience == Mode::rules ? "# prefer " : "prefer "), $pref->toString, ";\n";
+         if ($pref->belongs_to($app)) {
+            push @list, $pref->toString;
             splice @active_prefs, $i, 1;
          } else {
             ++$i;
          }
       }
-
-      if (defined (my $text = clean_borders($per_app->private_commands))) {
-         print $pf "\n", $text;
+      if (@list) {
+         $out->{$app->name} = \@list;
+      } else {
+         delete $out->{$app->name};
       }
-      print $pf $sep_line;
    }
-
-   while (my ($app_name, $text) = each %{$self->private_pieces}) {
-      $text =~ s/^\#line.*\n//mg;
-      print $pf "application $app_name;\n$text";
-   }
-
-   close $pf;
-   $self->need_save = false;
 }
+
+sub prepare_stored {
+   my ($self) = @_;
+   serialize_active($self, $self->private_prefs, Mode::rules + Mode::imported);
+   $self->changed = false;
+}
+
+sub export_active {
+   my ($self, $include_imported) = @_;
+   my %exported;
+   serialize_active($self, \%exported, $include_imported ? Mode::rules : Mode::rules + Mode::imported);
+   keys %exported ? \%exported : ()
+}
+
 ####################################################################################
 # merge several control lists together
 # If some of input lists is temporarily changed by prefer_now,

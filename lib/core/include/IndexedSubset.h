@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INDEXED_SUBSET_H
-#define POLYMAKE_INDEXED_SUBSET_H
+#pragma once
 
 #include "polymake/GenericSet.h"
 #include "polymake/internal/Wary.h"
@@ -1320,7 +1319,6 @@ void swap(pm::IndexedSlice<ContainerRef1, ContainerRef2, Params>& s1,
 
 }
 
-#endif // POLYMAKE_INDEXED_SUBSET_H
 
 // Local Variables:
 // mode:C++

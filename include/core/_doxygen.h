@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,6 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 // Artificial header file whose sole purpose is to be processed by doxygen
 
 /** @namespace pm
@@ -82,9 +83,6 @@ namespace pm {
  
     - Set is a container class for sparse sets of ordered elements.  Data
       representation as a modified kind of AVL tree.
-
-    - PowerSet is a Set of Sets, providing methods for adding elements while
-      preserving subset or superset independence.
 
     @subsection vector_sec Vector Types
 
@@ -361,7 +359,7 @@ namespace pm {
     sources are @em{optional references}: they can be specified as references
     as well as reference-free data types.  Note that the @em{convenience
     functions} always create pseudo-containers with internal references, as a
-    more efficient and more often occuring variant; the referenceless variant
+    more efficient and more often occurring variant; the referenceless variant
     should be used only when it's really necessary, like in the @c return
     context explained above.
     

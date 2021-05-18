@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_LINALG_EXCEPTIONS_H
-#define POLYMAKE_INTERNAL_LINALG_EXCEPTIONS_H
+#pragma once
 
 #include <stdexcept>
 
@@ -55,7 +54,6 @@ namespace polymake {
    using pm::underdetermined;
 }
 
-#endif // POLYMAKE_INTERNAL_LINALG_EXCEPTIONS_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_MACROS_H
-#define POLYMAKE_PERL_MACROS_H
+#pragma once
 
 /* Most of the following macros are designed solely for the automatically generated wrapper files.
    If you use them in a manually written code, you are doing it at your own risk!
@@ -307,7 +306,6 @@ decltype(auto) recognize(pm::perl::type_infos& ti, bait, T*, __VA_ARGS__*) \
    return exact_match;                                                  \
 }
 
-#endif // POLYMAKE_MACROS_H
 
 // Local Variables:
 // mode:C++

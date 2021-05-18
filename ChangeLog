@@ -1,3 +1,56 @@
+=== polymake 4.4 ===
+
+-- general --
+  * fix various typos
+  * various bugfixes
+
+-- distribution --
+  * support for clang 12 and gcc 11
+  * fix build on FreeBSD (thanks Philipp Ost)
+
+-- interfaces --
+  * libnormaliz: add rules for representation conversion
+
+-- fan --
+  * SubdivisionOfPoints: fix bug in MIN_WEIGHTS for non-triangulations
+  * HyperplaneArrangements: add rule for property RAYS_IN_HYPERPLANES
+  * PolyhedralFan: Refactor code for symmetric fans
+    - remove properties from PolyhedralFan that depend on GROUP
+    - access any group action via GROUP.*_ACTION
+    - Enhance F_VECTOR computation for PolyhedralFan with group action to
+      consume less memory (and work with QuadraticExtension)
+  * refactored barycentric_subdivision to speed up by depending less on perl
+  * DisjointStackyFan: new data structure for stacky fans whose orbits are disjoint
+	 - properties STACKY_FACES, STACKY_F_VECTOR
+	 - user_functions stacky_fan(Cone), stacky_second_bsd(DisjointStackyFan)
+  * visualization:
+    - partly dropped support for labels seperated by whitespaces
+    - fixed array/code/hash vertex decor handling in PolyhedralComplex->VISUAL
+    - refactored SubdivisionOfPoints->VISUAL
+
+-- fulton --
+  * TORIC_IDEAL renamed to CONE_TORIC_IDEAL (and moved to application polytope)
+
+-- ideal --
+  * added object specialization Ideal::Binomial for (CONE_)TORIC_IDEAL
+    - added properties BINOMIAL_GENERATORS, GROEBNER.BINOMIAL_BASIS
+
+-- polytope --
+  * minkowski_sum_fukuda refactored to use reverse search template
+  * mixed_volume: fix bug that produces an ERROR depending on the order of
+                  input polytopes
+  * add client for generalized_permutahedra
+  * add the function projective_symmetry_group to compute the group of projective automorphisms of a polytope
+  * poly2lp supports MixedIntegerLinearProgram as argument
+  * GROEBNER_BASIS renamed to TORIC_IDEAL and migrated to a proper ideal::Ideal object
+  * visualization:
+    - refactored decor handling for unbounded polytopes
+    - added decor options for SITES in VoronoiPolyhedron->VISUAL_VORONOI
+
+-- tropical --
+  * visualization:
+    - added pseudovertex decor options in Polytope->VISUAL/VISUAL_SUBDIVISION
+
 === polymake 4.3 ===
 
 -- fan --

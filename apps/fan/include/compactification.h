@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_FAN_COMPACTIFICATION_H
-#define POLYMAKE_FAN_COMPACTIFICATION_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -108,7 +107,7 @@ public:
     bool found = true;
     while (found) {
       found = false;
-      for (const auto& p : G.in_adjacent_nodes(currentNode)) {
+      for (const auto p : G.in_adjacent_nodes(currentNode)) {
         const BasicDecoration& decor = oldHasseDiagram.decoration(p);
         if (incl(a, decor.face) <= 0) {
           found = true;
@@ -249,7 +248,6 @@ public:
 
 } } }
 
-#endif // POLYMAKE_FAN_COMPACTIFICATION_H
 
 // Local Variables:
 // mode:C++

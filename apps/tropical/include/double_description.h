@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,8 +19,7 @@
     @brief Implementation of files for tropical double description
   */
 
-#ifndef POLYMAKE_TROPICAL_DOUBLE_DESCRIPTION_H
-#define POLYMAKE_TROPICAL_DOUBLE_DESCRIPTION_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/TropicalNumber.h"
@@ -260,7 +259,7 @@ monoextremals(const GenericMatrix<Matrix1, TropicalNumber<Addition, Scalar>>& ge
 
    // check for all generators if they are contained in the halfspace given by the pair
    // (feasible_side, infeasible_side)
-   for (const auto& r : rows(generators)) {
+   for (const auto r : rows(generators)) {
       if (Addition::orientation()*(feasible_side*r).compare(infeasible_side*r) <= 0)
          remaining_generators += r_index;
       ++r_index;
@@ -346,7 +345,6 @@ monomial_dual_description(const GenericMatrix<MatrixTop, Scalar>& monomial_gener
 
 } }
 
-#endif 
 
 // Local Variables:
 // mode:C++

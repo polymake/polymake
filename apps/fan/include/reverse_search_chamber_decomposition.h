@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef REVERSE_SEARCH_CHAMBER_DECOMPOSITION
-#define REVERSE_SEARCH_CHAMBER_DECOMPOSITION
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -184,4 +183,3 @@ Bitset point_to_signature(const Vector<Scalar>& point, const Matrix<Scalar>& hyp
 } // namespace fan
 } // namespace polymake
 
-#endif

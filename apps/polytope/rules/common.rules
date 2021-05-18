@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -720,6 +720,40 @@ user_function minkowski_sum<Scalar> (type_upgrade<Scalar>, Polytope<type_upgrade
     $p_out->description = "Minkowski sum of ".$l1."*".$p1->name." and ".$l2."*".$p2->name;
     return $p_out;
 }
+
+
+# @category Producing a polytope from polytopes
+# Computes the ([[Polytope::VERTICES]] of the) __Minkowski sum__ of a list of polytopes using the algorithm by Fukuda described in
+#	   Komei Fukuda, From the zonotope construction to the Minkowski addition of convex polytopes, J. Symbolic Comput., 38(4):1261-1272, 2004.
+# @param Array<Polytope> summands
+# @return Polytope
+# @example [nocompare] > $p = minkowski_sum_fukuda([cube(2),simplex(2),cross(2)]);
+# > print $p->VERTICES;
+# | 1 3 -1
+# | 1 3 1
+# | 1 -1 -2
+# | 1 1 3
+# | 1 -1 3
+# | 1 2 -2
+# | 1 -2 2
+# | 1 -2 -1
+user_function minkowski_sum_fukuda<E>(Polytope<type_upgrade<E>> +) : c++ (include => "polymake/polytope/minkowski_sum_fukuda.h");
+
+# @category Producing a polytope from scratch
+# Create the vertices of a zonotope from a matrix whose rows are input points or vectors.
+# @param Matrix M
+# @option Bool centered_zonotope default 1
+# @return Matrix
+# @example [nocompare]
+# The following stores the vertices of a parallelogram with the origin as its vertex barycenter and prints them:
+# > $M = new Matrix([[1,1,0],[1,1,1]]);
+# > print zonotope_vertices_fukuda($M);
+# | 1 0 -1/2
+# | 1 0 1/2
+# | 1 -1 -1/2
+# | 1 1 1/2
+user_function zonotope_vertices_fukuda<E>(Matrix<E> { centered_zonotope => 1 }) : c++ (include => "polymake/polytope/minkowski_sum_fukuda.h");
+
 
 # @category Geometry
 # Given two matrices L (n x d) and R (m x d) such that (L/R) has rank r, select all (r+1-n)-subsets C of rows of R such that (L,S) or (S,L) is a circuit.

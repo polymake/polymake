@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_CAYLEY_EMBEDDING_H
-#define POLYMAKE_POLYTOPE_CAYLEY_EMBEDDING_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
@@ -129,7 +128,6 @@ BigObject cayley_embedding(const Array<BigObject>& p_array,
 
 } } // end namespaces
 
-#endif // POLYMAKE_POLYTOPE_CAYLEY_EMBEDDING_H
 
 // Local Variables:
 // mode:C++

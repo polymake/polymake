@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -127,12 +127,9 @@ usage: polymake [options] [arguments]
 
       --reconfigure
           Re-run the autoconfiguration sections in all rule files.
-      --config-path PATH
-          Import settings from a global configuration file;
-          PATH may also point to a folder containing files prefer.pl and/or customize.pl
-          created by polymake earlier e.g. for another user.
-          Several --config-path options are allowed, later instances override settings
-          from earlier ones.
+      --config-path SETTINGS_FILE
+          Import settings from a global configuration file.
+          Several --config-path options are allowed, later instances have higher priority.
       --config-path user[=DIR]
           Specify the location of user's private settings, by default it's ~/.polymake
           which may be overridden via POLYMAKE_USER_DIR environment variable.
@@ -186,89 +183,87 @@ if ($reconfigure) {
 }
 
 Main::init(@config_path ? join(";", @config_path) : $ENV{POLYMAKE_CONFIG_PATH} || "user");
-
-if ($DebugLevel) {
-   $Verbose::rules=3;
-   assign_max($Verbose::scheduler, $DebugLevel);
-   if ($DebugLevel>1) {
-      $Verbose::external=1;
-   }
-}
-if ($verbose) {
-   assign_max($Verbose::rules, $verbose);
-   assign_max($Verbose::scheduler, $verbose);
-}
-
-if ($touch) {
-   Main::touch_files();
-
-} elsif (defined($script)) {
-   Main::run_script($script);
-
-} elsif (defined($iscript)) {
-   require Polymake::Core::Shell;
-   if (-t STDIN) {
-      Core::Shell::start();
-   }
-   Main::run_script($iscript);
-
-} elsif (defined($connect)) {
-   ### named socket or host connection
-   require Polymake::Sockets;
-   my ($socket, $redirects);
-   if (-S $connect) {
-      $socket=new ClientSocket($connect);
-      $redirects=1;
-   } elsif (!-e $connect && $connect =~ /^(.*):(\d+)$/) {
-      $socket=new ClientSocket($1, $2);
-      $redirects=3;
-   } else {
-      die "option --connect requires a named socket file or a remote host:port\n";
-   }
-   require Polymake::Core::Shell;
-   if (Main::load_apps()) {
-      Core::Shell::run_pipe($socket, $redirects);
-   }
-
-} elsif (@ARGV == 0) {
-   if (-t STDIN) {
-      ### interactive shell
-      print "Welcome to ", Main::greeting(), "\nLoading applications now...";
-      STDOUT->flush();
-      require Polymake::Core::Shell;
-      if (Main::load_apps()) {
-         Core::Shell::start();
-         Core::Shell::run();
-      }
-   } else {
-       die "can't start the interactive shell without terminal input\n";
-   }
-} else {
-   my $arg = shift;
-   if ($arg eq "-") {
-      ### anonymous pipe
-      require Polymake::Core::Shell;
-      if (Main::load_apps()) {
-         Core::Shell::run_pipe(\*STDIN, 0);
-      }
-   } elsif ($arg !~ /[\s'"(){}\[\]\$]/) {
-      ### script file
-      Main::run_script($arg);
-   } elsif (Main::load_apps()) {
-      ### one-liner
-      local unshift @INC, $User::application;
-      local $Scope = new Scope();
-      $User::application->eval_expr->("package Polymake::User; $arg");
-      beautify_error() if $@;
-   }
-}
-
+Main::execute_command_line(@ARGV);
 if ($@) {
    err_print($@);
    exit 1;
 }
 
 package Polymake::Main;
+
+sub execute_command_line {
+   local if ($DebugLevel || $verbose) {
+      my $verbose_rules = $DebugLevel ? 3 : $verbose;
+      local $Verbose::rules = $verbose_rules if $Verbose::rules < $verbose_rules;
+      my $verbose_scheduler = max($DebugLevel, $verbose);
+      local $Verbose::scheduler = $verbose_scheduler if $Verbose::scheduler < $verbose_scheduler;
+      local $Verbose::external = 1 if $DebugLevel > 1;
+   }
+
+   if ($touch) {
+      Main::touch_files();
+
+   } elsif (defined($script)) {
+      Main::run_script($script);
+
+   } elsif (defined($iscript)) {
+      require Polymake::Core::Shell;
+      if (-t STDIN) {
+         Core::Shell::start();
+      }
+      Main::run_script($iscript);
+
+   } elsif (defined($connect)) {
+      ### named socket or host connection
+      require Polymake::Sockets;
+      my ($socket, $redirects);
+      if (-S $connect) {
+         $socket=new ClientSocket($connect);
+         $redirects=1;
+      } elsif (!-e $connect && $connect =~ /^(.*):(\d+)$/) {
+         $socket=new ClientSocket($1, $2);
+         $redirects=3;
+      } else {
+         die "option --connect requires a named socket file or a remote host:port\n";
+      }
+      require Polymake::Core::Shell;
+      if (Main::load_apps()) {
+         Core::Shell::run_pipe($socket, $redirects);
+      }
+
+   } elsif (@_ == 0) {
+      if (-t STDIN) {
+         ### interactive shell
+         print "Welcome to ", Main::greeting(), "\nLoading applications now...";
+         STDOUT->flush();
+         require Polymake::Core::Shell;
+         if (Main::load_apps()) {
+            Core::Shell::start();
+            Core::Shell::run();
+         }
+      } else {
+         die "can't start the interactive shell without terminal input\n";
+      }
+   } else {
+      my $arg = shift;
+      if ($arg eq "-") {
+         ### anonymous pipe
+         require Polymake::Core::Shell;
+         if (Main::load_apps()) {
+            Core::Shell::run_pipe(\*STDIN, 0);
+         }
+      } elsif ($arg !~ /[\s'"(){}\[\]\$]/) {
+         ### script file
+         Main::run_script($arg);
+      } elsif (Main::load_apps()) {
+         ### one-liner
+         local unshift @INC, $User::application;
+         local $Scope = new Scope();
+         $User::application->eval_expr->("package Polymake::User; $arg");
+         beautify_error() if $@;
+      }
+   }
+}
 
 sub load_apps {
    if ($start_application // $User::default_application) {
@@ -278,6 +273,7 @@ sub load_apps {
                add Core::Application($app_name);
             }
          }
+         run_init_script();
          User::application($start_application // $User::default_application);
          1
       }
@@ -291,8 +287,34 @@ sub run_script {
    local $Scope = new Scope();
    local $standalone_script = true;
    load_dummy Core::Application;
+   run_init_script();
    eval { User::script(@_, @ARGV) };
    beautify_error() if $@;
+}
+
+sub run_init_script {
+   if (length(my $init_script = $User::init_script) != 0) {
+      replace_special_paths($init_script);
+      eval {
+         if ($init_script =~ m{^/}) {
+            -f $init_script
+              or die "init_script file $init_script does not exist\n";
+         } else {
+            $init_script = find_file_in_path($init_script, $PrivateDir ? [ $PrivateDir, @User::lookup_scripts ]
+                                                                       : \@User::lookup_scripts)
+              or die "can't find init_script $User::init_script\n";
+         }
+         if (!defined($User::application)) {
+            load_dummy Core::Application;
+         }
+         do "script=$init_script";
+         die $@ if $@;
+      };
+      if ($@) {
+         print STDERR "\n\nWARNING:\ninit_script disabled because of a following error:\n$@\n";
+         undef $User::init_script;
+      }
+   }
 }
 
 sub touch_files {

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_EXT_H
-#define POLYMAKE_PERL_EXT_H
+#pragma once
 
 #if POLYMAKE_DEBUG && defined(_FORTIFY_SOURCE)
 // required for weird Manjaro system library
@@ -193,6 +192,10 @@ HV* retrieve_pkg_stash(pTHX_ SV* obj);
 void set_interrupt_signal(pTHX_ int signum, bool must_reset_state = true);
 void reset_interrupt_signal();
 
+// public export from UserSettings
+
+int monitored_dup(pTHX_ MAGIC* mg, CLONE_PARAMS* param);
+
 // CvROOT and CvXSUB are in the same union
 inline bool is_well_defined_sub(CV* x)
 {
@@ -224,12 +227,24 @@ OP* method_named_op(OP* o)
    return nullptr;
 }
 
+template <typename Fptr>
+MAGIC* get_magic_by_dup_marker(SV* sv, Fptr dup)
+{
+   MAGIC* mg;
+   for (mg = SvMAGIC(sv); mg && (!mg->mg_virtual || mg->mg_virtual->svt_dup != dup); mg=mg->mg_moremagic) ;
+   return mg;
+}
+
 inline
 MAGIC* get_cpp_magic(SV* sv)
 {
-   MAGIC* mg;
-   for (mg = SvMAGIC(sv); mg && mg->mg_virtual->svt_dup != &canned_dup; mg=mg->mg_moremagic) ;
-   return mg;
+   return get_magic_by_dup_marker(sv, &canned_dup);
+}
+
+inline
+MAGIC* get_monitored_magic(SV* sv)
+{
+   return get_magic_by_dup_marker(sv, &monitored_dup);
 }
 
 inline
@@ -351,7 +366,8 @@ inline OP* set_op_type(OP* o, uint32_t type)
 int parse_enhanced_local(pTHX_ OP** op_ptr);
 OP* parse_expression_in_parens(pTHX);
 int parse_interrupts_op(pTHX_ const bool localize, OP** op_ptr);
-
+int parse_set_custom(pTHX_ OP** op_ptr);
+int parse_reset_custom(pTHX_ OP** op_ptr);
 }
 namespace ops {
 
@@ -365,6 +381,7 @@ OP* is_code(pTHX);
 OP* is_constant_sub(pTHX);
 OP* is_array(pTHX);
 OP* is_hash(pTHX);
+OP* is_scalar_ref(pTHX);
 OP* is_like_array(pTHX);
 OP* is_like_hash(pTHX);
 OP* is_defined_and_false(pTHX);
@@ -376,7 +393,6 @@ void init_globals(pTHX);
 
 } } }
 
-#endif // POLYMAKE_PERL_EXT_H
 
 // Local Variables:
 // c-basic-offset:3

@@ -92,5 +92,10 @@
   {"class": "std::pair<double, Vector<double>>", "include": ["polymake/Vector.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Float_I_Vector__Float_Z"},
   {"class": "std::pair<PuiseuxFraction<Max, Rational, Rational>, Vector<PuiseuxFraction<Max, Rational, Rational>>>", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_I_Vector__PuiseuxFraction_A_Max_I_Rational_I_Rational_Z_Z"},
   {"class": "std::pair<Array<Int>, bool>", "include": ["polymake/Array.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Array__Int_I_Bool_Z"},
+  {"class": "std::pair<Matrix<Rational>, Array<Array<Int>>>", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Matrix_A_Rational_I_NonSymmetric_Z_I_Array__Array__Int_Z"},
+  {"class": "std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>", "include": ["polymake/Array.h", "polymake/Set.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Array__Set__Int_I_Array__Set__Set__Int_Z"},
+  {"args": ["std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>"], "include": ["polymake/Array.h", "polymake/Set.h", "polymake/client.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>&>", "perl::Canned<const std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>&>"], "include": ["polymake/Array.h", "polymake/Set.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"class": "std::pair<Array<Set<Matrix<double>>>, Array<Matrix<double>>>", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Set.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Array__Set__Matrix_A_Float_I_NonSymmetric_Z_I_Array__Matrix_A_Float_I_NonSymmetric_Z_Z"},
  null ],
 "version": 3}

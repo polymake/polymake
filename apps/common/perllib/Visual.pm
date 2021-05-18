@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -287,6 +287,41 @@ sub transform_float_facets {
     return $FF;
 }
 
+sub get_code_decor_keys {
+   # only considers keys that contain the name
+   my ($decor,$name) = @_;
+   my @codekeys;
+   foreach my $key (keys %$decor) {
+      my $deco = $decor->{$key};
+      push @codekeys, $key if ($key =~ $name && (is_code($deco) || is_like_array($deco) || is_like_hash($deco)));
+   }
+   return @codekeys;
+}
+
+sub decor_subset {
+   # TODO: this only works for vertex decor and NOT for vertexlabels that are separated by whitespaces, 
+   # this should be somehow combined with subs like "unify_labels" and "unify_decor" that are called later (when the Visual::Object is
+   # instantiated). Unification of decoration would be more useful before VISUAL* methods process it further. 
+   
+   # no need to be called if there is no vertex code decor
+   my ($decor,$subset,$codedecor) = @_;
+   my $d = { %$decor };
+   foreach my $key (@$codedecor) {
+      my $deco = $decor->{$key};
+      if (is_code($deco)) {
+         my @array = map { $deco->($_) } @$subset;
+         $d->{$key} = sub { $array[$_[0]] };
+      } elsif (is_like_array($deco)) {
+         my @array = map { $deco->[$_] } @$subset;
+         $d->{$key} = sub { $array[$_[0]] };
+      } elsif (is_like_hash($deco)) {
+         my @array = map { $deco->{$_} } @$subset;
+         $d->{$key} = sub { $array[$_[0]] };
+      }
+   }
+   return $d; 
+}
+
 
 ###############################################################################
 #
@@ -329,7 +364,8 @@ sub check_points {
 #
 #  As input following data can be passed:
 #  - a keyword "hidden" => no labels are displayed
-#  - a keyword "show"   => the item index itself serves as a label
+#   
+#  - a keyword "show"   => the item index itself serves as a label 
 #    (this is also the default behavior if nothing or an "undef" is passed)
 #  - an array reference => the elements are assumed to contain the label strings
 #  - a hash map reference => the keys are item indexes, the corresponding values are label strings

@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -27,8 +27,7 @@
 	*/
 
 
-#ifndef POLYMAKE_ATINT_LATTICE_H
-#define POLYMAKE_ATINT_LATTICE_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
@@ -48,4 +47,3 @@ Matrix<Integer> lattice_basis_of_cone(const Matrix<Rational>& rays, const Matrix
 
 } }
 
-#endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_LINALG_H
-#define POLYMAKE_LINALG_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/SparseMatrix.h"
@@ -760,13 +759,22 @@ void orthogonalize_affine(VectorIterator v)
    orthogonalize_affine(v, black_hole<typename iterator_traits<VectorIterator>::value_type::element_type>());
 }
 
-/// Find row indices of all far points (that is, having zero in the first column).
+/// Find row indices of all far points (that is, having zero in the first column). For dense matrices.
 template <typename TMatrix>
-Set<Int>
+std::enable_if_t<!TMatrix::is_sparse, Set<Int>>
 far_points(const GenericMatrix<TMatrix>& M)
 {
    if (M.cols() == 0) return Set<Int>();
    return indices(attach_selector(M.col(0), polymake::operations::is_zero()));
+}
+
+/// Find row indices of all far points (that is, having zero in the first column). For sparse matrices.
+template <typename TMatrix>
+std::enable_if_t<TMatrix::is_sparse, Set<Int>>
+far_points(const GenericMatrix<TMatrix>& M)
+{
+   if (M.cols() == 0) return Set<Int>();
+   return sequence(0, M.rows()) - indices(M.col(0));
 }
 
 /// Find indices of rows orthogonal to the given vector
@@ -873,7 +881,6 @@ namespace polymake {
    using pm::lcm_of_sequence;
 }
 
-#endif // POLYMAKE_LINALG_H
 
 // Local Variables:
 // mode:C++

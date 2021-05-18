@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_GENERIC_CONVEX_HULL_CLIENT_H
-#define POLYMAKE_POLYTOPE_GENERIC_CONVEX_HULL_CLIENT_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/polytope/convex_hull.h"
@@ -77,7 +76,6 @@ void generic_convex_hull_dual(BigObject& p, bool isCone, const Solver& solver)
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_GENERIC_CONVEX_HULL_CLIENT_H
 
 // Local Variables:
 // mode:C++

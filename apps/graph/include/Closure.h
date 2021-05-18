@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_LATTICE_CLOSURE_H
-#define POLYMAKE_GRAPH_LATTICE_CLOSURE_H
+#pragma once
 
 #include "polymake/list"
 #include "polymake/FaceMap.h"
@@ -234,7 +233,6 @@ protected:
 
 } } }
 
-#endif
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -47,7 +47,7 @@ void remove_redundancies(BigObject f)
       const Matrix<Coord> c_rays = cone.give("RAYS");
       Set<Int> ray_indices;
       for (auto r = entire(rows(c_rays)); !r.at_end(); ++r) {
-         const Vector<Rational> the_ray(*r);
+         const Vector<Coord> the_ray(*r);
          auto r_iti = rays.find(the_ray);
          if (r_iti == rays.end()) {
             bool found = false;

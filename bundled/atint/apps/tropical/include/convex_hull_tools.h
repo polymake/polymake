@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -26,8 +26,7 @@
 	This defines wrapper / helper functions for using the polymake-convex-hull-interface
 	*/
 
-#ifndef POLYMAKE_ATINT_CONVEX_HULL_TOOLS_H
-#define POLYMAKE_ATINT_CONVEX_HULL_TOOLS_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/Rational.h"
@@ -101,4 +100,3 @@ fan_intersection_result fan_intersection(
 
 } }
 
-#endif

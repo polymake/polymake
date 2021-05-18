@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
-#define POLYMAKE_POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
+#pragma once
 
 #include "polymake/SparseVector.h"
 #include "polymake/ListMatrix.h"
@@ -187,7 +186,6 @@ projected_symmetrized_cocircuit_equations_impl_impl(const Matrix<Scalar>& points
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_SYMMETRIZED_COCIRCUIT_EQUATIONS_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYNOMIALIMPL_H
-#define POLYMAKE_POLYNOMIALIMPL_H
+#pragma once
 
 #include "polymake/Integer.h"
 #include "polymake/Vector.h"
@@ -1196,4 +1195,3 @@ struct impl_chooser {
 
 } //end namespace pm
 
-#endif // POLYMAKE_POLYNOMIALIMPL_H

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -62,7 +62,7 @@ property N_01POINTS : Int;
 # The value is encoded as a map collecting the coefficients of various roots encountered in the sum.
 # For example, {(3 1/2),(5 7)} represents sqrt{3}/2 + 7 sqrt{5}.
 # If the output is not satisfactory, please use a symbolic algebra package.
-# @example The following prints the 2-dimensional volume of a centered square with side length 2 embedded in the 3-space (the result is 4):
+# @example [require bundled:flint] The following prints the 2-dimensional volume of a centered square with side length 2 embedded in the 3-space (the result is 4):
 # > $M = new Matrix([1,-1,1,0],[1,-1,-1,0],[1,1,-1,0],[1,1,1,0]);
 # > $p = new Polytope<Rational>(VERTICES=>$M);
 # > print $p->RELATIVE_VOLUME;

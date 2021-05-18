@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -26,8 +26,7 @@
 	Contains functions to finding all points reachable from a standard direction in a cubic.
 	*/
 
-#ifndef POLYMAKE_ATINT_LINES_IN_CUBIC_REACHABLE
-#define POLYMAKE_ATINT_LINES_IN_CUBIC_REACHABLE
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Rational.h"
@@ -69,4 +68,3 @@ ReachableResult reachablePoints(const Polynomial<TropicalNumber<Max>>& f, BigObj
 
 } }
 
-#endif

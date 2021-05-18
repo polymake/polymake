@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,6 +24,7 @@
 #include "polymake/linalg.h"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/FacetList.h"
+#include "polymake/polytope/minkowski_sum_fukuda.h"
 
 namespace polymake { namespace fan {
 
@@ -74,10 +75,11 @@ BigObject tiling_quotient(BigObject P, BigObject Q)
    VQL -= repeat_row(barycenter, VQL.rows());
 
    // Take the Minkowski sum of the transformed P and Q 
+   Array<BigObject> summands(2);
    BigObjectType Polytope("Polytope", mlist<E>());
-   BigObject summand1(Polytope, "VERTICES", ones_vector<E>() | VPL);
-   BigObject summand2(Polytope, "VERTICES", ones_vector<E>() | VQL);
-   const Matrix<E> MV = call_function("polytope::minkowski_sum_vertices_fukuda", mlist<E>(), summand1, summand2);
+   summands[0] = BigObject(Polytope, "VERTICES", ones_vector<E>() | VPL);
+   summands[1] = BigObject(Polytope, "VERTICES", ones_vector<E>() | VQL);
+   const Matrix<E> MV = polytope::minkowski_sum_vertices_fukuda<E>(summands).first;
 
    // Find the interior and boundary lattice points of the Minkowski sum
    BigObject M("Polytope", mlist<E>(), "VERTICES", MV);
@@ -90,8 +92,8 @@ BigObject tiling_quotient(BigObject P, BigObject Q)
    // get the facets of the transformed polytopes.
    // of course, we could calculate these directly...
    const Matrix<E> 
-      FP = summand1.give("FACETS"),
-      FQ = summand2.give("FACETS");
+      FP = summands[0].give("FACETS"),
+      FQ = summands[1].give("FACETS");
 
    Map<Vector<E>, Int> index_of;
    Int n = 0;

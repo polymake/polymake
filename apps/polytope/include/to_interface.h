@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_TO_INTERFACE_H
-#define POLYMAKE_POLYTOPE_TO_INTERFACE_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
@@ -250,7 +249,6 @@ Solver<Coord>::solve(const Matrix<Coord>& Inequalities, const Matrix<Coord>& Equ
 
 } } }
 
-#endif // POLYMAKE_POLYTOPE_TO_INTERFACE_H
 
 // Local Variables:
 // mode:C++

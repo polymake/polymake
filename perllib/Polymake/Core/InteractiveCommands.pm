@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -100,8 +100,6 @@ sub do_reconfigure {
       local if (!defined($self->compile_scope)) {
          local unshift @INC, $self;
          local scalar $self->compile_scope = new Scope();
-         local ref $self->custom->tied_vars = [];
-         $self->compile_scope->cleanup->{$self->custom} = undef;
       }
       while (($filename, $ext, $rule_key) = splice @$list, 0, 3) {
          my $rc;
@@ -199,7 +197,6 @@ sub unconfigure {
             &$code;
          } else {
             $self->configured->{$rule_key} = -$load_time;
-            $self->custom->set_changed;
          }
       } elsif (defined $config_state) {
          die "rulefile $rulefile is already unconfigured\n";
@@ -213,12 +210,11 @@ sub unconfigure {
 ###############################################################################################
 # private:
 sub valid_configured_entry {
-   my ($self, $rule_key)=@_;
+   my ($self, $rule_key) = @_;
    exists $self->rulefiles->{$rule_key} or do {
       if ($rule_key =~ m{^/}) {
          -f $rule_key or do {
             delete $self->configured->{$rule_key};
-            $self->custom->set_changed;
             false
          }
       } else {
@@ -230,7 +226,6 @@ sub valid_configured_entry {
             !$ext || $ext->is_active;
          } else {
             delete $self->configured->{$rule_key};
-            $self->custom->set_changed;
             false
          }
       }
@@ -361,15 +356,13 @@ sub include_rule {
       my ($rulefile, $ext_URI) = split /\@/, $rule_key;
       local $Extension::loading = $Extension::registered_by_URI{$ext_URI} if $ext_URI;
       my $conf = $self->configured->{$rule_key};
-      if ($conf > 0 || !defined($conf)) {
+      local if ($conf > 0 || !defined($conf)) {
          local $Shell = new NoShell();
-         include_rules($self, $rulefile);
       } else {
-         my $save_buf;
          delete local $self->rulefiles->{$rule_key};
-         tied(%{$self->configured})->hide($rule_key, $save_buf);
-         include_rules($self, $rulefile);
+         delete local $self->configured->{$rule_key};
       }
+      include_rules($self, $rulefile);
    }
 }
 ###############################################################################################
@@ -404,12 +397,7 @@ sub add_credit {
    $credit
 }
 
-sub add_custom {
-   my $self = shift;
-   if (!$self->simulate_failure  and  defined(my $var = $self->application->custom->re_tie(@_))) {
-      $var->extension = $Extension::loading;
-   }
-}
+sub add_custom { }
 
 sub close_preamble {
    my ($app, $rule_key, $line, $success) = @_;
@@ -477,8 +465,10 @@ sub add_credit {
 }
 
 sub add_custom {
-   my ($self, $varname, $help_text, $state, $pkg) = @_;
-   $self->application->custom->unset($varname, $pkg) if $state;
+   my ($self, $pkg, $varname, $ref) = @_;
+   if (defined(my $item = UserSettings::get_item($ref))) {
+      $item->reset_value;
+   }
 }
 
 # pretend the last configuration step in the preamble to fail
@@ -486,7 +476,6 @@ sub configure {
    my ($self, $code, $rule_key, $line) = @_;
    $line < $self->application->preamble_end->{$rule_key} or do {
       $self->application->configured->{$rule_key} = -$load_time;
-      $self->application->custom->set_changed;
       0
    }
 }
@@ -547,32 +536,26 @@ or $skip to temporarily move the data items into "undecoded" attachments.
 }
 ######################################################################################
 sub obliterate {
-   my ($self)=@_;
+   my ($self) = @_;
    my @drop_apps;
    if ($self->is_active) {
       foreach my $app (list_loaded Application) {
          if ($app->installTop eq $self->dir) {
             $Prefs->obliterate_application($app->prefs);
-            $Custom->obliterate_application($app->custom);
             $app->cpp->obliterate_extension($self, 1);
             $app->delete($app->name);
             push @drop_apps, $app;
          } elsif (delete_from_list($app->extensions, $self)) {
-            $app->custom->obliterate_extension($self);
             $app->cpp->obliterate_extension($self);
-            my $had_configured;
             while (my ($rule_key) = each %{$app->configured}) {
                if (index($rule_key, '@'.$self->URI)==0) {
                   delete $app->configured->{$rule_key};
-                  $had_configured = true;
                }
-            }
-            if ($had_configured) {
-               $app->custom->set('%configured');
             }
          }
       }
-      $Prefs->custom->obliterate_extension($self);
+      $Settings->obliterate_extension($self);
+      $Prefs->obliterate_extension($self);
       delete_from_list(\@active, $self);
    }
    delete $registered_by_dir{$self->dir};
@@ -780,14 +763,13 @@ sub add {
       $conflicts{$_}=$self for @{$self->conflicts};
       @{$self->requires}=uniq(@prereqs) if @prereqs;
       push @User::extensions, $ext_dir;
-      $Prefs->custom->set('@extensions');
 
       if ($disable || !$self->configure(@config_options)) {
 	 warn_print( "Extension ", $self->URI, " is disabled on the current architecture $Arch due to problems depicted in the log above.\n",
 		     "In order to activate it, investigate the reasons, install third-party software if instructed to do so,\n",
 		     "then execute a polymake shell command:\n",
 		     "  reconfigure_extension(\"$ext_dir\", options...);" );
-	 $Prefs->custom->set('%disabled_extensions', $ext_dir, 1);
+	 $disabled{$ext_dir} = true;
          undef
       } elsif ($postpone) {
          undef
@@ -832,44 +814,41 @@ sub reconfigure {
    if ($err ne "silent\n") {
       if ($err) {
          print "Configuration script failed with following error(s):\n$err\n";
-         if ($User::disabled_extensions{$self->dir}) {
+         if ($disabled{$self->dir}) {
             print "Extension ", $self->dir,
                   "\nstays disabled until you successfully retry to configure it.\n";
          } else {
             print "Extension ", $self->dir,
                   "\nwill be disabled from the next polymake session on\n",
                   "unless you successfully retry the configuration now\n";
-            $Prefs->custom->set('%disabled_extensions', $self->dir, 1);
+            $disabled{$self->dir} = true;
          }
       } else {
          print "Configuration succeeded without errors.\n";
-         if (delete $User::disabled_extensions{$self->dir}) {
+         if (delete $disabled{$self->dir}) {
             print "Extension ", $self->URI, " is now enabled for current architecture $Arch.\n";
             activate($self);
-            if (defined (my $to_wake=delete $rules_to_wake{$self})) {
+            if (defined(my $to_wake = delete $rules_to_wake{$self})) {
                Application::do_reconfigure(@$to_wake);
             }
 
             # try to enable dependent extensions
             foreach my $ext_dir (@User::extensions) {
-               if ($User::disabled_extensions{$ext_dir} && defined (my $ext=$registered_by_dir{$ext_dir})) {
+               if ($disabled{$ext_dir} && defined(my $ext = $registered_by_dir{$ext_dir})) {
                   unless (grep { !$_->is_active } @{$ext->requires}) {
                      if (-f "$ext_dir/support/configure.pl" || -f "$ext_dir/configure.pl") {
                         print "Now you can try to reconfigure the dependent extension ", $ext->URI, " as well.\n";
                      } elsif ($ext->configure) {
-                        delete $User::disabled_extensions{$ext_dir};
+                        delete $disabled{$ext_dir};
                         print "Extension ", $ext->URI, " is now enabled for current architecture $Arch.\n";
                         activate($ext);
-                        if (defined (my $to_wake=delete $rules_to_wake{$ext})) {
+                        if (defined(my $to_wake = delete $rules_to_wake{$ext})) {
                            Application::do_reconfigure(@$to_wake);
                         }
                      }
                   }
                }
             }
-
-            $Prefs->custom->set('%disabled_extensions');
-
          } else {
             print <<".";
 
@@ -1131,9 +1110,9 @@ sub show_extensions {
                   ($_->credit && do { my $text=$_->credit->text; Core::InteractiveCommands::clean_text($text); $text."\n\n" })
             } @Core::Extension::active[$Core::Extension::num_bundled .. $#Core::Extension::active];
    }
-   if (keys %disabled_extensions) {
+   if (keys %Core::Extension::disabled) {
       print "Following extensions are registered but not configured for current architecture:\n",
-            (map { "  $_\n" } sort keys %disabled_extensions), "\n";
+            (map { "  $_\n" } sort keys %Core::Extension::disabled), "\n";
    }
    if ($Core::Extension::num_bundled) {
       print "Following bundled extensions are configured and used:\n  ",
@@ -1143,7 +1122,7 @@ sub show_extensions {
    if (!@Core::Extension::active) {
       print "No extensions are currently used\n\n";
    }
-   if (keys %disabled_extensions) {
+   if (keys %Core::Extension::disabled) {
       print <<'.';
 To activate an unconfigured extension:  help "reconfigure_extension";
 .
@@ -1166,7 +1145,6 @@ sub found_extension {
       $ext_dir = Cwd::abs_path($ext_dir);
       new_standalone Core::Extension($ext_dir);
       push @extensions, $ext_dir;
-      $Core::Prefs->custom->set('@extensions');
    }
 }
 ###############################################################################################
@@ -1253,22 +1231,21 @@ sub obliterate_extension {
    my $what = shift;
    my $ext = lookup Core::Extension($what);
    $ext->may_obliterate;
-   $Core::Prefs->custom->delete_from_private_list('@extensions', string_list_index(\@extensions, $ext->dir))
-     or die "Extension ", $ext->URI, " can't be obliterated: it is included by global configuration\n";
-
+   my $index = string_list_index(\@extensions, $ext->dir);
+   if ($index < Core::UserSettings::get_item(\@extensions)->reset_to) {
+      die "Extension ", $ext->URI, " can't be obliterated: it is included by global configuration\n";
+   }
+   splice @extensions, $index, 1;
    foreach my $app ($ext->obliterate) {
-      if ($app==$default_application) {
-         $Core::Prefs->custom->reset('$default_application');
+      if ($app == $default_application) {
+         reset_custom $default_application;
       }
-      if ($app==$application) {
+      if ($app == $application) {
          application($default_application);
       }
       delete_string_from_list(\@start_applications, $app->name);
    }
-   $Core::Prefs->custom->set('@start_applications');
-   if (delete $disabled_extensions{$ext->dir}) {
-      $Core::Prefs->custom->set('%disabled_extensions');
-   }
+   delete $Core::Extension::disabled{$ext->dir};
 }
 ###############################################################################################
 sub reconfigure {
@@ -1298,9 +1275,15 @@ sub show_unconfigured {
 ###############################################################################################
 sub export_configured {
    my $filename = shift;
-   my $opts = @_==1 && ref($_[0]) eq "HASH" ? shift : { @_ };
+   my $opts = @_==1 && is_hash($_[0]) ? shift : { @_ };
    replace_special_paths($filename);
-   $Core::Custom->export($filename, $opts, $Core::Prefs->custom);
+
+   my @opts = delete @$opts{qw(include_imported suppress)};
+   if (keys %$opts) {
+      die "unknown option", keys(%$opts)>1 && "s", ": ", join(" ", keys(%$opts)), "\n";
+   }
+
+   $Settings->save_excerpt($filename, @opts);
 }
 
 1

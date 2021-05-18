@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_NOTHING_H
-#define POLYMAKE_INTERNAL_NOTHING_H
+#pragma once
 
 #include "polymake/internal/type_manip.h"
 
@@ -51,7 +50,6 @@ namespace std {
    inline void swap(const pm::nothing&, const pm::nothing&) { }
 }
 
-#endif // POLYMAKE_INTERNAL_NOTHING_H
 
 // Local Variables:
 // mode:C++

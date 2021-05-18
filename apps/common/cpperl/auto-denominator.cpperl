@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["perl::AnchorArg<perl::Canned<Rational&>>"], "func": "denominator", "include": ["polymake/Rational.h"], "ret": "lvalue", "sig": "denominator:F.X10"},
   {"args": ["perl::AnchorArg<perl::Canned<const Rational&>>"], "func": "denominator", "include": ["polymake/Rational.h"], "ret": "lvalue", "sig": "denominator:F.X10"},
+  {"args": ["perl::AnchorArg<perl::Canned<const RationalFunction<Rational, Int>&>>"], "func": "denominator", "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "sig": "denominator.X8"},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -40,7 +40,6 @@ sub init {
             warn_print( "Removing outdated private wrappers in $dir" );
             File::Path::remove_tree($dir);
             delete $private_wrappers{$id};
-            $custom_handler->set('%private_wrappers');
             return;
          }
          $self->set_build_dir;
@@ -61,7 +60,6 @@ sub init {
          }
       } else {
          delete $private_wrappers{$id};
-         $custom_handler->set('%private_wrappers');
       }
    }
    $self;
@@ -85,11 +83,10 @@ sub create {
             last;
          }
       }
-      $private_wrappers{id()}="wrappers.$seq";
-      $custom_handler->set('%private_wrappers');
+      $private_wrappers{id()} = "wrappers.$seq";
       File::Path::make_path($dir);
    } else {
-      $dir=new Tempdir("till_exit");
+      $dir = new Tempdir("till_exit");
    }
    File::Path::make_path("$dir/apps");
    $self=new(@_, $dir);

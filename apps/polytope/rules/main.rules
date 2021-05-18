@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -61,7 +61,7 @@ declare object Polytope<Scalar=Rational> [ is_ordered_field(Scalar) ] : Cone<Sca
 
 # these rules are intrinsic: they don't depend on any external software to be installed separately
 INCLUDE
-  cone_properties.rules  
+  cone_properties.rules
   polytope_properties.rules
   lp_properties.rules
   initial.rules
@@ -82,7 +82,7 @@ INCLUDE
   point_configuration.rules
   polarize.rules
   visual.rules
-  stl.rules  
+  stl.rules
   schlegel.rules
   visual_graph.rules
   gale.rules
@@ -94,7 +94,7 @@ INCLUDE
   visual_point_configuration.rules
   action.rules
   group.rules
-  coxeter.rules  
+  coxeter.rules
   quotient_space.rules
   symmetrized_cocircuit_equations.rules
   universal_polytope.rules

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -655,7 +655,7 @@ void repair_gvop(pTHX_ SV* old_sv, SV* new_sv, PADOFFSET pad_ix)
       PAD** padstart=PadlistARRAY(padlist);
       if (PL_comppad==padstart[CvDEPTH(cv)]) {
          PADOFFSET max = PadlistMAX(padlist);
-#ifdef DEBUGGING
+#if defined(DEBUGGING) && PerlVersion >= 5180
          PADNAMELIST* padnames = PadlistNAMES(padlist);
          if ((I32)pad_ix <= PadnamelistMAX(padnames)) {
 #if PerlVersion < 5220
@@ -2812,15 +2812,35 @@ int keyword_func(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
          if (!strncmp(kw, "is_integer", 10))
             return parse_operation(aTHX_ &ops::is_integer, op_ptr);
          break;
+      case 'u':
+         if (!strncmp(kw, "set_custom", 10))
+            return parse_set_custom(aTHX_ op_ptr);
+         break;
       }
       break;
    case 12:
-      if (!strncmp(kw, "is_like_hash", 12))
-         return parse_operation(aTHX_ &ops::is_like_hash, op_ptr);
+      switch (kw[3]) {
+      case 'e':
+         if (!strncmp(kw, "reset_custom", 12))
+            return parse_reset_custom(aTHX_ op_ptr);
+         break;
+      case 'l':
+         if (!strncmp(kw, "is_like_hash", 12))
+            return parse_operation(aTHX_ &ops::is_like_hash, op_ptr);
+         break;
+      }
       break;
    case 13:
-      if (!strncmp(kw, "is_like_array", 13))
-         return parse_operation(aTHX_ &ops::is_like_array, op_ptr);
+      switch (kw[3]) {
+      case 'l':
+         if (!strncmp(kw, "is_like_array", 13))
+            return parse_operation(aTHX_ &ops::is_like_array, op_ptr);
+         break;
+      case 's':
+         if (!strncmp(kw, "is_scalar_ref", 13))
+            return parse_operation(aTHX_ &ops::is_scalar_ref, op_ptr);
+         break;
+      }
       break;
    case 15:
       if (!strncmp(kw, "is_constant_sub", 15))

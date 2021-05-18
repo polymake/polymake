@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_BITSET_H
-#define POLYMAKE_BITSET_H
+#pragma once
 
 #include "polymake/GenericSet.h"
 #include "polymake/Set.h"
@@ -815,7 +814,6 @@ namespace std {
    inline void swap(pm::Bitset& s1, pm::Bitset& s2) noexcept { s1.swap(s2); }
 }
 
-#endif // POLYMAKE_BITSET_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_INCIDENCE_MATRIX_H
-#define POLYMAKE_GRAPH_INCIDENCE_MATRIX_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/SparseMatrix.h"
@@ -68,7 +67,6 @@ SparseMatrix<Int> signed_incidence_matrix(BigObject p)
 
 } }
 
-#endif
 
 // Local Variables:
 // mode:C++

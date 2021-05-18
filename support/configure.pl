@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -758,7 +758,7 @@ Please investigate and reconfigure.
            $cppver >= 201305 and
                defined($CLANGversion) and v_cmp($CLANGversion, "3.5") < 0
           ) {
-      # C++ standard older than C++14 wont work (C++1y from clang 3.4 is also ok)
+      # C++ standard older than C++14 won't work (C++1y from clang 3.4 is also ok)
       die "C++ standard version ($cppver) too old, C++14 or later is required. Please omit any '-std=' options.\n";
    }
 
@@ -904,12 +904,10 @@ sub determine_architecture {
    print "determining architecture ... ";
    if ($^O eq "darwin") {
       if ( !defined($FinkBase) && !defined($BrewBase) ) {
-         if (defined $Arch) {
-            if ($Arch ne "i386" && $Arch ne "x86_64") {
-               die "Invalid architecture $Arch for Mac OS: allowed values are i386 and x86_64.\n";
-            }
-         } else {
-            $Arch = "x86_64";
+         $Arch //= `uname -m`;
+         chomp $Arch;
+         if ($Arch ne "arm64" && $Arch ne "i386" && $Arch ne "x86_64") {
+            die "Invalid architecture $Arch for Mac OS: allowed values are i386, x86_64 and arm64.\n";
          }
       }
       $ARCHFLAGS= $NeedsArchFlag ? "-arch $Arch" : "";
@@ -962,6 +960,9 @@ sub collect_compiler_specific_options {
       }
       if (v_cmp($GCCversion, "10.0.0") >= 0) {
          $CXXFLAGS .= " -Wno-array-bounds";
+      }
+      if (v_cmp($GCCversion, "11.0.0") >= 0) {
+         $CXXFLAGS .= " -Wno-maybe-uninitialized -Wno-free-nonheap-object";
       }
 
    } elsif (defined($ICCversion)) {

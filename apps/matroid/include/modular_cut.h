@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MATROID_MODULAR_CUT_H
-#define POLYMAKE_MATROID_MODULAR_CUT_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/Set.h"
@@ -111,7 +110,6 @@ bool is_modular_cut_impl(const Array<SetType>& C, const graph::Lattice<graph::la
 
 } }
 
-#endif // POLYMAKE_MATROID_MODULAR_CUT_H
 
 // Local Variables:
 // mode:C++

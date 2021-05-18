@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_IS_REGULAR_H
-#define POLYMAKE_POLYTOPE_IS_REGULAR_H
+#pragma once
 
 #include "polymake/PowerSet.h"
 #include "polymake/Matrix.h"
@@ -143,7 +142,6 @@ secondary_cone_ineq(const GenericMatrix<Matrix, Scalar>& full_dim_verts, const A
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_IS_REGULAR_H
 
 // Local Variables:
 // mode:C++

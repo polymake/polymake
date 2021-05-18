@@ -1,5 +1,4 @@
-#ifndef POLYMAKE_POLYTOPE_SYMPOL_INTERFACE_H
-#define POLYMAKE_POLYTOPE_SYMPOL_INTERFACE_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
@@ -50,7 +49,6 @@ public:
 
 } } }
 
-#endif // POLYMAKE_POLYTOPE_SYMPOL_INTERFACE_H
 
 // Local Variables:
 // mode:C++

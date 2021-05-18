@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_DIJKSTRA_SHORTEST_PATH_WITH_SIBLINGS_H
-#define POLYMAKE_GRAPH_DIJKSTRA_SHORTEST_PATH_WITH_SIBLINGS_H
+#pragma once
 
 #include "polymake/graph/DijkstraShortestPathBase.h"
 
@@ -204,7 +203,6 @@ public:
 
 } }
 
-#endif // POLYMAKE_GRAPH_DIJKSTRA_SHORTEST_PATH_H
 
 // Local Variables:
 // mode:C++

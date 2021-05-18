@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_HASSE_DIAGRAM_H
-#define POLYMAKE_POLYTOPE_HASSE_DIAGRAM_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/graph/Decoration.h"
@@ -28,9 +27,27 @@
 namespace polymake { namespace polytope {
 
 using graph::Lattice;
+using graph::lattice::BasicDecorator;
 using graph::lattice::BasicDecoration;
+using graph::lattice::BasicClosureOperator;    
 using graph::lattice::Sequential;
 using graph::lattice::Nonsequential;
+
+// Helper function to carry out lattice computation
+template<typename CutType, typename PrimalOrDual>      
+Lattice<BasicDecoration, Sequential>
+hasse_diagram_impl(BasicClosureOperator<>& cop,
+                   CutType& cut,
+                   BasicDecorator<>& dec,
+                   PrimalOrDual primal_or_dual,
+		   const IncidenceMatrix<>& VIF)
+{
+   Lattice<BasicDecoration, Sequential> init_lattice;
+   Lattice<BasicDecoration, Sequential> result(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
+                                                                                                                     cop, cut, dec, 0, primal_or_dual, init_lattice));
+   sort_vertices_and_facets(result, VIF);
+   return result;
+}
 
 // Compute full Hasse diagram of a cone
 BigObject hasse_diagram(const IncidenceMatrix<>& VIF, Int cone_dim);
@@ -62,4 +79,3 @@ BigObject upper_hasse_diagram(const IncidenceMatrix<>& VIF, Int cone_dim, Int bo
 
 } }
 
-#endif

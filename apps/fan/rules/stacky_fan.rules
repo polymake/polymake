@@ -1,0 +1,111 @@
+#  Copyright (c) 1997-2021
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Symmetry
+# This represents a stacky fan built from the orbit of a fan F under a group G that permutes the homogeneous coordinates of F's rays.
+# 
+# ****
+# It is assumed, but currently not checked, that the interior of F does not intersect the interiors of its images.
+# ****
+declare object DisjointStackyFan<Scalar=Rational> [ is_ordered_field(Scalar) ] : PolyhedralFan<Scalar>;
+
+object DisjointStackyFan {
+
+# @category Symmetry
+# The number of RAYS of the stacky fan that were used to generate it.
+# By the way orbit_fan works, these rays also show up at the beginning of the RAYS matrix.    
+property N_GENERATING_RAYS : Int;
+
+# @category Symmetry
+# The MAXIMAL_CONES of the fan that were used to generate it.
+property GENERATING_MAXIMAL_CONES : IncidenceMatrix;
+
+# @category Symmetry
+# The HASSE_DIAGRAM of the fan that was used to generate it.
+# Must be of type Sequential because Cone::HASSE_DIAGRAM has that type
+property GENERATING_HASSE_DIAGRAM : Lattice<BasicDecoration, Sequential>;
+
+# @category Symmetry
+# From a fan F equipped with a symmetry group G acting on the coordinates,
+# *** such that the interior of F does not intersect the interiors of its images,***
+# calculate the faces of F of all dimensions that lie in distinct orbits of G.F
+# The data is organized as an array, one entry for each dimension starting with 1;
+# each entry is a Set, one for each orbit of that dimension;    
+# each entry is a Set<Set<Int>> of faces Set<Int> in that orbit that lie in F
+property STACKY_FACES : Array<Set<Set<Set<Int>>>>;    
+
+rule STACKY_FACES : N_GENERATING_RAYS, COMBINATORIAL_DIM, HASSE_DIAGRAM { 
+    my $ground_set = sequence(0, $this->N_GENERATING_RAYS);
+    my @orbit_restrictions;
+    for my $orbit_rank (1..$this->COMBINATORIAL_DIM+1) {
+        my $a = cones_action($this, $orbit_rank);
+        my $cones_of_dim = $this->HASSE_DIAGRAM->cones_of_dim($orbit_rank);
+        my $orbit_restrictions_in_dim = new Set<Set<Set<Int>>>;
+        foreach my $indexed_orbits (@{$a->ORBITS}) {
+            my $part_in_ground_set = new Set<Set<Int>>;
+            foreach my $cone_index (@{$indexed_orbits}) {
+                if (incl($cones_of_dim->[$cone_index], $ground_set) <= 0) {
+                    $part_in_ground_set += $cones_of_dim->[$cone_index];
+                }
+            }
+            $orbit_restrictions_in_dim += $part_in_ground_set;
+        }
+        push @orbit_restrictions, $orbit_restrictions_in_dim;
+    }
+    $this->STACKY_FACES = new Array<Set<Set<Set<Int>>>>(\@orbit_restrictions);
+}
+
+# @category Symmetry
+# Counts the number of STACKY_FACES
+property STACKY_F_VECTOR : Vector<Int>;
+
+rule STACKY_F_VECTOR : STACKY_FACES {
+    my @f = map { $_->size() } (@{$this->STACKY_FACES});
+    $this->STACKY_F_VECTOR = \@f;
+}
+
+}
+
+# @category Symmetry
+# Calculate the stacky fan associated to a Cone and a group acting on homogeneous coordinates.
+# This function turns the input Cone C into a PolyhedralFan PF, calculates the orbit_fan OF of PF, and packages the data in OF into the data for a DisjointStackyFan. No additional computation is executed at this point.
+# 
+# @param Cone C the input cone, equipped with a GROUP->HOMOGENEOUS_COORDINATE_ACTION
+# @return DisjointStackyFan F representing the quotient of C by its group
+# @example
+# Consider the cone over the standard 2-simplex on which Z_2 acts by interchanging coordinates 0 and 1.
+# > $c = new Cone(RAYS=>[[1,0,0],[0,1,0],[0,0,1]], GROUP=>new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>new group::PermutationAction(GENERATORS=>[[1,0,2]])));
+# The stacky fan defined by this cone identifies the rays 0 and 1.
+# The property STACKY_FACES records the orbits under the group action:
+# > $sf = stacky_fan($c);
+# > print $sf->STACKY_FACES;
+# | {{{0} {1}} {{2}}}
+# | {{{0 1}} {{0 2} {1 2}}}
+# > print $sf->STACKY_F_VECTOR;
+# | 2 2
+user_function stacky_fan<Scalar>(Cone<Scalar>) {
+    my ($c) = @_;
+    my $f = new PolyhedralFan(RAYS=>$c->RAYS, MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GROUP=>$c->GROUP);
+    my $of = orbit_fan($f, $f->GROUP->HOMOGENEOUS_COORDINATE_ACTION->GENERATORS);
+    return new DisjointStackyFan<Scalar>(N_GENERATING_RAYS=>$c->RAYS->rows, GENERATING_MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GENERATING_HASSE_DIAGRAM=>$c->HASSE_DIAGRAM, GROUP=>$of->GROUP);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

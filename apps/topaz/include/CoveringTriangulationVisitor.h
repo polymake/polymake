@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_COVERING_TRIANGULATION_VISTOR_H
-#define POLYMAKE_TOPAZ_COVERING_TRIANGULATION_VISTOR_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Graph.h"
@@ -236,7 +235,6 @@ public:
 
 } }
 
-#endif // POLYMAKE_TOPAZ_COVERING_TRIANGULATION_VISTOR_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GROUP_PERMLIB_H
-#define POLYMAKE_GROUP_PERMLIB_H
+#pragma once
 #undef DOMAIN
 #include "polymake/Array.h"
 #include "polymake/ListMatrix.h"
@@ -257,7 +256,7 @@ public:
    SetType lex_min_representative(const SetType& dGamma_in) const
    {
       permlib::dset dGamma(permlib_group->n);
-      for (const auto& s : dGamma_in)
+      for (const auto s : dGamma_in)
          dGamma.set(s);
       permlib::dset image = smallestSetImage(*permlib_group, dGamma);
       SetType res(permlib_group->n);
@@ -425,7 +424,6 @@ struct iterator_cross_const_helper<std::__tree_const_iterator<_Tp, _NodePtr, _Di
 #endif
 }
 
-#endif // POLYMAKE_PERMLIB_H
 
 // Local Variables:
 // mode:C++

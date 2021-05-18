@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -72,11 +72,6 @@ method representative { $_[0]->SimplicialComplex }
 ###########################################################################
 package application;
 
-custom %mixed_graph_params=(
-# edge_weight => 1      # increases the ideal length of the mixed edges
-);
-
-    
 sub vis_facets($$$$$$) {
    my ($facets, $coord, $vertex_labels, $face_decor, $edge_decor, $point_decor)=@_;
    my @cells;

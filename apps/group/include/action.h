@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GROUP_ACTION_H
-#define POLYMAKE_GROUP_ACTION_H
+#pragma once
 
 #include "polymake/hash_map"
 #include "polymake/Array.h"
@@ -388,7 +387,7 @@ struct action<TMap&, on_container, Perm, is_map, is_container, stores_ref> {
    {
       result_type img;
       const action<typename TMap::key_type, on_container, Perm> a(perm);
-      for (const auto e : m)
+      for (const auto& e : m)
          img[a(e.first)] = e.second;
       return img;
    }
@@ -445,7 +444,6 @@ action_inv(const Array<Int>& perm, const Element& element)
 
 } }
 
-#endif // POLYMAKE_GROUP_ACTION_H
 
 // Local Variables:
 // mode:C++

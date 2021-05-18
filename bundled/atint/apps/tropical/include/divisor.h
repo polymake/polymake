@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2020
+   Copyright (c) 2016-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -26,8 +26,7 @@
    Contains functionality for computing divisors
    */
 
-#ifndef POLYMAKE_ATINT_DIVISOR_H
-#define POLYMAKE_ATINT_DIVISOR_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Set.h"
@@ -189,7 +188,7 @@ BigObject divisorByValueMatrix(BigObject complex, const Matrix<Rational>& values
     for (Int co = 0; co < codimOneCones.rows(); ++co) {
       if (!unbalancedFaces.contains(co)) { // Only compute values at balanced codim-1-cones
         Rational coweight(0); // Have to take rational since intermediate values may be rational
-        for (const auto& mc : coneIncidences.row(co)) {
+        for (const auto mc : coneIncidences.row(co)) {
           coweight += weights[mc] * lnFunctionVector[std::make_pair(co,mc)] * currentValues;
         }
         // Now substract the value of the lattice normal sum
@@ -340,4 +339,3 @@ BigObject divisor_no_refinement(BigObject cycle, BigObject function)
 
 } }
 
-#endif

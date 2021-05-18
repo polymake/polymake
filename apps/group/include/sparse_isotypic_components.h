@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __GROUP_SPARSE_ISOTYPIC_COMPONENTS_H
-#define __GROUP_SPARSE_ISOTYPIC_COMPONENTS_H
+#pragma once
 
 #include "polymake/group/group_tools.h"
 #include "polymake/group/orbit.h"
@@ -155,7 +154,7 @@ sparse_isotypic_spanning_set_and_support_impl(Int order,
          if (new_hash_eq == old_hash_eq) continue; // guard against the most trivial repetition
          old_hash_eq = new_hash_eq;
          if (calculate_support) {
-            for (const auto m: old_hash_eq)
+            for (const auto& m: old_hash_eq)
                if (!is_zero(m.second))
                   support += m.first;            
          } else  {
@@ -180,7 +179,7 @@ augment_index_of(hash_map<SparseSet, Int>& index_of,
 {
    Int index = index_of.size();
    for (const auto& sgen: subspace_generators)
-      for (const auto m: sgen)
+      for (const auto& m: sgen)
          if (!index_of.exists(m.first))
             index_of[m.first] = index++;
 }
@@ -193,7 +192,7 @@ list_matrix_representation(const hash_map<SparseSet, Int>& index_of,
   ListMatrix<SparseVector<Rational>> sgen_matrix(0, index_of.size());
    for (const auto& sgen: subspace_generators) {
       SparseVector<Rational> new_sgen(index_of.size());
-      for (const auto m: sgen)
+      for (const auto& m: sgen)
          new_sgen[index_of.at(m.first)] = m.second;
       sgen_matrix /= new_sgen;
    }
@@ -213,7 +212,7 @@ spans_invariant_subspace_impl(const Array<Array<Int>>& group_generators,
    for (const auto& sgen: subspace_generators) {
       for (const auto& o_sgen: unordered_orbit<on_container>(group_generators, sgen)) {
          SparseVector<Rational> new_sgen(index_of.size());
-         for (const auto m: o_sgen) {
+         for (const auto& m: o_sgen) {
             try {
                new_sgen[index_of.at(m.first)] = m.second;
             } catch (const no_match&) {
@@ -237,7 +236,6 @@ spans_invariant_subspace_impl(const Array<Array<Int>>& group_generators,
 
 } }
 
-#endif // __GROUP_SPARSE_ISOTYPIC_COMPONENTS_H
 
 
 // Local Variables:

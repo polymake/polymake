@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GENERIC_VECTOR_H
-#define POLYMAKE_GENERIC_VECTOR_H
+#pragma once
 
 #include "polymake/GenericIO.h"
 #include "polymake/TransformedContainer.h"
@@ -1471,7 +1470,6 @@ void swap(pm::GenericVector<Vector1, E>& v1, pm::GenericVector<Vector2, E>& v2)
 
 }
 
-#endif // POLYMAKE_GENERIC_VECTOR_H
 
 // Local Variables:
 // mode:C++

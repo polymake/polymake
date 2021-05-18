@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -23,8 +23,9 @@ rule scip.milp: MIN_WEIGHTS : VECTORS, MAXIMAL_CELLS {
     my $minus_ones = new Vector<Rational>(-ones_vector<Rational>($secTineqs->rows()));
     my $positive_orthant = zero_vector<Rational>|unit_matrix<Rational>($n_vectors);
     my $ineqs = ($minus_ones|$secTineqs) / $positive_orthant; # shifted ineqs intersected with positive orthant
+    my $eqs = zero_vector<Rational> | $secT->EQUATIONS;
     my $ilp = new polytope::MixedIntegerLinearProgram<Rational>(LINEAR_OBJECTIVE=>(0|ones_vector<Rational>($n_vectors)));
-    my $secTilp = new polytope::Polytope(INEQUALITIES=>$ineqs,MILP=>$ilp);
+    my $secTilp = new polytope::Polytope(INEQUALITIES=>$ineqs, EQUATIONS=>$eqs, MILP=>$ilp);
     $secTilp->apply_rule("scip.milp: MILP.MINIMAL_VALUE, MILP.MINIMAL_SOLUTION : MILP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES");
     $this->MIN_WEIGHTS = $secTilp->MILP->MINIMAL_SOLUTION->slice(~[0]);
 }

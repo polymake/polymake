@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -84,11 +84,11 @@ declare property_type RGB : c++ (include=>["polymake/color.h"]) {
 
    method construct(Float,Float,Float) : c++;
 
-   method toInt { join($_[1] || " ", map { POSIX::ceil($_*255) } @{$_[0]}) }
+   method toInt { join($_[1] // " ", map { POSIX::ceil($_*255) } @{$_[0]}) }
 
    method toHex { sprintf "#%02X%02X%02X", map { POSIX::ceil($_*255) } @{$_[0]} }
 
-   method toFloat { my $sep=$_[1] || " "; sprintf "%.4g$sep%.4g$sep%.4g", @{$_[0]} }
+   method toFloat { my $sep=$_[1] // " "; sprintf "%.4g$sep%.4g$sep%.4g", @{$_[0]} }
 }
 
 # @category Visualization

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_CALLS_H
-#define POLYMAKE_PERL_CALLS_H
+#pragma once
 
 namespace pm { namespace perl {
 
@@ -497,7 +496,6 @@ using pm::perl::unroll;
 
 }
 
-#endif // POLYMAKE_PERL_CALLS_H
 
 // Local Variables:
 // mode:C++

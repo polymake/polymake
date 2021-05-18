@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file AVL.h
     @brief This file contains the namespace pm::AVL
  */
 
-#ifndef POLYMAKE_INTERNAL_AVL_H
-#define POLYMAKE_INTERNAL_AVL_H
 
 #include "polymake/internal/iterators.h"
 #include "polymake/internal/comparators.h"
@@ -1674,7 +1673,6 @@ namespace std {
    inline void swap(pm::AVL::tree<Traits>& t1, pm::AVL::tree<Traits>& t2) { t1.swap(t2); }
 }
 
-#endif // POLYMAKE_INTERNAL_AVL_H
 
 // Local Variables:
 // mode:C++

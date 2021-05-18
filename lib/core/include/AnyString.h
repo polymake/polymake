@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_ANY_STRING_H
-#define POLYMAKE_ANY_STRING_H
+#pragma once
 
 #include <string>
 #include <cstring>
@@ -102,7 +101,6 @@ using polymake::Str;
 using polymake::CStr;
 }
 
-#endif // POLYMAKE_ANY_STRING_H
 
 // Local Variables:
 // mode:C++

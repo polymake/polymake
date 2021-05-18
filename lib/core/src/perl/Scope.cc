@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -418,7 +418,10 @@ struct local_pop_handler {
 
    void undo(pTHX) const
    {
+      auto localizing = PL_localizing;
+      PL_localizing = 2;
       av_push(av, val);
+      PL_localizing = localizing;
       SvREFCNT_dec(av);
    }
 };
@@ -444,6 +447,7 @@ int parse_local_pop(pTHX_ OP** op_ptr)
    OP* o = parse_termexpr(0);
    if (!o) return KEYWORD_PLUGIN_DECLINE;
    o->op_ppaddr = local_pop_op;
+   o->op_private |= OPpLVAL_INTRO;
    *op_ptr = o;
    PL_hints |= HINT_BLOCK_SCOPE;
    return KEYWORD_PLUGIN_EXPR;
@@ -464,7 +468,10 @@ struct local_shift_handler {
 
    void undo(pTHX) const
    {
+      auto localizing = PL_localizing;
+      PL_localizing = 2;
       av_unshift(av, 1);
+      PL_localizing = localizing;
       AvARRAY(av)[0] = val;
       SvREFCNT_dec(av);
    }
@@ -491,6 +498,7 @@ int parse_local_shift(pTHX_ OP** op_ptr)
    OP* o = parse_termexpr(0);
    if (!o) return KEYWORD_PLUGIN_DECLINE;
    o->op_ppaddr = local_shift_op;
+   o->op_private |= OPpLVAL_INTRO;
    *op_ptr = o;
    PL_hints |= HINT_BLOCK_SCOPE;
    return KEYWORD_PLUGIN_EXPR;
@@ -1003,6 +1011,22 @@ bool following_keyword(pTHX_ const AnyString& kw, bool skip_it = false)
    return false;
 }
 
+#if defined(POLYMAKE_GATHER_CODE_COVERAGE)
+int prevent_unnecessary_scope(pTHX_ int (*parse_func)(pTHX_ OP**), OP** op_ptr)
+{
+   const auto noopt = PERLDB_NOOPT;
+   PL_perldb &= ~PERLDBf_NOOPT;
+   const int result = parse_func(aTHX_ op_ptr);
+   PL_perldb |= noopt;
+   return result;
+}
+#else
+int prevent_unnecessary_scope(pTHX_ int (*parse_func)(pTHX_ OP**), OP** op_ptr)
+{
+   return parse_func(aTHX_ op_ptr);
+}
+#endif
+
 }
 
 int parse_enhanced_local(pTHX_ OP** op_ptr)
@@ -1023,7 +1047,7 @@ int parse_enhanced_local(pTHX_ OP** op_ptr)
       break;
    case 'i':
       if (following_keyword(aTHX_ "if"))
-         return parse_local_if(aTHX_ op_ptr);
+         return prevent_unnecessary_scope(aTHX_ &parse_local_if, op_ptr);
       if (following_keyword(aTHX_ "interrupts", true))
          return parse_interrupts_op(aTHX_ true, op_ptr);
       break;
@@ -1057,7 +1081,7 @@ int parse_enhanced_local(pTHX_ OP** op_ptr)
       break;
    case 'w':
       if (following_keyword(aTHX_ "with", true))
-         return parse_local_block(aTHX_ op_ptr);
+         return prevent_unnecessary_scope(aTHX_ &parse_local_block, op_ptr);
       break;
    }
    return KEYWORD_PLUGIN_DECLINE;

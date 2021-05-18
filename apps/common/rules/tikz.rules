@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -36,8 +36,10 @@ custom @view_up=(0,1,0);
 custom $scale=2;
 
 # edge label style
-custom $edgelabelstyle="pos=0.5,sloped,below";
+custom $edgelabelstyle="pos=0.5,sloped,below,align=center";
 
+# use foreach loops when the number of nodes/edges is greater or equal to this number
+custom $foreachminimum=3;
 
 package TikZ::Viewer;
 
@@ -96,7 +98,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2020
+% Copyright (c) 1997-2021
 % Ewgenij Gawrilow, Michael Joswig, and the polymake team
 % Technische Universität Berlin, Germany
 % https://polymake.org
@@ -151,7 +153,7 @@ my $text = <<'|';
 %---------------------------------------------------------------------------------
 %
 % Polymake LaTeX template for TikZ-Output
-% Copyright (c) 1997-2020
+% Copyright (c) 1997-2021
 % Ewgenij Gawrilow, Michael Joswig, and the polymake team
 % Technische Universität Berlin, Germany
 % https://polymake.org

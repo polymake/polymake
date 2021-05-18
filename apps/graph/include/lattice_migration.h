@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_LATTICE_MIGRATION_H
-#define POLYMAKE_GRAPH_LATTICE_MIGRATION_H
+#pragma once
 
 #include "polymake/Graph.h"
 #include "polymake/Array.h"
@@ -95,4 +94,3 @@ faces_map_from_decoration(const Graph<Directed>& graph, const NodeMap<Directed, 
 
 } }
 
-#endif

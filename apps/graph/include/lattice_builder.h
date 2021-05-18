@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_LATTICE_LATTICE_BUILDER_H
-#define POLYMAKE_GRAPH_LATTICE_LATTICE_BUILDER_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/list"
@@ -135,7 +134,6 @@ Lattice<Decoration, SeqType> compute_lattice_from_closure(
 
 } } }
 
-#endif
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_FAN_FACE_LATTICE_TOOLS_H
-#define POLYMAKE_FAN_FACE_LATTICE_TOOLS_H
+#pragma once
 
 #include "polymake/polytope/face_lattice_tools.h"
 
@@ -97,7 +96,6 @@ void compute_tight_span(const GenericIncidenceMatrix<TMatrix>& VIF,
 
 } } }
 
-#endif // POLYMAKE_FAN_FACE_LATTICE_TOOLS_H
 
 // Local Variables:
 // mode:C++

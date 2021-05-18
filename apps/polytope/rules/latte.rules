@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -24,7 +24,13 @@ CREDIT latte
 custom $latte_count;
 
 CONFIGURE {
-   find_program($latte_count, "count", { prompt => "the program `count' from the LattE package" });
+   find_program($latte_count, "count", {
+                   prompt => "the program `count' from the LattE package",
+                   check => sub { `$_[0] 2>&1` !~ /LattE/ && "this is not LattE's count" }
+                }) or return;
+   `$latte_count 2>&1` =~ /LattE/ or die <<".";
+'$latte_count' is not the count binary from LattE.
+.
 }
 
 # additional parameters for calling LattE's "count". See the manual of LattE for details, recommended options are

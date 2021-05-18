@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_COMPLEX_TOOLS_H
-#define POLYMAKE_TOPAZ_COMPLEX_TOOLS_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/PowerSet.h"
@@ -232,6 +231,22 @@ bool is_pseudo_manifold(const Lattice<BasicDecoration>& HD, bool known_pure, Int
 
 bool is_pure(const Lattice<BasicDecoration>& HD);
 
+// checks whether a flag of faces, represented by a Set<Set<Int>>,
+// lies completely in the boundary of a complex, which is represented by an IncidenceMatrix
+inline
+bool on_boundary(const Set<Set<Int>>& label, const IncidenceMatrix<>& VIF)
+{
+   Set<Int> face;
+   for (auto lit = entire(label); !lit.at_end(); ++lit)
+      face += *lit;
+
+   for (auto rit = entire(rows(VIF)); !rit.at_end(); ++rit) 
+      if (!(face - *rit).size())
+         return true; // it's contained in the boundary
+
+   return false;
+}
+      
 // The torus.
 Array<Set<Int>> torus_facets();
 
@@ -248,7 +263,6 @@ Array<Set<Int>> complex_projective_plane_facets();
 #include "polymake/topaz/1D_tools.tcc"
 #include "polymake/topaz/2D_tools.tcc"
 
-#endif // POLYMAKE_TOPAZ_COMPLEX_TOOLS_H
 
 // Local Variables:
 // mode:C++

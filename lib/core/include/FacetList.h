@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file FacetList.h
     @brief Implementation of pm::FacetList and ... classes
  */
 
-#ifndef POLYMAKE_FACET_LIST_H
-#define POLYMAKE_FACET_LIST_H
 
 #include "polymake/internal/sparse2d_ruler.h"
 #include "polymake/internal/chunk_allocator.h"
@@ -1511,7 +1510,6 @@ namespace polymake {
    using pm::FacetList;
 }
 
-#endif // POLYMAKE_FACET_LIST_H
 
 // Local Variables:
 // mode:C++

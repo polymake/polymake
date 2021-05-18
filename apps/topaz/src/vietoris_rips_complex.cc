@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -116,10 +116,10 @@ UserFunction4perl("# @category Producing a simplicial complex from other objects
 
 
 UserFunctionTemplate4perl("# @category Other"
-                          "# Constructs the k-skeleton of the Vietrois Rips filtration of a point set. The set is passed as its so-called \"distance matrix\", whose (i,j)-entry is the distance between point i and j. This matrix can e.g. be computed using the distance_matrix function. The other inputs are an integer array containing the degree of each point, the desired distance step size between frames, and the dimension up to which to compute the skeleton. Redundant points will appear as seperate vertices of the complex. Setting k to |S| will compute the entire VR-Complex for each frame."
+                          "# Constructs the k-skeleton of the Vietrois Rips filtration of a point set. The set is passed as its so-called \"distance matrix\", whose (i,j)-entry is the distance between point i and j. This matrix can e.g. be computed using the distance_matrix function. The other inputs are an integer array containing the degree of each point, the desired distance step size between frames, and the dimension up to which to compute the skeleton. Redundant points will appear as separate vertices of the complex. Setting k to |S| will compute the entire VR-Complex for each frame."
                           "# @param Matrix D the \"distance matrix\" of the point set (can be upper triangular)"
                           "# @param Array<Int> deg the degrees of input points"
-                          "# @param Float step_size"
+                          "# @param Float step_size "
                           "# @param Int k dimension of the resulting filtration"
                           "# @tparam Coeff desired coefficient type of the filtration"
                           "# @return Filtration<SparseMatrix<Coeff, NonSymmetric> >",

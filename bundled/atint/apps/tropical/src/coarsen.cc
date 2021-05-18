@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -260,7 +260,7 @@ UserFunctionTemplate4perl("# @category Basic polyhedral operations"
                           "# Takes a tropical variety on which a coarsest polyhedral structure exists"
                           "# and computes this structure."
                           "# @param Cycle<Addition> complex A tropical variety which has a unique "
-                          "# coarsest polyhedral structre "
+                          "# coarsest polyhedral structure "
                           "# @param Bool testFan (Optional, FALSE by default). Whether the algorithm should perform some consistency "
                           "# checks on the result. If true, it will check the following: "
                           "# - That equivalence classes of cones have convex support"

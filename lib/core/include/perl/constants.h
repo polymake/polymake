@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_CONSTANTS_H
-#define POLYMAKE_PERL_CONSTANTS_H
+#pragma once
 
 #include "polymake/AnyString.h"
 
@@ -125,7 +124,6 @@ clear_bit_flags(L& l, R r)
 
 } }
 
-#endif // POLYMAKE_PERL_CONSTANTS_H
 
 // Local Variables:
 // mode:C++

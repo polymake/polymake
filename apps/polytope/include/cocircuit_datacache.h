@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_COCIRCUIT_DATACACHE_H
-#define POLYMAKE_POLYTOPE_COCIRCUIT_DATACACHE_H
+#pragma once
 
 #include "polymake/group/permlib.h"
 #include "polymake/hash_map"
@@ -154,7 +153,6 @@ protected:
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_COCIRCUIT_DATACACHE_H
 
 // Local Variables:
 // mode:C++

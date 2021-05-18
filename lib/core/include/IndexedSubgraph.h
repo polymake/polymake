@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INDEXED_SUBGRAPH_H
-#define POLYMAKE_INDEXED_SUBGRAPH_H
+#pragma once
 
 #include "polymake/IndexedSubset.h"
 #include "polymake/GenericGraph.h"
@@ -566,7 +565,6 @@ auto induced_subgraph(TGraph&& G, IndexSet&& node_indices)
 
 } // end namespace pm
 
-#endif // POLYMAKE_INDEXED_GRAPH_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -269,49 +269,28 @@ sub injected_line_directive {
 
 %rule_headers = (
    IMPORT => sub {
-      my ($self, $header)=@_;
+      my ($self, $header) = @_;
       push @{$self->buffer}, "BEGIN { die 'IMPORT clause may only appear at the beginning of main.rules where the application is introduced' }\n";
    },
 
    INCLUDE => sub {
-      my ($self, $header)=@_;
-      $self->filter=\&erase_comments_filter;
+      my ($self, $header) = @_;
+      $self->filter = \&erase_comments_filter;
       $header =~ s/\#.*$//;
       push @{$self->buffer}, "application::self()->include_rule_block(0, q($header\n";
       push @{$self->trailer}, "));\n";
    },
 
-   REQUIRE => sub {
-      my ($self, $header)=@_;
-      $self->has_config_items=1;
-      $self->filter=\&erase_comments_filter;
-      $header =~ s/\#.*$//;
-      my $escape= $self->from_embedded_rules ? "last" : "return 1";
-      push @{$self->buffer},
-           &start_preamble . "->include_required(q($header\n";
-      push @{$self->trailer},
-           "), '" . $self->rule_key . "', $.) || $escape;\n";
-   },
+   REQUIRE => sub { process_required(@_, "include_required") },
 
-   REQUIRE_EXTENSION => sub {
-      my ($self, $header)=@_;
-      $self->has_config_items=1;
-      $self->filter=\&erase_comments_filter;
-      $header =~ s/\#.*$//;
-      my $escape= $self->from_embedded_rules ? "last" : "return 1";
-      push @{$self->buffer},
-           &start_preamble . "->require_ext(q($header\n";
-
-      push @{$self->trailer},
-           "), '" . $self->rule_key . "', $.) || $escape;\n";
-   },
+   REQUIRE_EXTENSION => sub { process_required(@_, "require_ext") },
 
    REQUIRE_APPLICATION => sub {
-      my ($self, $header)=@_;
+      my ($self, $header) = @_;
       $header =~ s/\#.*$//;
-      if (my @app_names= $header =~ /\G\s* ($id_re) \s*/gxoc
+      if (my @app_names = $header =~ /\G\s* ($id_re) \s*/gxoc
             and
-          pos($header)==length($header)) {
+          pos($header) == length($header)) {
          my @missing_apps;
          foreach my $app_name (@app_names) {
             if (lookup Application($app_name)) {
@@ -370,40 +349,33 @@ sub injected_line_directive {
    permutation => sub { process_property(@_, 1) },
 
    custom => sub {
-      my ($self, $header)=@_;
-      my ($varname, $tail);
-      if ($header =~ /^[\$\@%] $id_re (?!:) (?= \s*(=))?/xo) {
-         substr($header,0,0)="declare ";
-         $varname=$&;
-         if (defined $1) {
-            # with default value: simple custom variable
-            $tail="0, __PACKAGE__";
-         } else {
+      my ($self, $header) = @_;
+      if ($header =~ /^([\$\@%] $id_re) \s* ([=;])/xo) {
+         substr($header, 0, 0) = "declare ";
+         my ($varname, $assign) = ($1, $2);
+         my $flags = "0";
+         if ($assign eq ";") {
             # without default value: probably an auto-configurable variable
             if ($has_interactive_commands) {
                $header =~ s/;\K/ declare -re;/;
-               substr($header,0,0)="declare +re; ";
+               substr($header, 0, 0) = "declare +re; ";
             }
-            $tail="$. < \$__preamble_end && Core::Customize::State::config, __PACKAGE__";
+            $flags = "$. < \$__preamble_end && Core::UserSettings::Item::Flags::by_arch";
          }
          push @{$self->buffer},
               line_directive($self->header_line),
               "$header\n";
-      } elsif ($header =~ /^[\$\@%] $qual_id_re (?= \s*(=))?/xo) {
-         $varname=$&;
-         push @{$self->buffer}, "$header\n" if defined($1);
+         push @{$self->trailer},
+              "application::self()->add_custom(__PACKAGE__, '$varname', \\$varname, <<'_#_#_#_', $flags);\n",
+              cut_comments($self),
+              "_#_#_#_\n";
+
+         # must collect embedded comments in the hashes
+         if ($header =~ /% $id_re \s*=\s* \( \s* (?: \# | $ )/xo) {
+            $self->filter = $self->custom_hash_filter;
+         }
       } else {
          push @{$self->buffer}, "BEGIN { die 'invalid custom variable name' }\n";
-         return;
-      }
-      push @{$self->trailer},
-           "application::self()->add_custom('$varname', <<'_#_#_#_', $tail);\n",
-           cut_comments($self),
-           "_#_#_#_\n";
-
-      # must collect embedded comments in the hashes
-      if ($header =~ /% $qual_id_re \s*=\s* \( \s* (?: \# | $ )/xo) {
-         $self->filter=$self->custom_hash_filter;
       }
    },
 
@@ -761,6 +733,18 @@ sub process_configure {
         &start_preamble . "->configure(\\&__conf__$funcnt, '" . $self->rule_key . "', $., $optional) || return 1; $header\n";
 }
 #####################################################################################################
+sub process_required {
+   my ($self, $header, $method) = @_;
+      $self->has_config_items = true;
+      $self->filter = \&erase_comments_filter;
+      $header =~ s/\#.*$//;
+      my $escape = $self->from_embedded_rules ? "last" : "return 1";
+      push @{$self->buffer},
+           &start_preamble . "->$method(q($header\n";
+      push @{$self->trailer},
+           "), '" . $self->rule_key . "', $.) || $escape;\n";
+}
+#####################################################################################################
 # recognize special configuration modes and modify the parsing routines correspondingly
 
 sub pretend_configure_failed {
@@ -780,9 +764,9 @@ sub ignore_optional_configure_clause {
    push @{$self->buffer}, "$header\n";
 }
 
-sub allow_config {
-   my ($mode)=@_;
-   if ($mode eq "none") {
+add_settings_callback sub {
+   my ($settings) = @_;
+   if ($settings->mode eq "none") {
       # pretend every configuration attempt has failed
       $rule_headers{CONFIGURE} = \&pretend_configure_failed;
       $main_init_rule_headers{CONFIGURE} = \&pretend_configure_failed;
@@ -791,19 +775,12 @@ sub allow_config {
       $main_init_rule_headers{CONFIGURE_OPT} = sub { &close_main_init_preamble; &ignore_optional_configure_clause };
       $init_has_config_items = true;
 
-      0  # don't load any config files
-
-   } elsif ($mode eq "ignore") {
+   } elsif ($settings->mode eq "ignore") {
       # pretend everything is configured
       *Polymake::Core::Application::configure=sub { 1 };
       $init_has_config_items = true;
-
-      0  # don't load any config files
-
-   } else {
-      1  # allow loading config files
    }
-}
+};
 #####################################################################################################
 sub start_preamble {
    my $self=$_[0];
@@ -2011,13 +1988,13 @@ sub custom_hash_filter {
    my ($self, $watch_for_includes) = @_;
    my $last_comment_block = $#{$self->trailer};
    return sub : method {
-      my ($self, $line)=@_;
+      my ($self, $line) = @_;
       if ($line =~ /^\s* (?: (?'quoted' \w+) | $quoted_re ) \s* => (?: $anon_quoted_re | [^\#\n] )+ (?:\#\s* (?'comment' \S+.*$))?/xo) {
          my $key = $+{quoted};
          my $comment = $+{comment};
          if (defined($comment)) {
             # description in the trailing comments after the key => value pair
-            splice @{$self->trailer}, -1, 0, "# \@key $key $comment";
+            splice @{$self->trailer}, -1, 0, "# \@key $key $comment\n";
          } elsif ($self->trailer->[$last_comment_block] !~ /_#_#_#_/) {
             # assume description to be in the comment lines above
             $self->trailer->[$last_comment_block] =~ s/^\s*\#\s* (?=\S+)/# \@key $key /xo;
@@ -2066,9 +2043,8 @@ sub fill {
       if ($self->preamble_end) {
          $self->application->preamble_end->{$self->rule_key} = $self->preamble_end;
       }
-      if (!$self->has_config_items &&
-          defined(delete $self->application->configured->{$self->rule_key})) {
-         $self->application->custom->set_changed;
+      if (!$self->has_config_items) {
+         delete $self->application->configured->{$self->rule_key};
       }
       if ($self->from_embedded_rules) {
          push @{$self->buffer_phase1}, "1; __END__\n";
@@ -2119,51 +2095,47 @@ sub fill {
          if ($accurate_linenumbers) {
             $self->injected_lines += $trailer_pending+1;
          }
-         $self->start_comments=@{$self->buffer};
-         $self->gap=1;
+         $self->start_comments = @{$self->buffer};
+         $self->gap = 1;
          return 1;
       }
 
-      if ($self->gap==2) {
-         my $digest_comment;
-         if ($self->buffer->[$self->start_comments] =~
-             m{^\s*\#\s* \@topic \s+ (?: (?'cat' category) \s+ (?'path' (?'lead' \w+) (?:/.*(?<!\s))?+ )
-                                       | (?'path' (?'lead' \w+) (?:/\S+)?) (?:\s* (?'sig' \($balanced_re\)) )?
-                                       | // (?'group' \w+) // (?'item' .*(?<!\s)) ) \s*$}xi) {
-            if ($+{path} eq "custom") {
-               $digest_comment="application::self()->custom->pkg_help->{__PACKAGE__}=<<'_#_#_#_';\n";
-            } elsif ($Help::gather) {
-               my ($path, $lead, $cat, $sig, $group, $item)=@+{qw(path lead cat sig group item)};
-               my $signature= defined($sig) ? ", q$sig" : defined($cat) && ", '$cat'";
-               if ($path !~ m{/any/} and $lead eq "properties" || $lead eq "methods") {
-                  $digest_comment="self(1)->help_topic(1)->add('$path', <<'_#_#_#_'$signature);\n";
-               } elsif (defined $group) {
-                  $digest_comment="self(1)->override_help('$group', '$item', <<'_#_#_#_');\n";
-               } else {
-                  my $whence;
-                  if ($lead eq "core") {
-                     $path=substr($path, length($lead)+1);
-                     $whence='$Polymake::Core::Help::core';
-                  } else {
-                     $whence='application::self()->help';
-                     $path='' if $path eq "application";
-                  }
-                  $digest_comment="$whence->add('$path', <<'_#_#_#_'$signature);\n";
-               }
-            }
-         }
-         if (defined($digest_comment)) {
-            $self->buffer->[$self->start_comments]=$digest_comment;
-            if ($set_line_number) {
-               push @{$self->buffer}, "_#_#_#_\n";
+      if ($Help::gather && $self->gap == 2 &&
+          $self->buffer->[$self->start_comments] =~
+              m{^\s*\#\s* \@topic \s+ (?: (?'cat' category) \s+ (?'path' (?'lead' \w+) (?:/.*(?<!\s))?+ )
+                                        | (?'path' (?'lead' \w+) (?:/\S+)?) (?:\s* (?'sig' \($balanced_re\)) )?
+                                        | // (?'group' \w+) // (?'item' .*(?<!\s)) ) \s*$}xi) {
+
+         my ($path, $lead, $cat, $sig, $group, $item)=@+{qw(
+              path   lead   cat   sig   group   item)   };
+         my $signature = defined($sig) ? ", q$sig" : defined($cat) && ", '$cat'";
+
+         $self->buffer->[$self->start_comments] = do {
+            if ($path !~ m{/any/} and $lead eq "properties" || $lead eq "methods") {
+               "self(1)->help_topic(1)->add('$path', <<'_#_#_#_'$signature);\n"
+            } elsif (defined $group) {
+               "self(1)->override_help('$group', '$item', <<'_#_#_#_');\n"
             } else {
-               $line="_#_#_#_\n";
+               my $whence;
+               if ($lead eq "core") {
+                  $path = substr($path, length($lead)+1);
+                  $whence = '$Polymake::Core::Help::core';
+               } else {
+                  $whence = 'application::self()->help';
+                  $path = '' if $path eq "application";
+               }
+               "$whence->add('$path', <<'_#_#_#_'$signature);\n"
             }
-            $self->start_comments=$self->len_comments=0;
+         };
+         if ($set_line_number) {
+            push @{$self->buffer}, "_#_#_#_\n";
+         } else {
+            $line = "_#_#_#_\n";
          }
+         $self->start_comments = $self->len_comments = 0;
       }
 
-      $self->gap=1;
+      $self->gap = 1;
       push @{$self->buffer}, $line;
       return 1;
    }
@@ -2248,12 +2220,10 @@ sub configure {
          if ($line >= $self->preamble_end->{$rule_key}) {
             # no further CONFIGURE blocks follow
             substr($self->configured->{$rule_key}, 0, 1) = $load_time;
-            $self->custom->set_changed;
          }
          1
       } else {
          $self->configured->{$rule_key} = -$load_time;
-         $self->custom->set_changed;
          $self->load_state |= LoadState::has_failed_config;
          if (is_object(my $credit = $self->credits_by_rulefile->{$rule_key})) {
             $credit->shown = Rule::Credit::hide;
@@ -2309,7 +2279,6 @@ sub check_existing_type {
 sub summarize_rule_failed_prerequisites {
    my ($self, $rule_key, $failed) = @_;
    $self->configured->{$rule_key} = $failed;
-   $self->custom->set_changed;
    $self->load_state |= LoadState::has_failed_config;
    if (is_object(my $credit = $self->credits_by_rulefile->{$rule_key})) {
       $credit->shown = Rule::Credit::hide;
@@ -2322,7 +2291,6 @@ sub summarize_rule_successful_prerequisites {
    if ($line >= $self->preamble_end->{$rule_key} && $self->configured->{$rule_key} =~ /^0\#?/) {
       # some CONFIGURE blocks passed and no further CONFIGURE blocks
       substr($self->configured->{$rule_key}, 0, 1) = $load_time;
-      $self->custom->set_changed;
    }
    1
 }
@@ -2395,6 +2363,15 @@ sub add_credit {
    }
 }
 #################################################################################
+sub add_custom {
+   my ($self, $pkg, $varname, $ref, $comments, $flags) = @_;
+   substr($varname, 1, 0) = $pkg . "::";
+   if ($Help::gather) {
+      $comments = $self->help->add(['custom', $pkg eq $self->pkg ? $_[2] : $varname], $comments);
+   }
+   $Settings->add_item(substr($varname, 1), $ref, $comments, $flags, extension => $Extension::loading);
+}
+
 sub add_production_rule {
    my $self = shift;
    my $rule = new Rule(@_);
@@ -2492,7 +2469,6 @@ sub process_included_rule {
          if ($config_state < ($ext // $self)->configured_at) {
             # enforce reconfiguration
             delete $self->configured->{$rule_key};
-            $self->custom->set_changed;
          }
       } else {
          $self->rulefiles->{$rule_key} = 0;
@@ -2537,7 +2513,6 @@ sub process_included_rule {
          }
          # prerequisite was successfully reconfigured in the meanwhile, or reconfiguration forced
          delete $self->configured->{$rule_key};
-         $self->custom->set_changed;
       }
    }
    local $Extension::loading = $ext;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_COMPARE_H
-#define POLYMAKE_GRAPH_COMPARE_H
+#pragma once
 
 #include "polymake/graph/GraphIso.h"
 #include "polymake/client.h"
@@ -28,7 +27,6 @@ InsertEmbeddedRule("REQUIRE_EXTENSION bundled:graph_compare\n\n"
 
 } }
 
-#endif // POLYMAKE_GRAPH_COMPARE_H
 
 // Local Variables:
 // mode:C++

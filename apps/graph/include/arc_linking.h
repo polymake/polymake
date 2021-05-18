@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -17,8 +17,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_ARC_LINKING_H
-#define POLYMAKE_GRAPH_ARC_LINKING_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Array.h"
@@ -438,7 +437,6 @@ ArcLinking::ColumnIterator::ColumnIterator(ColumnObject& col_arg)
 
 } }
 
-#endif // POLYMAKE_GRAPH_ARC_LINKING_H
 
 // Local Variables:
 // mode:C++

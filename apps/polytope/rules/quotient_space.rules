@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -42,7 +42,12 @@ property FACES : Array<Set<Set<Int>>>;
 
 # @category Combinatorics
 # The orbits of faces of the quotient space, ordered by dimension.
-property FACE_ORBITS : Array<Set<Array<Set<Int>>>>;
+property FACE_ORBITS : Array<Set<Set<Set<Int>>>>;
+
+# @category Combinatorics
+# Some listing of equivalence classes of faces of the quotient space, ordered by dimension.
+# Analogous to FACE_ORBITS, but not necessarily coming from a group
+property FACE_CLASSES : Array<Set<Set<Set<Int>>>>;
 
 # @category Combinatorics
 # The symmetry group induced by the symmetry group of the polytope on the [[FACES]] of the quotient space
@@ -220,9 +225,15 @@ rule QUOTIENT_SPACE.F_VECTOR : QUOTIENT_SPACE.FACES {
 rule QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).FACETS, QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).VERTEX_LABELS, \
      QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).PURE,  QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).DIM : \
      VERTICES_IN_FACETS, HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, \
-     QUOTIENT_SPACE.IDENTIFICATION_ACTION {
-    my $bs = iterated_barycentric_subdivision($this, 2, geometric_realization=>0);
-    $this->QUOTIENT_SPACE->SIMPLICIAL_COMPLEX = topaz::bs2quotient($this, $bs); 
+    QUOTIENT_SPACE.IDENTIFICATION_ACTION {
+    $this->QUOTIENT_SPACE->SIMPLICIAL_COMPLEX = topaz::bs2quotient_by_group($this); 
+}
+
+rule QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).FACETS, QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).VERTEX_LABELS, \
+     QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).PURE,  QUOTIENT_SPACE.SIMPLICIAL_COMPLEX(new).DIM : \
+     VERTICES_IN_FACETS, HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, \
+     QUOTIENT_SPACE.FACE_CLASSES {
+    $this->QUOTIENT_SPACE->SIMPLICIAL_COMPLEX = topaz::bs2quotient_by_equivalence($this); 
 }
 
 rule QUOTIENT_SPACE.SIMPLICES : COMBINATORIAL_DIM, VERTICES, QUOTIENT_SPACE.SYMMETRY_GROUP.PERMUTATION_ACTION.GENERATORS {

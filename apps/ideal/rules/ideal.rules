@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -27,10 +27,11 @@ object Ideal {
       }
    }
    precondition : !exists(N_VARIABLES);
+   precondition : exists(GENERATORS);
 	precondition : GENERATORS {
 		$this->GENERATORS->size() > 0;
 	}
-   
+
    rule initial : GENERATORS, N_VARIABLES {
       my $gens = $this->GENERATORS;
       my $nvars = $this->N_VARIABLES;
@@ -67,17 +68,19 @@ object Ideal {
    weight 1.10;
 
 	rule N_VARIABLES : GENERATORS {
-		$this->N_VARIABLES = $this->GENERATORS->[0]->n_vars();	
+		$this->N_VARIABLES = $this->GENERATORS->[0]->n_vars();
 	}
 	precondition : GENERATORS {
 		$this->GENERATORS->size() > 0;
 	}
 	weight 0.10;
 
+    rule GENERATORS = GROEBNER.BASIS;
+
 }
 
 object Groebner {
-      
+
    rule initial :  {
       if (my $order = $this->lookup("ORDER_NAME")) {
          $order =~ /^(dp|Dp|lp|Lp|rp|ls|rs|ds|Ds)$/ or croak ("unknown term order");
@@ -96,6 +99,45 @@ object Groebner {
    }
    weight 1.10;
 
+}
+
+object_specialization Ideal::Binomial {
+
+   rule N_VARIABLES : BINOMIAL_GENERATORS {
+      $this->N_VARIABLES = $this->BINOMIAL_GENERATORS->cols;
+   }
+
+   rule GENERATORS : BINOMIAL_GENERATORS {
+      my $binomials = $this->BINOMIAL_GENERATORS;
+      my @gens;
+      my $coef = new Vector<Rational>(1, -1);
+      foreach my $binomial (@$binomials){
+         my $positivePart = new Vector<Int>(map($_>0 ? $_ : 0, @$binomial));
+         my $negativePart = new Vector<Int>(map($_<0 ? -$_ : 0, @$binomial));
+         my $expmat = new Matrix<Int>([$positivePart, $negativePart]);
+         push @gens, new Polynomial($coef, $expmat);
+      }
+      $this->GENERATORS(temporary) = \@gens;
+   }
+
+   property GROEBNER {
+
+        rule BASIS : BINOMIAL_BASIS {
+             my $binomials = $this->BINOMIAL_BASIS;
+             my @gens;
+             my $coef = new Vector<Rational>(1, -1);
+             foreach my $binomial (@$binomials){
+                my $positivePart = new Vector<Int>(map($_>0 ? $_ : 0, @$binomial));
+                my $negativePart = new Vector<Int>(map($_<0 ? -$_ : 0, @$binomial));
+                my $expmat = new Matrix<Int>([$positivePart, $negativePart]);
+                push @gens, new Polynomial($coef, $expmat);
+             }
+             $this->BASIS(temporary) = \@gens;
+        }
+
+   }
+
+   rule BINOMIAL_GENERATORS = GROEBNER.BINOMIAL_BASIS;
 }
 
 # Local Variables:

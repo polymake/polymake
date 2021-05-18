@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Graph.h
     @brief Implementation of pm::graph::Graph class
 */
 
-#ifndef POLYMAKE_GRAPH_H
-#define POLYMAKE_GRAPH_H
 
 #include "polymake/internal/sparse2d.h"
 #include "polymake/IncidenceMatrix.h"
@@ -3533,7 +3532,6 @@ namespace std {
    void swap(pm::graph::Graph<TDir>& G1, pm::graph::Graph<TDir>& G2) { G1.swap(G2); }
 }
 
-#endif // POLYMAKE_GRAPH_H
 
 // Local Variables:
 // mode:C++

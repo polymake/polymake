@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYNOMIALVARNAMES_H
-#define POLYMAKE_POLYNOMIALVARNAMES_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/vector"
@@ -73,4 +72,3 @@ namespace polymake {
    using pm::PolynomialVarNames;
 }
 
-#endif // POLYMAKE_POLYNOMIALVARNAMES_H

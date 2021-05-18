@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2019
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,6 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 #include <polymake/GenericSet.h>
 #include <polymake/Set.h>
 #include <polymake/TropicalNumber.h>

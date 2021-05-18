@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TIGHT_SPAN_H
-#define POLYMAKE_TIGHT_SPAN_H
+#pragma once
 
 #include "polymake/Matrix.h"
 #include "polymake/Vector.h"
@@ -71,4 +70,3 @@ Matrix<Scalar> tight_span_vertices(const GenericMatrix<MTop, Scalar>& points, co
 
 } }
 
-#endif

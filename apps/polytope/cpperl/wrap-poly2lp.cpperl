@@ -1,6 +1,6 @@
 {"app": "polytope", "embed": "poly2lp.cc",
  "inst": [
-  {"args": ["Rational", "void", "void", "void", "void"], "func": "poly2lp", "include": ["polymake/Rational.h"], "sig": "poly2lp:T1.B.B.x.x", "tp": "1"},
-  {"args": ["double", "void", "void", "void", "void"], "func": "poly2lp", "sig": "poly2lp:T1.B.B.x.x", "tp": "1"},
+  {"args": ["Rational", "void", "void", "void", "void"], "func": "poly2lp", "include": ["polymake/Rational.h"], "sig": "poly2lp:T1.B.x.x.x", "tp": 1},
+  {"args": ["double", "void", "void", "void", "void"], "func": "poly2lp", "sig": "poly2lp:T1.B.x.x.x", "tp": 1},
  null ],
 "version": 3}

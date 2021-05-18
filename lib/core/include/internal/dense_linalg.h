@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file dense_linalg.h
     @brief Linear Algebra algorithms for dense vector and matrix types
  */
 
-#ifndef POLYMAKE_INTERNAL_DENSE_LINALG_H
-#define POLYMAKE_INTERNAL_DENSE_LINALG_H
 
 #include "polymake/vector"
 #include "polymake/Vector.h"
@@ -267,7 +266,6 @@ using pm::SingularValueDecomposition;
 
 }
 
-#endif // POLYMAKE_INTERNAL_DENSE_LINALG_H
 
 // Local Variables:
 // mode:C++

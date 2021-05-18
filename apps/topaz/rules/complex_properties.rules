@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -271,7 +271,7 @@ property INTERSECTION_FORM : IntersectionForm;
 
 # @category Topology
 # Mod 2 Stiefel-Whitney homology classes per dimension.  Each cycle is represented as a set of simplices.
-property STIEFEL_WHITNEY : Array<PowerSet>;
+property STIEFEL_WHITNEY : Array<Set<Set<Int>>>;
 
 ### FIXME: could be done
 rule nonexistent : STIEFEL_WHITNEY : VertexPerm.STIEFEL_WHITNEY, VertexPerm.PERMUTATION;
@@ -341,6 +341,11 @@ property SPHERE : Bool;
 # Determines if this is homeomorphic to a ball.
 # In general, this is undecidable; therefore, the implementation depends on heuristics.
 # May be true or false or undef (if heuristic does not succeed).
+# @example Simplicial Complex is a ball.
+# > $b= new SimplicialComplex(INPUT_FACES=>[[0,1,2,3],[1,2,3,4]]);
+# > print $b->BALL;
+# | true
+
 
 property BALL : Bool;
 
@@ -452,7 +457,7 @@ rule BOUNDARY.VERTEX_MAP : VertexPerm.PERMUTATION, VertexPerm.BOUNDARY.VERTEX_MA
 property KNOT : SimplicialComplex : multiple;
 
 rule KNOT.FACETS : VertexPerm.KNOT.FACETS, VertexPerm.PERMUTATION {
-   $this->KNOT->FACETS=permuted_elements($this->VertexPerm->KNOT->FACETS, $this->VertexPerm->PERMUTATION);
+   $this->KNOT->FACETS = permuted_elements($this->VertexPerm->KNOT->FACETS, $this->VertexPerm->PERMUTATION);
 }
 weight 1.20;
 
@@ -460,10 +465,10 @@ weight 1.20;
 # @category Combinatorics
 # Orbit decomposition of the group of projectivities acting on the set of vertices of facet 0.
 
-property PROJ_ORBITS : PowerSet;
+property PROJ_ORBITS : Set<Set<Int>>;
 
 rule PROJ_ORBITS : VertexPerm.PROJ_ORBITS, VertexPerm.PERMUTATION {
-   $this->PROJ_ORBITS=permuted($this->VertexPerm->PROJ_ORBITS, $this->VertexPerm->PERMUTATION);
+   $this->PROJ_ORBITS = permuted_elements($this->VertexPerm->PROJ_ORBITS, $this->VertexPerm->PERMUTATION);
 }
 weight 1.20;
 
@@ -476,8 +481,7 @@ property PROJ_DICTIONARY : Array<Int>;
 rule nonexistent : PROJ_DICTIONARY : VertexPerm.PROJ_DICTIONARY, VertexPerm.PERMUTATION;
 
 # @category Symmetry
-property GROUP : group::Group : multiple {
-}
+property GROUP : group::Group : multiple;
 
 }
 

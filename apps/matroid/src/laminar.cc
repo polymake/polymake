@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,7 +32,7 @@ bool check_circuit_compatibility(const Set<Int>& c1, const Set<Int>& c2, const L
 {
   const auto relevant_faces = hd.nodes_of_rank(c2.size()-1);
   Set<Int> closure;
-  for (const auto& rf : relevant_faces) {
+  for (const auto rf : relevant_faces) {
     const auto& rf_face = hd.face(rf);
     // Check if the flat contains c2
     if (incl(c2, rf_face) <= 0) {

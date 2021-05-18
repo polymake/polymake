@@ -18,7 +18,7 @@
    Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
    ---
-   Copyright (c) 2016-2020
+   Copyright (c) 2016-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -128,7 +128,7 @@ UserFunctionTemplate4perl("# @category Matroid ring cycle arithmetics"
                           "# on the same ground set), computes a matrix that represents the"
                           "# linear space spanned by these cycles in the rank r graded part"
                           "# of the matroid ring. Rows correspond to the cycles, columns "
-                          "# correspond to the set of all the nested matroid occuring in "
+                          "# correspond to the set of all the nested matroid occurring in "
                           "# all basis presentations of the cycles. Entries are linear coefficients."
                           "# @param MatroidRingCycle L A list of matroid ring cycles."
                           "# @return Matrix<Rational> A matrix representation of the linear space"

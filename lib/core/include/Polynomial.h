@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYNOMIAL_H
-#define POLYMAKE_POLYNOMIAL_H
+#pragma once
 
 #include "polymake/PolynomialVarNames.h"
 #include "polymake/PolynomialImpl.h"
@@ -1671,4 +1670,3 @@ void swap(pm::Polynomial<Coefficient, Exponent>& x1, pm::Polynomial<Coefficient,
 
 }
 
-#endif // POLYMAKE_POLYNOMIAL_H

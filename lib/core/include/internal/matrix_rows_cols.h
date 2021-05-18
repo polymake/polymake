@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_MATRIX_ROWS_COLS_H
-#define POLYMAKE_INTERNAL_MATRIX_ROWS_COLS_H
+#pragma once
 
 #include "polymake/internal/Wary.h"
 
@@ -67,7 +66,6 @@ namespace polymake {
    using pm::Cols;
 }
 
-#endif // POLYMAKE_INTERNAL_MATRIX_ROWS_COLS_H
 
 // Local Variables:
 // mode:C++

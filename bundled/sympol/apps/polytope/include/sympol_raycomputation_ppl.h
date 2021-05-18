@@ -20,8 +20,7 @@
 //
 // ---------------------------------------------------------------------------
 
-#ifndef RAYCOMPUTATION_PPL_H
-#define RAYCOMPUTATION_PPL_H
+#pragma once
 
 #if defined(__GNUC__)
 #ifdef __clang__
@@ -76,4 +75,3 @@ class RayComputationPPL : public sympol::RayComputation {
 
 } } } // end NS
 
-#endif

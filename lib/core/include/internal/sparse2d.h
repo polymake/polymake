@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_SPARSE2D_H
-#define POLYMAKE_INTERNAL_SPARSE2D_H
+#pragma once
 
 #include "polymake/internal/AVL.h"
 #include "polymake/internal/tree_containers.h"
@@ -1275,7 +1274,6 @@ namespace polymake {
    using pm::sparse2d::columnwise;
 }
 
-#endif // POLYMAKE_INTERNAL_SPARSE2D_H
 
 // Local Variables:
 // mode:C++

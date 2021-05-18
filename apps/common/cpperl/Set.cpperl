@@ -148,5 +148,9 @@
   {"args": ["perl::Canned<Set<Int>&>", "Int"], "include": ["polymake/Set.h"], "op": "Sub", "ret": "lvalue", "sig": "Sub:O.X1.X"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::PointedSubset<pm::Series<long, true> >&>>"], "include": ["polymake/PowerSet.h", "polymake/Set.h"], "op": "com", "sig": "com:O.X11"},
   {"class": "Set<Integer>", "include": ["polymake/Integer.h", "polymake/Set.h"], "pkg": "Polymake::common::Set__Integer"},
+  {"args": ["perl::Canned<Set<Set<Int>>&>", "perl::Canned<const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X"},
+  {"args": ["perl::Canned<Set<Set<Set<Int>>>&>", "perl::Canned<const Set<Set<Int>>&>"], "include": ["polymake/Set.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X"},
+  {"args": ["perl::Canned<Set<Set<Int>>&>", "perl::Canned<const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X"},
+  {"args": ["perl::Canned<Set<Int>&>", "perl::Canned<const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "op": "Sub", "ret": "lvalue", "sig": "Sub:O.X1.X"},
  null ],
 "version": 3}

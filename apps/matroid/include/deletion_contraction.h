@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MATROID_DELETION_CONTRACTION_H
-#define POLYMAKE_MATROID_DELETION_CONTRACTION_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/Array.h"
@@ -135,7 +134,6 @@ namespace polymake { namespace matroid {
    }
 } }
 
-#endif // POLYMAKE_MATROID_DELETION_CONTRACTION_H
 
 // Local Variables:
 // mode:C++

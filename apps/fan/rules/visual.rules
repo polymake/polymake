@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -22,9 +22,7 @@ options %Visual::Graph::TightSpanDecorations=(
    Taxa=>undef,
 );
 
-
 object PolyhedralComplex{
-
    # @category Visualization
    # This is a variation of [[Polytope::VISUAL_BOUNDED_GRAPH]] for the special case of a tight span.
    # The vertices are embedded according to the metric, the others are hung in between.
@@ -93,6 +91,37 @@ user_method VISUAL_METRIC_TIGHT_SPAN(%Visual::Graph::TightSpanDecorations, { nor
    );
    visualize($Graph);
 }
+
+# Visualizes the polyhedral complex.
+# @options %Visual::Polygons::Decorations
+# @options %geometric_options
+# @return Visual::PolyhedralFan
+
+user_method VISUAL(%Visual::Polygons::decorations, %geometric_options, {CutOff => $Visual::Color::cutoff}) : VERTICES, MAXIMAL_POLYTOPES, LINEALITY_SPACE {
+   my ($this,$decor,$geom,$cutoff_decor)=@_;
+   my $d = $this->VERTICES->cols;
+   my $vertices=$this->VERTICES;
+   my @default_labels = (0..$vertices->rows-1);
+   $decor->{VertexLabels} //= $this->lookup("POINT_LABELS") // \@default_labels;
+   my @cells_visual = ();
+   my $bbox = defined($geom->{BoundingFacets}) ? new Matrix<Scalar>($geom->{BoundingFacets}) : polytope::bounding_box_facets($vertices, surplus_k=>6/5, fulldim=>1);
+   my @codedecor = Visual::get_code_decor_keys($decor, "Vertex");
+   foreach (@{$this->MAXIMAL_POLYTOPES}) {
+      my $v = $vertices->minor($_,All);
+      my $p = new polytope::Polytope<Scalar>(VERTICES => $v, LINEALITY_SPACE => $this->LINEALITY_SPACE);
+      my $pdecor = scalar(@codedecor) ? Visual::decor_subset($decor,$_,\@codedecor) : { %$decor };
+      if ($p->DIM<2) {
+         delete @$pdecor{"FacetColor","FacetStyle","FacetLabels","FacetTransparency"};
+      }
+      my $pv = $p->VISUAL($pdecor, $geom, BoundingFacets=>$bbox);
+      push @cells_visual, $pv;
+   }
+   visualize(new Visual::PolyhedralFan( Name => "pcom:".$this->name,
+                                        PolyhedralFan => $this,
+                                        @cells_visual));
+}
+precondition : FAN_AMBIENT_DIM { $this->FAN_AMBIENT_DIM<=4 }
+
 }
 
 # @topic objects/Visual::PolyhedralFan
@@ -114,6 +143,7 @@ object PolyhedralFan {
 
 # @category Visualization
 # Visualizes the fan, intersected with the unit ball.
+# @options %Visual::Polygons::Decorations
 # @options %geometric_options_linear
 # @return Visual::PolyhedralFan
 
@@ -184,6 +214,7 @@ object SubdivisionOfPoints {
 
 # @category Visualization
 # Visualizes the [[SubdivisionOfPoints]].
+# @options %Visual::Polygons::Decorations
 # @options %geometric_options
 # @return Visual::PolyhedralFan
 #
@@ -193,25 +224,28 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
    my $vertices=$this->POLYHEDRAL_COMPLEX->VERTICES;
    my $points=$this->POINTS;
    my @cells_visual = ();
-   my $vpoints=new Visual::PointSet( Name => 'points',
-                                     Points => Visual::transform_float(dehomogenize(convert_to<Float>($points)),$geom->{Transformation},$geom->{Offset}),
-                                     PointLabels =>$this->lookup("POINT_LABELS"),
-                                     PointColor =>"0 0 0",
-                                     $decor);
-   $decor->{PointLabels} ||= "hidden";
-   push @cells_visual, $vpoints;
-   my $vgraph = new Visual::Graph( Name =>  "Vertices",
-                                   Graph => $this->POLYHEDRAL_COMPLEX->GRAPH,
-                                   Coord => Visual::transform_float(dehomogenize(convert_to<Float>($vertices)),$geom->{Transformation},$geom->{Offset}),
-                                   NodeStyle => "hidden",
-                                   EdgeColor => "0 0 0", $decor);
-   push @cells_visual, $vgraph;
+   my $ncpoints = new Set(range(0,$this->N_POINTS-1));
    foreach (@{$this->MAXIMAL_CELLS}) {
-      $decor->{VertexLabels} = "hidden";
-      my $cell=$_;
-      my $v=$points->minor($cell,All);
+      $ncpoints-=$_;
+   }
+   my @default_labels = (0..$points->rows-1);
+   $decor->{VertexLabels} //= $this->lookup("POINT_LABELS") // \@default_labels;
+   my @codedecor = Visual::get_code_decor_keys($decor, "Vertex");
+   if ($ncpoints->size) {
+      # add an extra Pointset with points that are not in maximal cells
+      my $psdecor = scalar(@codedecor) ? Visual::decor_subset($decor,$ncpoints,\@codedecor) : { %$decor };
+      $psdecor->{VertexColor} //= "0 0 0";
+      my $ncpointset=new Visual::PointSet(Name => 'noncellpoints',
+                                       Points => Visual::transform_float(dehomogenize(convert_to<Float>($points->minor($ncpoints,All))),$geom->{Transformation},$geom->{Offset}),
+                                       $psdecor);
+      push @cells_visual, $ncpointset;
+   }
+   # add all other cell visuals 
+   foreach (@{$this->MAXIMAL_CELLS}) {
+      my $v=$points->minor($_,All);
+      my $pdecor = scalar(@codedecor) ? Visual::decor_subset($decor,$_,\@codedecor) : $decor;
       my $p=new polytope::PointConfiguration<Scalar>(POINTS => $v);
-      push @cells_visual, (my $pv=$p->VISUAL( $decor, $geom ));
+      push @cells_visual, (my $pv=$p->VISUAL( $pdecor, $geom ));
    }
    visualize(new Visual::PolyhedralFan( Name => "pcom:".$this->name,
                                         PolyhedralFan => $this,
@@ -220,46 +254,6 @@ user_method VISUAL(%Visual::Polygons::decorations, {CutOff => $Visual::Color::cu
 precondition : VECTOR_AMBIENT_DIM { $this->VECTOR_AMBIENT_DIM<=4 }
 
 }
-
-object PolyhedralComplex {
-
-# Visualizes the polyhedral complex.
-# @options %geometric_options
-# @return Visual::PolyhedralFan
-
-user_method VISUAL(%Visual::Polygons::decorations, %geometric_options, {CutOff => $Visual::Color::cutoff}) : VERTICES, MAXIMAL_POLYTOPES, LINEALITY_SPACE {
-   my ($this,$decor,$geom,$cutoff_decor)=@_;
-   $decor->{VertexLabels} ||= "hidden";
-   my $d=$this->VERTICES->cols;
-   my $vertices=$this->VERTICES;
-   my @cells_visual = ();
-   my @vcolor = ();
-   my $dv = $decor->{VertexColor};
-   if (defined($dv) and ref($dv) eq "ARRAY")  {
-       @vcolor = @{$decor->{VertexColor}};
-   }
-   my $bbox = defined($geom->{BoundingFacets}) ? new Matrix<Scalar>($geom->{BoundingFacets}) : polytope::bounding_box_facets($vertices, surplus_k=>6/5, fulldim=>1);
-   foreach (@{$this->MAXIMAL_POLYTOPES}) {
-      my $cell=$_;
-      my $v= ($vertices->minor($cell,All) );
-      my $p=new polytope::Polytope<Scalar>(VERTICES => $v, LINEALITY_SPACE => $this->LINEALITY_SPACE);
-      my @pcolor = map {$vcolor[$_]} @{$cell};
-      my $pv = scalar(@vcolor)>1
-             ? $p->VISUAL($decor,$geom, VertexColor=>\@pcolor, BoundingFacets=>$bbox)
-             : $p->VISUAL($decor,$geom, BoundingFacets=>$bbox);
-      if (!defined($pv)) {print "bla not def\n";}
-      push @cells_visual, $pv;
-      my $dim=$p->DIM;
-   }
-   visualize(new Visual::PolyhedralFan( Name => "pcom:".$this->name,
-                                        PolyhedralFan => $this,
-                                        @cells_visual));
-}
-precondition : FAN_AMBIENT_DIM { $this->FAN_AMBIENT_DIM<=4 }
-
-
-}
-
 
 object HyperplaneArrangement {
 

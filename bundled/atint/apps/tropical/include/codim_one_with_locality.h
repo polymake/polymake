@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -29,8 +29,7 @@
 
 */
 
-#ifndef POLYMAKE_ATINT_CODIM_ONE_WITH_LOCALITY_H
-#define POLYMAKE_ATINT_CODIM_ONE_WITH_LOCALITY_H
+#pragma once
 
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/Matrix.h"
@@ -59,4 +58,3 @@ namespace polymake { namespace tropical {
 
 }}
 
-#endif

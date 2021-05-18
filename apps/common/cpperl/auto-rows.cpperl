@@ -41,5 +41,8 @@
   {"args": ["perl::Canned<const SparseMatrix<GF2, NonSymmetric>&>"], "func": "rows", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "rows:M"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational>&, pm::Complement<pm::Set<long, pm::operations::cmp> const> const, pm::all_selector const&>&>>"], "func": "rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "rows:R_Container.X8"},
   {"args": ["perl::Canned<const pm::MatrixMinor<pm::Matrix<double>&, pm::all_selector const&, pm::Array<long> const&>&>"], "func": "rows", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "kind": "meth", "sig": "rows:M"},
+  {"args": ["perl::Canned<const SparseMatrix<Int, Symmetric>&>"], "func": "rows", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "rows:M"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::Transposed<pm::Matrix<long> >&>>"], "func": "rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "sig": "rows:R_Container.X8"},
+  {"args": ["perl::Canned<const pm::Transposed<pm::Matrix<pm::Rational> >&>"], "func": "rows", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "kind": "meth", "sig": "rows:M"},
  null ],
 "version": 3}

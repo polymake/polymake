@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,14 +15,13 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 
 /** @file Map.h
     @brief Implementation of pm::Map class
 */
 
 
-#ifndef POLYMAKE_MAP_H
-#define POLYMAKE_MAP_H
 
 #include "polymake/internal/AVL.h"
 #include "polymake/internal/tree_containers.h"
@@ -208,7 +207,6 @@ namespace std {
    void swap(pm::Map<K, D, Params...>& m1, pm::Map<K, D, Params...>& m2) { m1.swap(m2); }
 }
 
-#endif // POLYMAKE_MAP_H
 
 // Local Variables:
 // mode:C++

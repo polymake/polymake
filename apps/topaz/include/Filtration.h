@@ -1,5 +1,4 @@
-#ifndef POLYMAKE_TOPAZ_FILTRATION_H
-#define POLYMAKE_TOPAZ_FILTRATION_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/Matrix.h"
@@ -273,4 +272,3 @@ struct spec_object_traits< Serialized< polymake::topaz::Filtration<MatrixType> >
 };
 
 }
-#endif

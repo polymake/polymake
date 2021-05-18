@@ -4,5 +4,6 @@
   {"args": ["perl::Canned<const SparseMatrix<PuiseuxFraction<Max, Rational, Rational>, NonSymmetric>&>", "Int", "void"], "func": "evaluate", "include": ["polymake/IncidenceMatrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/TropicalNumber.h"], "sig": "evaluate.X.X.x"},
   {"args": ["perl::Canned<const PuiseuxFraction<Max, Rational, Rational>&>", "Int", "void"], "func": "evaluate", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "evaluate.X.X.x"},
   {"args": ["perl::Canned<const PuiseuxFraction<Min, Rational, Rational>&>", "Int", "void"], "func": "evaluate", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "evaluate.X.X.x"},
+  {"args": ["perl::Canned<const Matrix<PuiseuxFraction<Max, Rational, Rational>>&>", "Int", "void"], "func": "evaluate", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "evaluate.X.X.x"},
  null ],
 "version": 3}

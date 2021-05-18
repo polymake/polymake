@@ -1,0 +1,339 @@
+/* Copyright (c) 1997-2021
+   Ewgenij Gawrilow, Michael Joswig, and the polymake team
+   Technische Universität Berlin, Germany
+   https://polymake.org
+
+   This program is free software; you can redistribute it and/or modify it
+   under the terms of the GNU General Public License as published by the
+   Free Software Foundation; either version 2, or (at your option) any
+   later version: http://www.gnu.org/licenses/gpl.txt.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+--------------------------------------------------------------------------------
+*/
+
+#include "polymake/perl/glue.h"
+
+namespace pm { namespace perl { namespace glue {
+namespace {
+
+int Item_flags_index, Item_custom_flag, Item_changed_flag, Settings_changed_index;
+
+bool is_local_change(pTHX)
+{
+   if (PL_localizing)
+      return true;
+   switch (PL_op->op_type) {
+   case OP_AELEM:
+   case OP_DELETE:
+   case OP_POP:
+   case OP_SHIFT:
+#if PerlVersion >= 5220
+   case OP_MULTIDEREF:
+#endif
+      return PL_op->op_private & OPpLVAL_INTRO;
+   case OP_LEAVE:
+   case OP_LEAVESUB:
+   case OP_LEAVESUBLV:
+   case OP_LEAVEEVAL:
+   case OP_LEAVELOOP:
+      return true;
+   }
+   return false;
+}
+
+int set_changed_flag(pTHX_ SV *sv, MAGIC* mg)
+{
+   if (!is_local_change(aTHX)) {
+      SV* item_flags_sv = AvARRAY(SvRV(mg->mg_obj))[Item_flags_index];
+      IV flags = SvIV(item_flags_sv);
+      flags |= Item_custom_flag | Item_changed_flag;
+      sv_setiv(item_flags_sv, flags);
+      SV* settings_sv = AvARRAY((SV*)mg->mg_ptr)[Settings_changed_index];
+      sv_setiv(settings_sv, 1);
+   }
+   return 0;
+}
+
+void add_change_monitor(pTHX_ SV* sv, SV* item, SV* self);
+
+int copy_change_monitor(pTHX_ SV*, MAGIC* mg, SV* nsv, const char*, mg_copy_index_t)
+{
+   add_change_monitor(aTHX_ nsv, mg->mg_obj, (SV*)mg->mg_ptr);
+   return 0;
+}
+
+int no_local_monitor(pTHX_ SV*, MAGIC*)
+{
+   return 0;
+}
+
+MGVTBL change_monitor_vtbl{
+   nullptr, &set_changed_flag, nullptr, &set_changed_flag, nullptr,
+   &copy_change_monitor, &monitored_dup, &no_local_monitor };
+
+void add_change_monitor(pTHX_ AV* av, SV* item, SV* self)
+{
+   const SSize_t last = AvFILLp(av);
+   if (last >= 0) {
+      for (SV **svp = AvARRAY(av), **lastp = svp + last;  svp <= lastp;  ++svp) {
+         SV* elem = *svp;
+         if (elem)
+            add_change_monitor(aTHX_ elem, item, self);
+      }
+   }
+}
+
+void add_change_monitor(pTHX_ HV* hv, SV* item, SV* self)
+{
+   if (hv_iterinit(hv)) {
+      while (HE* he = hv_iternext(hv)) {
+         SV* val = HeVAL(he);
+         add_change_monitor(aTHX_ val, item, self);
+      }
+   }
+}
+
+void add_change_monitor(pTHX_ SV* sv, SV* item, SV* self)
+{
+   if (SvROK(sv)) {
+      SV* target = SvRV(sv);
+      if (!SvOBJECT(target)) {
+         if (SvTYPE(target) == SVt_PVAV) {
+            add_change_monitor(aTHX_ (AV*)target, item, self);
+            sv = target;
+         } else if (SvTYPE(target) == SVt_PVHV) {
+            add_change_monitor(aTHX_ (HV*)target, item, self);
+            sv = target;
+         } else if (SvTYPE(target) <= SVt_PVMG) {
+            sv = target;
+         }
+      }
+   }
+   MAGIC* mg = sv_magicext(sv, item, PERL_MAGIC_ext, &change_monitor_vtbl, (char*)self, 0);
+   mg->mg_flags |= MGf_LOCAL;
+}
+
+bool deserves_reset(pTHX_ MAGIC* mg)
+{
+   SV* item_flags_sv = AvARRAY(SvRV(mg->mg_obj))[Item_flags_index];
+   IV flags = SvIV(item_flags_sv);
+   if (flags & Item_custom_flag) {
+      flags &= ~Item_custom_flag;
+      flags |= Item_changed_flag;
+      sv_setiv(item_flags_sv, flags);
+      SV* settings_sv = AvARRAY((SV*)mg->mg_ptr)[Settings_changed_index];
+      sv_setiv(settings_sv, 1);
+      return true;
+   }
+   return false;
+}
+
+bool reset_custom_var(pTHX_ SV* sv, SV** SP, I32 sp_offset = 0)
+{
+   MAGIC* mg;
+   if (!SvSMAGICAL(sv) || !(mg = get_monitored_magic(sv)))
+      return false;
+   if (deserves_reset(aTHX_ mg)) {
+      PUSHMARK(SP + sp_offset - 1);
+      SP[sp_offset] = mg->mg_obj;
+      mg->mg_virtual = nullptr;
+      Perl_call_method(aTHX_ "reset_value", G_VOID | G_DISCARD);
+      mg->mg_virtual = &change_monitor_vtbl;
+   }
+   return true;
+}
+
+OP* reset_custom_sv(pTHX)
+{
+   dSP;
+   SV* sv = TOPs;
+   if (!sv || SvTYPE(sv) < SVt_PVMG || !reset_custom_var(aTHX_ sv, SP))
+      DIE(aTHX_ "not a custom variable");
+   return NORMAL;
+}
+
+OP* reset_custom_helem(pTHX)
+{
+   dSP;
+   SV* hv = TOPm1s;
+   if (!reset_custom_var(aTHX_ hv, SP, -1))
+      DIE(aTHX_ "not a custom hash element");
+   return NORMAL;
+}
+
+OP* reset_custom_hslice(pTHX)
+{
+   dSP;
+   SV* hv = TOPs;
+   MAGIC* mg;
+   if (SvSMAGICAL(hv) && (mg = get_monitored_magic(hv))) {
+      SV** firstkey = PL_stack_base+TOPMARK+1;
+      if (firstkey < SP && deserves_reset(aTHX_ mg)) {
+         // the order of keys does not play any role, can be permuted to avoid full move
+         SP[0] = *firstkey;
+         *firstkey = mg->mg_obj;
+         mg->mg_virtual = nullptr;
+         Perl_call_method(aTHX_ "reset_value", G_VOID | G_DISCARD);
+         mg->mg_virtual = &change_monitor_vtbl;
+      } else {
+         dMARK;
+         SP = MARK;
+         PUTBACK;
+      }
+      return NORMAL;
+   }
+   DIE(aTHX_ "not a custom hash element");
+}
+
+OP* prepare_reset_custom(pTHX_ OP* o)
+{
+   OP* gvop = cUNOPo->op_first;
+   if (gvop->op_type != OP_GV) {
+      report_parse_error("wrong use of reset_custom; expecting plain package variable");
+      return nullptr;
+   }
+   o->op_flags |= OPf_REF;
+   OP* full_op = newUNOP(OP_NULL, OPf_WANT_VOID, o);
+   full_op->op_type = OP_CUSTOM;
+   full_op->op_ppaddr = reset_custom_sv;
+   return full_op;
+}
+
+OP* prepare_reset_custom_helem(pTHX_ OP* o)
+{
+   OP* rvop = cUNOPo->op_first;
+   if (rvop->op_type != OP_RV2HV || cUNOPx(rvop)->op_first->op_type != OP_GV) {
+      report_parse_error("wrong use of reset_custom; expecting plain package variable");
+      return nullptr;
+   }
+   o->op_type = OP_CUSTOM;
+   o->op_ppaddr = &reset_custom_helem;
+   clear_bit_flags(o->op_flags, OPf_WANT);
+   set_bit_flags(o->op_flags, OPf_WANT_VOID);
+   return o;
+}
+
+OP* prepare_reset_custom_hslice(pTHX_ OP* o)
+{
+   OP* rvop = cLISTOPo->op_last;
+   if (rvop->op_type != OP_RV2HV || cUNOPx(rvop)->op_first->op_type != OP_GV) {
+      report_parse_error("wrong use of reset_custom; expecting plain package variable");
+      return KEYWORD_PLUGIN_DECLINE;
+   }
+   o->op_type = OP_CUSTOM;
+   o->op_ppaddr = &reset_custom_hslice;
+   clear_bit_flags(o->op_flags, OPf_WANT);
+   set_bit_flags(o->op_flags, OPf_WANT_VOID);
+   return o;
+}
+
+}
+
+int monitored_dup(pTHX_ MAGIC* mg, CLONE_PARAMS* param)
+{
+   return 0;
+}
+
+int parse_set_custom(pTHX_ OP** op_ptr)
+{
+   op_keeper<OP> o(aTHX_ parse_termexpr(0));
+   if (o) {
+      if (o->op_type == OP_SASSIGN || o->op_type == OP_AASSIGN) {
+         *op_ptr = o.release();
+         return KEYWORD_PLUGIN_EXPR;
+      }
+      report_parse_error("set_custom can only be combined with an assignment");
+   }
+   return KEYWORD_PLUGIN_DECLINE;
+}
+
+int parse_reset_custom(pTHX_ OP** op_ptr)
+{
+   op_keeper<OP> o(aTHX_ parse_termexpr(0));
+   if (o) {
+      OP* full_op = nullptr;
+      switch (o->op_type) {
+      case OP_RV2SV:
+         full_op = prepare_reset_custom(aTHX_ o);
+         break;
+      case OP_RV2AV:
+         full_op = prepare_reset_custom(aTHX_ o);
+         break;
+      case OP_RV2HV:
+         full_op = prepare_reset_custom(aTHX_ o);
+         break;
+      case OP_HELEM:
+         full_op = prepare_reset_custom_helem(aTHX_ o);
+         break;
+      case OP_HSLICE:
+         full_op = prepare_reset_custom_hslice(aTHX_ o);
+         break;
+      default:
+         report_parse_error("reset_custom is only applicable to scalar, array, hash variables, or hash elements/slices");
+         break;
+      }
+      if (full_op) {
+         *op_ptr = full_op;
+         o.release();
+         return KEYWORD_PLUGIN_STMT;
+      }
+   }
+   return KEYWORD_PLUGIN_DECLINE;
+}
+
+} } }
+
+using namespace pm::perl::glue;
+
+MODULE = Polymake::Core::UserSettings              PACKAGE = Polymake::Core::UserSettings
+
+PROTOTYPES: DISABLE
+
+void add_change_monitor(SV* self, SV* item, SV* ref)
+PPCODE:
+{
+   if (!SvROK(ref) || !(SvROK(item) && SvOBJECT(SvRV(item))) ||
+       !(SvROK(self) && (self = SvRV(self), SvOBJECT(self))))
+      croak_xs_usage(cv, "UserSettings, Item, \\data");
+   add_change_monitor(aTHX_ ref, item, self);
+}
+
+void drop_change_monitor(SV* ref)
+PPCODE:
+{
+   if (!SvROK(ref))
+      croak_xs_usage(cv, "\\data");
+   mg_free_type(SvRV(ref), PERL_MAGIC_ext);
+}
+
+void get_item(SV* ref)
+PPCODE:
+{
+   if (!SvROK(ref))
+      croak_xs_usage(cv, "\\data");
+   if (MAGIC* mg = get_monitored_magic(SvRV(ref))) {
+      PUSHs(mg->mg_obj);
+      PUTBACK;
+   }
+}
+
+BOOT:
+{
+   HV* item_flags_stash = get_named_stash(aTHX_ "Polymake::Core::UserSettings::Item::Flags");
+   Item_custom_flag = get_named_constant(aTHX_ item_flags_stash, "is_custom");
+   Item_changed_flag = get_named_constant(aTHX_ item_flags_stash, "is_changed");
+   Item_flags_index = CvDEPTH(get_cv("Polymake::Core::UserSettings::Item::flags", false));
+   Settings_changed_index = CvDEPTH(get_cv("Polymake::Core::UserSettings::changed", false));
+}
+
+=pod
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:
+=cut

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -546,7 +546,7 @@ sub writePointRadii {
    my $radii = $self->source->VertexThickness // 1;
    my $number = @{$self->source->Vertices};
    if (is_code($radii)) {
-      $string .= "$objvar.userData.pointradii = ".Utils::jsArray(map { $radii->($_)/50 } (0..$number)).";\n";
+      $string .= "$objvar.userData.pointradii = ".Utils::jsArray(map { $radii->($_)/50 } (0..$number-1)).";\n";
    } else {
       $string .= "$objvar.userData.pointradii = " . $radii/50 . ";\n";   
    }

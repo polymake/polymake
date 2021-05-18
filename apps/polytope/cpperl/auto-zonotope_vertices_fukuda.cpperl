@@ -1,0 +1,6 @@
+{"app": "polytope",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "void"], "func": "zonotope_vertices_fukuda", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/polytope/minkowski_sum_fukuda.h"], "sig": "zonotope_vertices_fukuda:T1.X.o", "tp": 1},
+  {"args": ["QuadraticExtension<Rational>", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "void"], "func": "zonotope_vertices_fukuda", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/polytope/minkowski_sum_fukuda.h"], "sig": "zonotope_vertices_fukuda:T1.X.o", "tp": 1},
+ null ],
+"version": 3}

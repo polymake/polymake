@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -20,6 +20,9 @@
 #pragma clang diagnostic ignored "-Wshadow"
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #pragma clang diagnostic ignored "-Wconversion"
+#if defined(__APPLE__) && __clang_major__ >= 12
+#pragma clang diagnostic ignored "-Wrange-loop-analysis"
+#endif
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"

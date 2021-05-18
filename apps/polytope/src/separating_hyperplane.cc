@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -323,7 +323,7 @@ UserFunctionTemplate4perl("# @category Optimization"
                           "# @param Polytope p1 the first polytope, will be on the positive side of the separating hyperplane"
                           "# @param Polytope p2 the second polytope"
                           "# @option Bool strong If this is set to true, the resulting hyperplane will be strongly separating,"
-                          "#  i.e. it wont touch either of the polytopes. If such a plane does not exist, an exception"
+                          "#  i.e. it won't touch either of the polytopes. If such a plane does not exist, an exception"
                           "#  will be thrown. default: true"
                           "# @return Vector a hyperplane separating //p1// from //p2//\n",
                           "separating_hyperplane<Scalar>(Polytope<type_upgrade<Scalar>>, Polytope<type_upgrade<Scalar>>, {strong=>1})");

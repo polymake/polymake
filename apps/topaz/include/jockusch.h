@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_JOCKUSCH_H
-#define POLYMAKE_JOCKUSCH_H
+#pragma once
 
 #include "polymake/Set.h"
 #include <vector>
@@ -37,7 +36,6 @@ nz4_delta_4n(Int n);
 
    } }
 
-#endif // POLYMAKE_JOCKUSCH_H
 
 // Local Variables:
 // mode:C++

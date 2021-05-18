@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_CONNECTED_SUM_H
-#define POLYMAKE_TOPAZ_CONNECTED_SUM_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/Set.h"
@@ -56,7 +55,6 @@ std::list<Set<Int>> connected_sum(const Complex_1& C1,
 
 #include "polymake/topaz/connected_sum.tcc"
 
-#endif // POLYMAKE_TOPAZ_CONNECTED_SUM_H
 
 // Local Variables:
 // mode:C++

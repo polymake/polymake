@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_GENERIC_LP_CLIENT_H
-#define POLYMAKE_POLYTOPE_GENERIC_LP_CLIENT_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -107,7 +106,6 @@ void generic_lp_client(BigObject& p, BigObject& lp, bool maximize, const Solver&
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_GENERIC_LP_CLIENT_H
 
 // Local Variables:
 // mode:C++

@@ -10,7 +10,6 @@
   {"args": ["perl::Canned<const Set<Array<Int>>&>"], "func": "size", "include": ["polymake/Array.h", "polymake/Set.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const pm::incidence_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::nothing, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&>&>"], "func": "size", "include": ["polymake/IncidenceMatrix.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<Int, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric>&>"], "func": "size", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "size:M"},
-  {"args": ["perl::Canned<const PowerSet<Int>&>"], "func": "size", "include": ["polymake/PowerSet.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const Set<Set<Int>>&>"], "func": "size", "include": ["polymake/Set.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const Set<Vector<Rational>>&>"], "func": "size", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const Set<Matrix<Rational>>&>"], "func": "size", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "kind": "meth", "sig": "size:M"},
@@ -48,5 +47,6 @@
   {"args": ["perl::Canned<const SparseVector<PuiseuxFraction<Max, Rational, Rational>>&>"], "func": "size", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseVector.h", "polymake/TropicalNumber.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Integer, false, true, (pm::sparse2d::restriction_kind)0>, true, (pm::sparse2d::restriction_kind)0> >&, pm::Symmetric>&>"], "func": "size", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "size:M"},
   {"args": ["perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::GF2, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric>&>"], "func": "size", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "kind": "meth", "sig": "size:M"},
+  {"args": ["perl::Canned<const Set<Set<Set<Int>>>&>"], "func": "size", "include": ["polymake/Set.h"], "kind": "meth", "sig": "size:M"},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -35,13 +35,22 @@ sub related { [ ] }
 
 declare ($core, $gather);
 
+my @activation_callbacks;
+
 sub activate {
    $core = shift;
-   my $pkg = ref($core);
    $gather = true;
-   no strict 'refs';
-   my $pkg_new = \&{"$pkg\::new"};
-   *new = sub { shift; $pkg->new(@_) };
+   {
+      no strict 'refs';
+      my $pkg = ref($core);
+      my $pkg_new = \&{"$pkg\::new"};
+      *new = sub { shift; $pkg->new(@_) };
+   }
+   $_->($core) for @activation_callbacks;
+}
+
+sub add_activation_callback {
+   push @activation_callbacks, @_;
 }
 
 1

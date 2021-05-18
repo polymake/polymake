@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_NORMALIZ_INTERFACE_H
-#define POLYMAKE_POLYTOPE_NORMALIZ_INTERFACE_H
+#pragma once
 
 namespace polymake { namespace polytope {
 
@@ -24,4 +23,3 @@ namespace polymake { namespace polytope {
 
 }}
 
-#endif

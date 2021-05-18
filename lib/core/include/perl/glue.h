@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_GLUE_H
-#define POLYMAKE_PERL_GLUE_H
+#pragma once
 
 #include "polymake/perl/Ext.h"
 
@@ -268,7 +267,6 @@ extern int Object_name_index, Object_description_index,
            FuncDescr_fill, FuncDescr_fill_visible, TypeDescr_fill;
 } } }
 
-#endif // POLYMAKE_PERL_GLUE_H
 
 // Local Variables:
 // mode:C++

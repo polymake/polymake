@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -37,7 +37,16 @@ use Polymake::Enum LoadState => {
    has_failed_config => 16
 };
 
-my %repository;
+my (%repository, %configured);
+
+add_settings_callback sub {
+   my ($settings) = @_;
+   $settings->add_item('_applications::configured', \%configured,
+                       "Status and timestamps of rulefile configuration",
+                       UserSettings::Item::Flags::by_arch | UserSettings::Item::Flags::hidden,
+                       exporter => \&export_configured,
+                       importer => \&import_configured);
+};
 
 #################################################################################
 #
@@ -57,13 +66,12 @@ use Polymake::Struct (
    '@rules',                      # Rule
    '@rules_to_finalize',          # Rule - production rules defined in the rulefiles being currently read
    '%rulefiles',                  # 'rule_key' => load status
-   [ '$configured' => 'undef' ],  # 'rule_key' => configuration result
+   [ '%configured' => 'undef' ],  # 'rule_key' => configuration result
    '$configured_at',              # last configuration timestamp (2 for core applications unless started with --reconfigure)
    '%rule_code',                  # 'rule_key' => CODE : the complete rulefile-level subroutine
    '%credits',                    # product name => Rule::Credit
    '%credits_by_rulefile',        # 'rule_key' => Rule::Credit
    '%preamble_end',               # 'rule_key' => last line containing a configuration command (CONFIGURE or REQUIRE)
-   [ '$custom' => 'undef' ],      # Customize::perApplication
    [ '$prefs' => 'undef' ],       # Preference::perApplication
    [ '$help' => 'new Help(undef, #1)' ],
    '%used',                       # 'name' => Application
@@ -133,12 +141,7 @@ sub new {
    local $enable_plausibility_checks = $self->untrusted;
    local $Shell = new NoShell();         # disable interactive configuration
 
-   $self->configured = namespaces::declare_var($self->pkg, "%configured");
-   $self->custom = $Custom->app_handler($self->pkg);
-   $self->custom->add('%configured', <<'.', Customize::State::config | Customize::State::hidden | Customize::State::accumulating, $self->pkg);
-Rulefiles with autoconfiguration sections and their exit codes.
-Value 0 denotes configuration failure, which disables the corresponding rulefile.
-.
+   $self->configured = ($configured{$self->name} //= { });
    $self->prefs = $Prefs->app_handler($self);
    $self->cpp = new CPlusPlus::perApplication($self);
    include_rules($self);
@@ -150,19 +153,10 @@ Value 0 denotes configuration failure, which disables the corresponding rulefile
    }
 
    $self->cpp->load_private_wrapper;
-   $self->custom->end_loading;
    $self->prefs->end_loading;
-   if (length(my $cmds = $self->prefs->user_commands)) {
-      local $User::application = $self;
-      local unshift @INC, $self;
-      $self->eval_expr->("package Polymake::User; $cmds");
-      die $@ if $@;
-   }
 
    if ($Help::gather) {
       push @{$self->help->related}, $Help::core;
-      $self->custom->create_help_topics($self->help);
-      state $user_prefs_help = $Prefs->custom->create_help_topics($Help::core), 1;
    }
 
    $self;
@@ -309,9 +303,7 @@ sub exclude_rule {
          # don't exclude if already loaded from elsewhere
          if (!exists $self->rulefiles->{$rule_key}) {
             $self->rulefiles->{$rule_key} = 0;
-            if (defined (delete $self->configured->{$rule_key})) {
-               $self->custom->set_changed;
-            }
+            delete $self->configured->{$rule_key};
          }
       } else {
          croak( "rule file ", $self->name, "::$rulename does not exist" );
@@ -359,9 +351,7 @@ sub include_rules {
    } else {
       local unshift @INC, $self;
    }
-   local ref $self->custom->tied_vars = [];
    local scalar $self->compile_scope = new Scope();
-   $self->compile_scope->cleanup->{$self->custom} = undef;
    my $rc_all=0;
    eval {
       if (@_) {
@@ -467,11 +457,6 @@ sub lookup_credit {
    };
 }
 #################################################################################
-sub add_custom {
-   my $self = shift;
-   $self->custom->add(@_)->extension = $Extension::loading;
-}
-#################################################################################
 sub use_apps {
    my ($self, $import) = splice @_, 0, 2;
    my ($i, $app);
@@ -537,73 +522,72 @@ sub common {
 }
 
 #################################################################################
-sub find_custom_var {
-   my ($self, $name, $alt)=@_;
-   my $var;
-   if (defined($self->custom) && !defined($var = $self->custom->find($name))) {
-      foreach my $app (values %{$self->used}) {
-         if (defined($var = $app->custom->find($name))) {
-            keys %{$self->used};
-            last;
-         }
+sub get_custom_item {
+   my ($self, $name) = @_;
+   $name =~ s/^[\$\@%]//;
+   if ($name =~ /^($id_re)::/o) {
+      if (defined(my $app = $repository{$1})) {
+         $name = $';
+         $self = $app;
+      } elsif ($1 eq "User") {
+         $name = "Polymake::$name";
       }
    }
-   if (defined($var)) {
-      ($self->custom, $var)
-   } elsif (defined($alt) && defined($var = $alt->find($name))) {
-      ($alt, $var)
-   } else {
+   $Settings->items->{$name} // $name !~ /::/ && do {
+      foreach my $app ($self, values %{$self->used}) {
+         if (defined(my $item = $Settings->items->{$app->pkg . "::$name"})) {
+            keys %{$self->used};
+            return $item;
+         }
+      }
       croak( "unknown custom variable $name" );
-   }
+   };
 }
 
 # for clients and callable library:
-# 'prefixed varname', [key] => value
+
+# Application, 'varname', [key] => value
 sub get_custom_var {
-   my $var_name=shift;
-   my $var;
-   if ($var_name =~ /^.($id_re)::/o && defined(my $app=$repository{$1})) {
-      $var_name=substr($var_name,0,1).$';
-      $var=find_custom_var($app, $var_name);
-   } else {
-      $var=find_custom_var($User::application, $var_name, $Prefs->custom);
-   }
-   no strict 'refs';
-   if ($var->prefix eq '%') {
-      if (@_) {
-         ${$var->name}{$_[0]}
+   my $item = &get_custom_item;
+   if (@_ > 2) {
+      if (is_hash($item->ref)) {
+         $item->ref->{$_[2]}
       } else {
-         *{$var->name}{HASH}
+         die "key specified with a non-hash custom variable $_[1]\n"
       }
-   } elsif ($var->prefix eq '@') {
-      *{$var->name}{ARRAY}
    } else {
-      ${$var->name}
+      is_scalar_ref($item->ref) ? ${$item->ref} : $item->ref
+   }
+}
+#################################################################################
+sub import_configured {
+   my ($value) = @_;
+   if (keys %configured) {
+      while (my ($appname, $statuses) = each %$value) {
+         push %{$configured{$appname} //= { }}, %$statuses;
+      }
+   } else {
+      push %configured, %$value;
    }
 }
 
-sub _set_custom {
-   (my ($self, $alt, $name, @tail) = @_) > 1
-     or croak( "custom variable, array, hash, or hash element assignment expected" );
-   my ($bunch, $var) = find_custom_var($self, $name, $alt);
-   $var->set(@tail);
-   $bunch->set_changed;
-}
-
-sub set_custom {
-   _set_custom($_[0], undef, name_of_custom_var(1));
-}
-
-sub _reset_custom {
-   (my ($self, $alt, $name, @tail) = @_) > 1
-     or croak( "custom variable, array, hash, or hash element expected" );
-   my ($bunch, $var) = find_custom_var($self, $name, $alt);
-   $var->reset(@tail);
-   $bunch->set_changed;
-}
-
-sub reset_custom {
-   _reset_custom($_[0], undef, name_of_custom_var(0));
+# only export fully configured rulefiles
+sub export_configured {
+   my ($include_imported, $imported_config) = @_;
+   my %export;
+   $include_imported ||= !is_hash($imported_config);
+   while (my ($appname, $value) = each %configured) {
+      my $imported_app = !$include_imported && $imported_config->{$appname};
+      my %rulefiles = map {
+         my $status = $value->{$_};
+         $status =~ /^[1-9]\d+$/ && !(is_hash($imported_app) && $value eq $imported_app->{$_})
+         ? ($_ => $status) : ()
+      } keys %$value;
+      if (keys %rulefiles) {
+         $export{$appname} = \%rulefiles;
+      }
+   }
+   keys %export ? \%export : ()
 }
 #################################################################################
 sub add_top_label {
@@ -639,11 +623,11 @@ sub prefer_now {
 *set_preference=\&prefer;
 
 sub reset_preference {
-   my $self=shift;
+   my $self = shift;
    if ($_[0] eq "all" || $_[0] eq "*") {
-      $self->prefs->handler->reset_all($self);
+      $Prefs->reset_all($self);
    } else {
-      $self->prefs->handler->reset($self, @_);
+      $Prefs->reset($self, @_);
    }
 }
 #################################################################################

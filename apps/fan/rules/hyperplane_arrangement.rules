@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -236,17 +236,31 @@ user_method signature_to_chamber : CHAMBER_DECOMPOSITION.MAXIMAL_CONES, CHAMBER_
 
 # Compute defining properties of the [[CHAMBER_DECOMPOSITION]] using reverse search.
 rule CHAMBER_DECOMPOSITION.RAYS, CHAMBER_DECOMPOSITION.MAXIMAL_CONES, CHAMBER_DECOMPOSITION.LINEALITY_SPACE, \
-      CHAMBER_SIGNATURES : HYPERPLANES, SUPPORT.FACETS | SUPPORT.INEQUALITIES, \
+      CHAMBER_SIGNATURES, RAYS_IN_HYPERPLANES : HYPERPLANES, SUPPORT.FACETS | SUPPORT.INEQUALITIES, \
       SUPPORT.LINEAR_SPAN | SUPPORT.EQUATIONS, SUPPORT.RAYS | SUPPORT.INPUT_RAYS, \
       SUPPORT.LINEALITY_SPACE | SUPPORT.INPUT_LINEALITY, SUPPORT.CONE_DIM, LINEALITY_SPACE {
-      my($R, $MC, $S, $LS) = chamber_decomposition_rs($this);
+      my($R, $MC, $S, $LS, $RH) = chamber_decomposition_rs($this);
       $this->CHAMBER_DECOMPOSITION->RAYS = $R;
       $this->CHAMBER_DECOMPOSITION->MAXIMAL_CONES = $MC;
       $this->CHAMBER_SIGNATURES = $S;
       $this->CHAMBER_DECOMPOSITION->LINEALITY_SPACE = $LS;
+      $this->RAYS_IN_HYPERPLANES = $RH;
 }
 incurs ConesPerm;
 
+rule RAYS_IN_HYPERPLANES : CHAMBER_DECOMPOSITION.RAYS, HYPERPLANES {
+   my $r = $this->CHAMBER_DECOMPOSITION->RAYS;
+   my $h = $this->HYPERPLANES;
+   my @ia;
+   foreach (@{$h*transpose($r)}) {
+      my $zeros = new Set<Int>;
+      for (my $i=0; $i<$r->rows; $i++) {
+         $zeros->collect($i) if ($_->[$i]==0);
+      }
+      push @ia, $zeros; 
+   } 
+   $this->RAYS_IN_HYPERPLANES = new IncidenceMatrix<NonSymmetric>([@ia]);
+} 
 
 rule CHAMBER_DECOMPOSITION.LINEALITY_SPACE : LINEALITY_SPACE {
    $this->CHAMBER_DECOMPOSITION->LINEALITY_SPACE = $this->LINEALITY_SPACE;

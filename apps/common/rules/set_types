@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -175,11 +175,6 @@ user_function scalar2set(*&& const) : c++ (include => "polymake/Set.h");
 # non-negative integer numbers.
 declare property_type Bitset : Set<Int> : c++ (include => "polymake/Bitset.h", default_constructor => 'Deserializing');
 
-# @category Set Types
-# A [[Set]] whose elements are of type Set<//Element//>.
-# @tparam Element default: [[Int]]
-declare property_type PowerSet<Element=Int> : Set<Set<Element>> : c++ (include => "polymake/PowerSet.h");
-
 # allow to write ~[0,1,2] in contexts where a Set<Int> is expected
 sub construct_set_from_anonlist {
    my ($arr)=@_;
@@ -299,7 +294,7 @@ declare property_type FacetList : c++ (include => "polymake/FacetList.h") {
 # @category Data Conversion
 # Visit the facets of //f// sorted lexicographically.
 # @param FacetList f
-# @return PowerSet<Int>
+# @return Set<Set<Int>>
 # @example
 # > $f = new FacetList(polytope::cube(2)->VERTICES_IN_FACETS);
 # > print lex_ordered($f);

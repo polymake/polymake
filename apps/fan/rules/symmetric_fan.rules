@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,205 +17,57 @@
 
 object PolyhedralFan {
 
+   property GROUP {
 
-# @category Symmetry
-# Each element of the array is a generator of the subgroup of the symmetric group
-# acting on the coordinates. Each generator is represented by an Array whose i-th
-# entry is the image of the i-th coordinate.
-property SYMMETRY_GENERATORS : Array<Array<Int>>;
+      # @category Symmetry
+      # f<sub>k</sub> is the number of k-dimensional cones up to symmetry.
+      property ORBITS_F_VECTOR : Vector<Integer>;
 
-rule SYMMETRY_GENERATORS = GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS;
+      # @category Symmetry
+      # Number of [[CONES]] in each orbit represented by the elements of
+      # [[REPRESENTATIVE_CONES]].
+      property CONES_ORBIT_SIZES : Array<Array<Int>>;
 
-# @category Symmetry
-# Each element of the array is an element of the symmetry group.
-property SYMMETRY_GROUP : Array<Array<Int>>;
+   }
 
-rule SYMMETRY_GROUP = GROUP.HOMOGENEOUS_COORDINATE_ACTION.ALL_GROUP_ELEMENTS;
 
-# @category Symmetry
-# Number of elements of the symmetry group.
-property N_SYMMETRIES : Int;
-
-rule N_SYMMETRIES = GROUP.ORDER;
-
-# @category Input property
-# One Ray from each orbit.  May be redundant.
-property INPUT_RAYS_REPS : Matrix<Scalar>;
-
-rule INPUT_RAYS_REPS = GROUP.INPUT_RAYS_ACTION.ORBIT_REPRESENTATIVES;
-
-# @category Input property
-# Maybe redundant list of not necessarily maximal cones, one from each orbit.  
-# All vectors in the input must be non-zero.
-# Indices refer to [[INPUT_RAYS]].
-property INPUT_CONES_REPS : IncidenceMatrix;
-
-rule INPUT_CONES_REPS = GROUP.INPUT_CONES_ACTION.ORBIT_REPRESENTATIVES;
-
-# @category Symmetry
-# One ray from each orbit. Non-redundant.
-property RAYS_REPS : Matrix<Scalar>;
-
-rule RAYS_REPS = GROUP.REPRESENTATIVE_RAYS;
-
-# @category Symmetry
-# Tells which ray is in the orbit of which representative, indices refers to rows of [[RAYS]].
-property RAYS_IN_ORBITS : Array<Set<Int>>;
-
-rule RAYS_IN_ORBITS = GROUP.RAYS_ACTION.ORBITS;
-
-# @category Symmetry
-# Number of orbits of [[RAYS]].
-property N_RAY_ORBITS : Int;
-
-rule N_RAY_ORBITS = GROUP.RAYS_ACTION.N_ORBITS;
-
-# @category Symmetry 
-# Each row contains the image of all [[RAYS]] under one element of the symmetry group.
-property RAYS_IMAGES : Array<Array<Int>>;
-
-# @category Symmetry 
-# Number of elements of each orbit of [[RAYS]].
-property RAYS_ORBIT_SIZES : Array<Int>;
-
-rule RAYS_ORBIT_SIZES = GROUP.RAYS_ACTION.ORBIT_SIZES;
-
-# @category Symmetry
-# Non redundant list of maximal cones, one from each orbit.  Indices refer to [[RAYS]].
-property MAXIMAL_CONES_REPS : Array<Set<Int>>;
-
-rule MAXIMAL_CONES_REPS : MAXIMAL_CONES, GROUP.MAXIMAL_CONES_ACTION.ORBIT_REPRESENTATIVES {
+rule GROUP.REPRESENTATIVE_MAXIMAL_CONES : MAXIMAL_CONES, GROUP.MAXIMAL_CONES_ACTION.ORBIT_REPRESENTATIVES {
     my @mcr;
     foreach my $r (@{$this->GROUP->MAXIMAL_CONES_ACTION->ORBIT_REPRESENTATIVES}) {
         push @mcr, new Set<Int>($this->MAXIMAL_CONES->[$r]);
     }
-    $this->MAXIMAL_CONES_REPS = new Array<Set<Int>>(\@mcr);
-}
-
-# @category Symmetry
-# Tells which maximal cone is in the orbit of which representative, indices refers to rows of [[MAXIMAL_CONES]].
-property MAXIMAL_CONES_IN_ORBITS : Array<Set<Int>>;
-
-rule MAXIMAL_CONES_IN_ORBITS = GROUP.MAXIMAL_CONES_ACTION.ORBITS;
-
-# @category Symmetry
-# Number of orbits of [[MAXIMAL_CONES]].
-property N_MAXIMAL_CONE_ORBITS : Int;
-
-rule N_MAXIMAL_CONE_ORBITS = GROUP.MAXIMAL_CONES_ACTION.N_ORBITS;
-
-# @category Symmetry
-# Number of [[MAXIMAL_CONES_REPS]] in each orbit.
-property MAXIMAL_CONES_ORBIT_SIZES : Array<Int>;
-
-rule MAXIMAL_CONES_ORBIT_SIZES = GROUP.MAXIMAL_CONES_ACTION.ORBIT_SIZES;
-
-# @category Symmetry
-# The dimensions of [[MAXIMAL_CONES_REPS]].
-property MAXIMAL_CONES_REPS_DIMS : Array<Int>;
-
-rule MAXIMAL_CONES_REPS_DIMS = GROUP.MAXIMAL_CONES_ACTION.REPRESENTATIVE_COMBINATORIAL_DIMS;
-
-# @category Symmetry
-# List of all cones of all dimensions of the fan, one from each orbit.  Indices refer to [[RAYS]].
-property CONES_REPS : Array<Array<Set<Int>>>;
-
-# @category Symmetry
-# f<sub>k</sub> is the number of k-dimensional cones up to symmetry.
-property ORBITS_F_VECTOR : Vector<Integer>;
-
-# @category Symmetry
-# Number of [[CONES_REPS]] in each orbit.
-property CONES_ORBIT_SIZES : Array<Array<Int>>;
-
-
-
-# @category Symmetry
-# Unique names assigned to the [[RAYS_REPS]].
-property RAYS_REPS_LABELS : Array<String> : mutable;
-
-
-
-# @category Symmetry
-# The possible facet normals of all maximal cone representatives.
-property REPS_FACET_NORMALS : Matrix<Scalar>;
-
-# @category Symmetry
-# Tells for each maximal cone representative what are its facets.
-# A negative number means that the corresponding row of
-# [[REPS_FACET_NORMALS]] has to be negated.
-property MAXIMAL_CONES_REPS_FACETS : SparseMatrix<Int>;
-
-# @category Symmetry
-# The possible linear span normals of all maximal cone representatives.
-property REPS_LINEAR_SPAN_NORMALS : Matrix<Scalar>;
-
-# @category Symmetry
-# Tells for each maximal cone representative what is its linear span.
-# Indices refer to [[REPS_LINEAR_SPAN_NORMALS]].
-# Rows correspond to [[MAXIMAL_CONES_REPS_FACETS]]
-property MAXIMAL_CONES_REPS_LINEAR_SPAN_NORMALS : IncidenceMatrix;
-
-
-# @category Symmetry
-# Returns the //i//-th maximal cone representative.
-# @param Int i
-# @return Cone
-user_method cone_representative($)  {
-   return new Cone<Scalar>(RAYS=>$_[0]->RAYS->minor($_[0]->MAXIMAL_CONES_REPS->[$_[1]],All));
+    $this->GROUP->REPRESENTATIVE_MAXIMAL_CONES = new Array<Set<Int>>(\@mcr);
 }
 
 
-rule MAXIMAL_CONES_REPS_DIMS : RAYS, MAXIMAL_CONES_REPS, LINEALITY_SPACE {
+
+rule GROUP.MAXIMAL_CONES_ACTION.REPRESENTATIVE_COMBINATORIAL_DIMS : RAYS, GROUP.REPRESENTATIVE_MAXIMAL_CONES, LINEALITY_SPACE {
    my @dims;
-   foreach (@{$this->MAXIMAL_CONES_REPS}) {
-      push @dims, (new polytope::Cone(RAYS=>$this->RAYS->minor($_,All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->CONE_DIM;
+   foreach (@{$this->GROUP->REPRESENTATIVE_MAXIMAL_CONES}) {
+      push @dims, (new polytope::Cone(RAYS=>$this->RAYS->minor($_,All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->COMBINATORIAL_DIM;
    }
-   $this->MAXIMAL_CONES_REPS_DIMS=\@dims;
+   $this->GROUP->MAXIMAL_CONES_ACTION->REPRESENTATIVE_COMBINATORIAL_DIMS=\@dims;
 }
 weight 1.50;
 
-rule LINEALITY_SPACE : RAYS, MAXIMAL_CONES_REPS {
-   $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->RAYS->cols);
-}
-weight 0.10;
-
-
-rule N_MAXIMAL_CONE_ORBITS : MAXIMAL_CONES_REPS {
-   $this->N_MAXIMAL_CONE_ORBITS=scalar(@{$this->MAXIMAL_CONES_REPS});
+rule GROUP.MAXIMAL_CONES_ACTION.N_ORBITS : GROUP.REPRESENTATIVE_MAXIMAL_CONES {
+   $this->GROUP->MAXIMAL_CONES_ACTION->N_ORBITS=scalar(@{$this->GROUP->REPRESENTATIVE_MAXIMAL_CONES});
 }
 weight 0.1;
 
-rule F_VECTOR, ORBITS_F_VECTOR, CONES_REPS, CONES_ORBIT_SIZES : RAYS, MAXIMAL_CONES_REPS, RAYS_IMAGES, COMBINATORIAL_DIM, LINEALITY_SPACE {
+rule F_VECTOR, GROUP.ORBITS_F_VECTOR, GROUP.REPRESENTATIVE_CONES, GROUP.CONES_ORBIT_SIZES : RAYS, GROUP.REPRESENTATIVE_MAXIMAL_CONES, GROUP.RAYS_ACTION.ALL_GROUP_ELEMENTS, COMBINATORIAL_DIM, LINEALITY_SPACE {
     all_cones_symmetry($this,$this->COMBINATORIAL_DIM);
 }
 weight 3.10;
 
-rule F_VECTOR, ORBITS_F_VECTOR, CONES_REPS, CONES_ORBIT_SIZES, COMBINATORIAL_DIM, MAXIMAL_CONES_REPS_DIMS : RAYS, MAXIMAL_CONES_REPS, RAYS_IMAGES, LINEALITY_SPACE {
+rule F_VECTOR, GROUP.ORBITS_F_VECTOR, GROUP.REPRESENTATIVE_CONES, GROUP.CONES_ORBIT_SIZES, COMBINATORIAL_DIM, GROUP.MAXIMAL_CONES_ACTION.REPRESENTATIVE_COMBINATORIAL_DIMS : RAYS, GROUP.REPRESENTATIVE_MAXIMAL_CONES, GROUP.RAYS_ACTION.ALL_GROUP_ELEMENTS, LINEALITY_SPACE {
     all_cones_symmetry($this);
 }
 weight 3.60;
 
-rule FAN_DIM, PURE : MAXIMAL_CONES_REPS_DIMS {
-   my $dim=$this->MAXIMAL_CONES_REPS_DIMS->[0];
-   my $pure=1;
-   foreach (@{$this->MAXIMAL_CONES_REPS_DIMS})  {
-      if ($_>$dim) {
-         $dim =$_;
-	 $pure=0;
-     }
-     else {if ($_<$dim) {
-     	 $pure=0;
-     }}
-   }
-   $this->FAN_DIM=$dim;
-   $this->PURE=$pure;
-}
-weight 1.30;
-
-rule PURE : MAXIMAL_CONES_REPS_DIMS {
-    my $dim=$this->MAXIMAL_CONES_REPS_DIMS->[0];
-    foreach (@{$this->MAXIMAL_CONES_REPS_DIMS})  {
+rule PURE : GROUP.MAXIMAL_CONES_ACTION.REPRESENTATIVE_COMBINATORIAL_DIMS {
+    my $dim=$this->GROUP->MAXIMAL_CONES_ACTION->REPRESENTATIVE_COMBINATORIAL_DIMS->[0];
+    foreach (@{$this->GROUP->MAXIMAL_CONES_ACTION->REPRESENTATIVE_COMBINATORIAL_DIMS})  {
       if ($_!=$dim) {
           $this->PURE=0;
 	  return;
@@ -230,67 +82,15 @@ weight 1.10;
 object PolyhedralComplex {
 
     # @category Symmetry
-    property POINTS_REPS = override INPUT_RAYS_REPS;
-
-    # @category Symmetry
     property GROUP {
 
         # @category Symmetry
         property INPUT_POLYTOPES_ACTION = override INPUT_CONES_ACTION;
-        
+
+        # @category Symmetry
+        property POLYTOPES_ORBIT_SIZES = override CONES_ORBIT_SIZES;
     }
 
-    # @category Symmetry
-    property INPUT_POLYTOPES_REPS = override INPUT_CONES_REPS;
-
-    # @category Symmetry
-    property VERTICES_REPS = override RAYS_REPS;
-
-    # @category Symmetry
-    property VERTICES_IN_ORBITS = override RAYS_IN_ORBITS;
-
-    # @category Symmetry
-    property N_VERTICES_ORBITS = override N_RAY_ORBITS;
-
-    # @category Symmetry
-    property VERTICES_IMAGES = override RAYS_IMAGES;
-
-    # @category Symmetry
-    property VERTICES_ORBIT_SIZES = override RAYS_ORBIT_SIZES;
-
-    # @category Symmetry
-    property MAXIMAL_POLYTOPES_REPS = override MAXIMAL_CONES_REPS;
-
-    # @category Symmetry
-    property MAXIMAL_POLYTOPES_IN_ORBITS = override MAXIMAL_CONES_IN_ORBITS;
-
-    # @category Symmetry
-    property N_MAXIMAL_POLYTOPES_ORBITS = override N_MAXIMAL_CONE_ORBITS;
-
-    # @category Symmetry
-    property MAXIMAL_POLYTOPES_ORBIT_SIZES = override MAXIMAL_CONES_ORBIT_SIZES;
-
-    # @category Symmetry
-    property MAXIMAL_POLYTOPES_REPS_DIMS = override MAXIMAL_CONES_REPS_DIMS;
-
-    # @category Symmetry
-    property POLYTOPES_REPS = override CONES_REPS;
-
-    # @category Symmetry
-    property POLYTOPES_ORBIT_SIZES = override CONES_ORBIT_SIZES;
-
-    # @category Symmetry
-    property VERTICES_REPS_LABELS = override RAYS_REPS_LABELS;
-
-    # @category Symmetry
-    property MAXIMAL_POLYTOPES_REPS_FACETS = override MAXIMAL_CONES_REPS_FACETS;
-
-    # @category Symmetry
-    property REPS_AFFINE_SPAN_NORMALS = override REPS_LINEAR_SPAN_NORMALS;
-    
-    # @category Symmetry
-    property MAXIMAL_POLYTOPES_REPS_AFFINE_SPAN_NORMALS = override MAXIMAL_CONES_REPS_LINEAR_SPAN_NORMALS;
-    
 }
 
 # Local Variables:

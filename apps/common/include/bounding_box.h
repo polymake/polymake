@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef BOUNDING_BOX_H
-#define BOUNDING_BOX_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -81,7 +80,6 @@ void extend_bounding_box(Matrix<Coord>& BB, const Matrix<Coord>& BB2)
 
 } }
 
-#endif
 
 // Local Variables:
 // mode:C++

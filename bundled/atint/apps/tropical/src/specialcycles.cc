@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -48,7 +48,7 @@ UserFunctionTemplate4perl("# @category Creation functions for specific cycles"
 			  "empty_cycle<Addition>($)");
 
 UserFunction4perl("# @category Degeneracy tests"
-		  "# This tests wheter a cycle is the empty cycle.",
+		  "# This tests whether a cycle is the empty cycle.",
 		  &is_empty_cycle,"is_empty(Cycle)");
 
 UserFunctionTemplate4perl("# @category Creation functions for specific cycles"

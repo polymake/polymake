@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_CHAIN_COMPLEX_H
-#define POLYMAKE_TOPAZ_CHAIN_COMPLEX_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/topaz/HomologyComplex.h"
@@ -140,7 +139,6 @@ struct spec_object_traits< Serialized< polymake::topaz::ChainComplex<MatrixType>
 
 }
 
-#endif // POLYMAKE_TOPAZ_CHAIN_COMPLEX_H
 
 // Local Variables:
 // mode:C++

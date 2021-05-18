@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -33,7 +33,7 @@
 # In fact, further brackets should only be used (but are not necessary!) for single coefficienst,
 # e.g. "(-3)*x".
 # Warning: The parser will remove all brackets before parsing the individual sums.
-# If no further arguments are given, the function will take the number of occuring variables
+# If no further arguments are given, the function will take the number of occurring variables
 # as total number of variables and create a ring for the result. The variables will be sorted alphabetically.
 # @param String s The string to be parsed
 # @param String vars Optional list of variables. If this is given, all variables used in s must match one of the variables in this list.

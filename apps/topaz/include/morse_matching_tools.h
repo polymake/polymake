@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -19,8 +19,7 @@
    @todo Check whether overflow can occur in @a base (see checkAcyclicDFS() ).
 */
 
-#ifndef POLYMAKE_TOPAZ_MORSE_MATCHING_TOOLS_H
-#define POLYMAKE_TOPAZ_MORSE_MATCHING_TOOLS_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/graph/connected.h"
@@ -294,7 +293,6 @@ void completeToTopLevel(const graph::ShrinkingLattice<graph::lattice::BasicDecor
 
 } } }
 
-#endif // POLYMAKE_TOPAZ_MORSE_MATCHING_TOOLS_H
     
 // Local Variables:
 // mode:C++

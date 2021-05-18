@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_BENEATH_BEYOND_IMPL_H
-#define POLYMAKE_POLYTOPE_BENEATH_BEYOND_IMPL_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/linalg.h"
@@ -1102,7 +1101,6 @@ void beneath_beyond_algo<E>::dump_p(Int p) const
 
 } }
 
-#endif // POLYMAKE_POLYTOPE_BENEATH_BEYOND_IMPL_H
 
 // Local Variables:
 // mode:C++

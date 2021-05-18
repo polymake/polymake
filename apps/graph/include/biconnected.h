@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_BICONNECTED_H
-#define POLYMAKE_GRAPH_BICONNECTED_H
+#pragma once
 
 #include "polymake/graph/graph_iterators.h"
 #include "polymake/IndexedSubset.h"
@@ -203,7 +202,6 @@ struct check_iterator_feature<polymake::graph::biconnected_components_iterator<T
 
 }
 
-#endif // POLYMAKE_GRAPH_BICONNECTED_H
 
 // Local Variables:
 // mode:C++

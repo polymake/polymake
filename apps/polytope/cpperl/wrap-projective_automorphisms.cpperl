@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "projective_automorphisms.cc",
+ "inst": [
+  {"args": ["Rational", "void"], "func": "projective_symmetries", "include": ["polymake/Rational.h"], "sig": "projective_symmetries:T1.B", "tp": 1},
+ null ],
+"version": 3}

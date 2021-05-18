@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -27,7 +27,7 @@ use Polymake::Struct (
 use overload 'bool' => sub { 1 },
              '==' => \&refcmp,
              '!=' => sub { !&refcmp },
-             '@{}' => sub { my ($self)=@_; $self->coord //= $self->compute };
+             '@{}' => sub { my ($self)=@_; $self->get_matrix };
 
 sub merge_options {
    my $self=shift;
@@ -52,6 +52,11 @@ sub closed {
    if (defined $self->client_object) {
       $self->client_object->shutdown;
    }
+}
+
+sub get_matrix {
+   my ($self)=(@_);
+   $self->coord //= $self->compute;
 }
 
 1

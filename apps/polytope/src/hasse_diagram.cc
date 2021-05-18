@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -25,7 +25,7 @@ using graph::lattice::TrivialCut;
 using graph::lattice::SetAvoidingCut;
 using graph::lattice::RankCut;
 using graph::lattice::CutAnd;
-
+      
 BigObject hasse_diagram(const IncidenceMatrix<>& VIF, const Int cone_dim)
 {
    const bool is_dual = VIF.rows() < VIF.cols();
@@ -35,22 +35,14 @@ BigObject hasse_diagram(const IncidenceMatrix<>& VIF, const Int cone_dim)
       TrivialCut<BasicDecoration> cut;
       BasicDecorator<> dec(VIF.cols(), cone_dim, Set<Int>());
 
-      Lattice<BasicDecoration, Sequential> init_lattice;
-      Lattice<BasicDecoration, Sequential> result(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
-         cop, cut, dec, 0, graph::lattice_builder::Dual(), init_lattice));
-      sort_vertices_and_facets(result, VIF);
-      return static_cast<BigObject>(result);
+      return static_cast<BigObject>(hasse_diagram_impl(cop, cut, dec, graph::lattice_builder::Dual(), VIF));
    } else {
       const Int total = VIF.cols();
       BasicClosureOperator<> cop(total, VIF);
       TrivialCut<BasicDecoration> cut;
       BasicDecorator<> dec(0, Set<Int>());
 
-      Lattice<BasicDecoration, Sequential> init_lattice;
-      Lattice<BasicDecoration, Sequential> result(graph::lattice_builder::compute_lattice_from_closure<BasicDecoration>(
-         cop, cut, dec, 0, graph::lattice_builder::Primal(), init_lattice));
-      sort_vertices_and_facets(result, VIF);
-      return static_cast<BigObject>(result);
+      return static_cast<BigObject>(hasse_diagram_impl(cop, cut, dec, graph::lattice_builder::Primal(), VIF));
    }
 }
 

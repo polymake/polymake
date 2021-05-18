@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -114,7 +114,7 @@ void toric_g_vector(BigObject p)
       // calculate g_i in this loop
       Int deg = 2*i;
       Int max_cdmon = Fib[deg];
-      Int bigv = 0;     // count the full monomial seperately
+      Int bigv = 0;     // count the full monomial separately
       Int degfill = d-deg;
       for (Int v = 0; v < max_cdmon; ++v) {
          Integer moncoeff = calc_b(deg,v,d,Fib);

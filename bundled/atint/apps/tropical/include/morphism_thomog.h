@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -27,8 +27,7 @@
 	coordinates and back
 	*/
 
-#ifndef POLYMAKE_ATINT_MORPHISM_THOMOG_H
-#define POLYMAKE_ATINT_MORPHISM_THOMOG_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -61,4 +60,3 @@ bool is_homogeneous_matrix(const Matrix<Rational>& m);
 
 } }
 
-#endif

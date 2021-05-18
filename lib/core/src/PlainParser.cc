@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -277,8 +277,8 @@ int PlainParserCommon::probe_inf()
    return 0;
 }
 
-PlainPrinter<> cout(perl::cout);
-PlainPrinter<> cerr(std::cerr);
+PlainPrinter<> cout{std::cout};
+PlainPrinter<> cerr{std::cerr};
 
 } // end namespace pm
 

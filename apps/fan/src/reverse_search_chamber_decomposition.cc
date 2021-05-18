@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -84,6 +84,8 @@ template<typename Scalar, typename NodeType>
 class Logger {
    private:
       Int n, currentRayIndex, nHyperplanes;
+      Matrix<Scalar> hyperplanes;
+      Array<Set<Int>> rih;
       Map<Vector<Scalar>, Int> rayIndices;
       Set<Set<Int>> maximalCones;
       Map<Set<Int>, Bitset> cone2signature;
@@ -91,16 +93,23 @@ class Logger {
       Int log_ray(const Vector<Scalar>& r){
          if(!rayIndices.exists(r)){
             rayIndices[r] = currentRayIndex;
+            Vector<Scalar> prods(hyperplanes*r);
+            for (int i=0; i < prods.size(); i++) {
+               if (prods[i]==0) {
+                  rih[i].collect(currentRayIndex);
+               }
+            }
             currentRayIndex++;
          }
          return rayIndices[r];
       }
 
    public:
-      Logger(const Int nHyp){
+      Logger(const Matrix<Scalar> hyp):rih(hyp.rows()){
          currentRayIndex = 0;
          n = 0;
-         nHyperplanes = nHyp;
+         hyperplanes = hyp;
+         nHyperplanes = hyp.rows();
       }
 
       void log_node(const NodeType& chamber){
@@ -127,16 +136,21 @@ class Logger {
          }
          return result;
       }
-
-      Array<Set<Int>> get_maximal_cones() const {
+      
+      Array<Int> get_rays_perm() const {
          Array<Int> perm(rayIndices.size());
          Int i = 0;
          for(const auto& entry : rayIndices){
             perm[i] = entry.second;
             i++;
          }
+         return perm;
+      }
+
+      Array<Set<Int>> get_maximal_cones() const {
+         auto perm = get_rays_perm();
          Array<Set<Int>> result(maximalCones.size());
-         i = 0;
+         Int i = 0;
          for(const auto& s : maximalCones){
             result[i] = group::action_inv<group::on_elements>(perm,s);
             i++;
@@ -153,8 +167,18 @@ class Logger {
          }
          return result;
       }
-};
 
+      Array<Set<Int>> get_rays_in_hyperplanes() const {
+         auto perm = get_rays_perm();
+         Array<Set<Int>> result(rih.size());
+         Int i = 0;
+         for(const auto& s : rih){
+            result[i] = group::action_inv<group::on_elements>(perm,s);
+            i++; 
+        }
+	      return result;
+      }
+};
 
 template<typename Scalar>
 ListReturn generic(BigObject HA) {
@@ -181,7 +205,7 @@ ListReturn generic(BigObject HA) {
    }
    
    // Actual reverse search part.
-   LoggerType CL(hyp.rows());
+   LoggerType CL(hyp);
    ReverseSearchTemplate<NodeType, LoggerType, false, false> RST(CL);
    RST.auto_reverse_search(initial);
 
@@ -191,6 +215,7 @@ ListReturn generic(BigObject HA) {
    result << CL.get_maximal_cones();
    result << CL.get_chamber_signatures();
    result << AC.get_lineality(sig);
+   result << CL.get_rays_in_hyperplanes();
    return result;
 }
 

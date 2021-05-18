@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -37,7 +37,7 @@ orbit(const Array<Matrix<double>>& gens, const Vector<double>& v)
     
 UserFunctionTemplate4perl("# @category Utilities"
                          "# The image of an object //O// under a group element //g//.  The action_type defines how //g// acts on //O//."
-			 "# For more informations see the help function on the action types."
+			 "# For more information see the help function on the action types."
                          "# @param Any g Group element"
                          "# @param Any O Container type like Array, Set, Matrix or Vector"
                          "# @tparam action_type must be compatible with //O// by default [[on_container]]"

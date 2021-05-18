@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -62,16 +62,25 @@ user_function induce_set_action($, $, String; { store_index_of => 0 } ) {
 function induce_permutation_action($$$$$; $=0, $=0) {
     my ($this, $from_action, $on_section, $name, $desc, $homogeneous_action, $canon) = @_;
     my $a = new PermutationAction($name);
-    my $on = $this->$on_section;
+    
+    # The variable $on holds the object we find the induced permutation on.
+    # Normally, this will be the property of $this specified by a string $on_section.
+    # However, we also allow the variable $on_section to directly specify an object to find the induced permutation on.
+    # This is necessary, for example, if the object is a matrix with non-homogenized first column, because if we read such a matrix as a property, it will have homogenized first column.
+    # We distinguish these cases by checking whether $on_section is a ref or not.
+    my $on = ref($on_section) ? $on_section : $this->$on_section;
     if (ref($canon) eq 'CODE') {
         # need a copy
         $on = $on->type->construct->($on);
         $canon->($on);
     }
     $a->GENERATORS = induced_permutations($this->GROUP->$from_action->GENERATORS, $on, homogeneous_action=>$homogeneous_action);
-    if (defined(my $cc = $this->lookup("GROUP." . $from_action . ".CONJUGACY_CLASS_REPRESENTATIVES"))) {
-        $a->CONJUGACY_CLASS_REPRESENTATIVES = induced_permutations($cc, $on, homogeneous_action=>$homogeneous_action);
-    }
+
+    # This is forbidden: This rule was producing properties just sometimes. Every time this function is called, we have to double up the rule calling it.
+    #if (defined(my $cc = $this->lookup("GROUP." . $from_action . ".CONJUGACY_CLASS_REPRESENTATIVES"))) {
+    #    $a->CONJUGACY_CLASS_REPRESENTATIVES = induced_permutations($cc, $this->$on_section, homogeneous_action=>$homogeneous_action);
+    #}
+
     $a->description = $desc;
     return $a;
 }
@@ -120,19 +129,19 @@ function perms2matrices<Scalar>(Matrix<Scalar>, Array<Array<Int>>, Matrix<Scalar
     return new Array<Matrix<Scalar>>(\@gens);
 }
 
-function induce_matrix_action<Scalar>($$$ Matrix<Scalar>) {
-    my ($this, $from_action, $from_section, $kernel) = @_;
-    my $a = new MatrixActionOnVectors<Scalar>("matrix_action");
-    $a->GENERATORS = perms2matrices($this->$from_section,
-                                    $this->GROUP->$from_action->GENERATORS,
-                                    $kernel);
-    if (defined(my $cc = $this->lookup("GROUP.$from_action.CONJUGACY_CLASS_REPRESENTATIVES"))) {
-        $a->CONJUGACY_CLASS_REPRESENTATIVES = perms2matrices($this->$from_section,
-                                                             $this->GROUP->$from_action->CONJUGACY_CLASS_REPRESENTATIVES,
-                                                             $kernel);
-    }
-    $a->description = "induced from action on $from_section";
-    return $a;
+function induce_matrix_action_generators<Scalar>($$$$ Matrix<Scalar>) {
+    my ($this, $to_action, $from_action, $from_section, $kernel) = @_;
+    $this->GROUP->$to_action->GENERATORS = perms2matrices($this->$from_section,
+                                                          $this->GROUP->$from_action->GENERATORS,
+                                                          $kernel);
+    $this->GROUP->$to_action->description = "induced from action on $from_section";
+}
+
+function induce_matrix_action_conjugacy_class_representatives<Scalar>($$$$ Matrix<Scalar>) {
+   my ($this, $to_action, $from_action, $from_section, $kernel) = @_;
+   $this->GROUP->$to_action->CONJUGACY_CLASS_REPRESENTATIVES = perms2matrices($this->$from_section,
+                                                                              $this->GROUP->$from_action->CONJUGACY_CLASS_REPRESENTATIVES,
+                                                                              $kernel);
 }
 
 # @category Symmetry
@@ -225,7 +234,6 @@ function induced_orbits_impl<Scalar>($$$, Scalar, { homog_action=>0, return_matr
     my ($c, $action_name, $generator_name, $dummy, $options) = @_;
     my $n = 0;
     my @reps = ();
-    my @orbits = ();
     my @pts_in_orbit_order = ();
     my $all_pts = new Set<Vector<Scalar>>;
     foreach(@{$c->GROUP->$action_name->$generator_name}) {
@@ -243,12 +251,6 @@ function induced_orbits_impl<Scalar>($$$, Scalar, { homog_action=>0, return_matr
         }
         push @reps, new Vector<Scalar>($one_orbit->[0]);
 
-        my $orbit_indices = new Set<Int>;
-        foreach($n..$n+$one_orbit->size()-1) {
-            $orbit_indices += $_;
-        }
-        push @orbits, $orbit_indices;
-
         foreach(@{$one_orbit}) {
             push @pts_in_orbit_order, new Vector<Scalar>($_);
         }
@@ -256,7 +258,6 @@ function induced_orbits_impl<Scalar>($$$, Scalar, { homog_action=>0, return_matr
         $n += $one_orbit->size();
     }
     my $a = new PermutationAction;
-    $a->ORBITS = \@orbits;
     $a->EXPLICIT_ORBIT_REPRESENTATIVE_MATRIX = new Matrix<Scalar>(\@reps);
     $a->description = "induced from $action_name";
     if ($options->{return_matrix} == 1) {

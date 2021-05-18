@@ -18,7 +18,7 @@
 #  Copyright (C) 2011-2015, Simon Hampe <simon.hampe@googlemail.com>
 #
 #  ---
-#  Copyright (c) 2016-2020
+#  Copyright (c) 2016-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -51,7 +51,7 @@ user_function divisor<Addition>(Cycle<Addition>; TropicalRationalFunction<Additi
 
 # @category Divisor computation
 # This function computes the divisor of one or more rational functions on a tropical cycle.
-# It should only be called, if the [[DOMAIN]] of all occuring cycles is the cycle itself. 
+# It should only be called, if the [[DOMAIN]] of all occurring cycles is the cycle itself. 
 # This function will be faster than [[divisor]], since it computes no refinements.
 # @param Cycle C A tropical cycle
 # @param TropicalRationalFunction F An arbitrary list of rational functions (r_1,...r_n). The [[DOMAIN]]

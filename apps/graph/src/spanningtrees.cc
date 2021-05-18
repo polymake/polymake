@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -54,7 +54,7 @@ Array<std::pair<Int,Int>> random_spanningtree(const Graph<>& G, OptionSet option
 
 UserFunction4perl("# @category Combinatorics"
                   "# Return a random spanning tree of a graph"
-                  "# @param Graph G beeing connected"
+                  "# @param Graph G being connected"
                   "# @return Array<Pair<Int,Int>> edges of spanning tree",
                   &random_spanningtree, "random_spanningtree($ {seed=>undef})");
 
@@ -65,7 +65,7 @@ UserFunction4perl("# @category Combinatorics"
                   "# of an array of the spanning trees and an array translating the indices used into actual edges,"
                   "# i.e. the i-th entry of the dictionary is a pair of integers representing the end nodes of the"
                   "# i-th edge."
-                  "# @param Graph G beeing connected"
+                  "# @param Graph G being connected"
                   "# @return Pair<Array<Set<Int>>, Array<Pair<Int,Int>>>"
                   "# @example The following prints all spanning trees of the complete graph with"
                   "# 3 nodes, whereby each line represents a single spanning tree as an edge set:"

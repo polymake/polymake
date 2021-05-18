@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_HUNGARIAN_METHOD_H
-#define POLYMAKE_HUNGARIAN_METHOD_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Graph.h"
@@ -396,7 +395,6 @@ public:
 } //end graph namespace
 } //end polymake namespace
 
-#endif // POLYMAKE_HUNGARIAN_METHOD_H
 
 // Local Variables:
 // mode:C++

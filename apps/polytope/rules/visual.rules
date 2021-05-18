@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -259,31 +259,78 @@ method VisualSimplices {
 }
 
 sub apply_bounding_facets($;$) {
-    my ($this,$bbox) = @_; # Polytope object, Matrix
-	 
-	 # if no facets are specified we simply make a box
-    # the surplus of 6/5 for the bounding box is just a random choice
-    $bbox //= bounding_box_facets($this->VERTICES, surplus_k=>6/5, fulldim=>1);
-    
-    my $bounded=$this->type->construct->($this->name."_bounded", INEQUALITIES => $this->FACETS / $bbox, EQUATIONS=>$this->AFFINE_HULL);
-    if (!$bounded->BOUNDED) {
-        die "apply_bounding_facets: Invalid bounding facets! There is an unbounded object.";
-    }
+   my ($this,$bbox) = @_; # Polytope object, Matrix
+   my $bounded=$this->type->construct->($this->name."_bounded", INEQUALITIES => $this->FACETS / $bbox, EQUATIONS=>$this->AFFINE_HULL);
+   if (!$bounded->BOUNDED) {
+      die "apply_bounding_facets: Invalid bounding facets! There is an unbounded object.";
+   }
+   return $bounded;
+}
 
-    # mark artificial facets
-    my $original_facets=new Map< Vector<Scalar>, Bool>;
-    $original_facets->{$_}=1 for @{$this->FACETS};
-    my $bbox_facets=new Set();
-    for (my $i=0; $i<$bounded->N_FACETS; ++$i) {
-        $bbox_facets+=$i unless exists $original_facets->{$bounded->FACETS->[$i]};
-    }
+sub map_to_deco {
+   my ($map,$mapkeys,$deco,$default) = @_;
+   # deco should be defined and not "hidden" (as long as not all backends handle "hidden" or undef returns of this specific code decor) 
+   my @new_array;
+   if (is_code($deco)) {
+      @new_array=map { exists($map->{$_}) ? $deco->($map->{$_}) : $default } @$mapkeys;
+   } elsif (is_like_array($deco)) {
+      @new_array=map { exists($map->{$_}) ? $deco->[$map->{$_}] : $default } @$mapkeys;
+   } elsif (is_like_hash($deco)) {
+      @new_array=map { exists($map->{$_}) ? $deco->{$map->{$_}} : $default } @$mapkeys;
+   } else {
+      @new_array=map { exists($map->{$_}) ? $deco : $default } @$mapkeys;
+   }
+   return \@new_array;
+}
 
-    my $vertex_map=new Map<Vector<Scalar>, Int>;
-    my $f=0;
-    $vertex_map->{$_}=$f++ for @{$this->VERTICES};
+sub convert_this_decor_to_bounded_decor {
+   my ($this,$bounded,$decor) = @_;
+   # this assumes that the user treats VertexDecor according to $this->VERTICES
+   # TODO?: VertexDecor for far points is currently thrown away. There are also cases of polytopes with lineality that even throw away bounded VERTICES and its decor
+   # In general the current visualization alters quite some combinatorics, which can be counterintuitive especially for new polymake users
+   # a more combinatorically friendly visualization could be a (common) bounding sphere
+   # and the distribution of decor of far points in $this->VERTICES to all intersections (of edges containing it) with the bounding box/sphere
+   # this could be an attempt to visualize combinatorics of rays and lineality space
+   # TODO?: this sub does not work for labels separated by spaces, 
+   # like in the old code, we ask for $bounded->FACETS before $bounded->VERTICES in order to trigger "cdd.convex_hull.canon : FACETS, LINEAR_SPAN :
+   # INEQUALITIES" in a prefer("lrs") environment otherwise we get a different permutation of VERTICES and FACETS 
+   my $facet_map=new Map<Vector<Scalar>, Int>;
+   my $j = 0;
+   $facet_map->{$_}=$j++ for @{$this->FACETS};
+   
+   if ($bounded->CONE_DIM==4) {
+      # mark artificial facets 
+      my $fc = $decor->{FacetColor} // $Visual::Color::facets;
+      $decor->{FacetColor} = map_to_deco($facet_map,\@{$bounded->FACETS},$fc,$Visual::Color::cutoff);
+      
+      my $fl = $decor->{FacetLabels};
+      if (defined ($fl) && $fl !~ $Visual::hidden_re) {
+         $decor->{FacetLabels} = map_to_deco($facet_map,\@{$bounded->FACETS},$fl," ");
+      }
+   }
 
-    return [ $bounded, $bbox_facets, $vertex_map ];
-    #        Polytope  Set<Int>      Map<Vector<Scalar>, Int>
+   my $vertex_map=new Map<Vector<Scalar>, Int>;
+   my $i = 0;
+   $vertex_map->{$_}=$i++ for @{$this->VERTICES};
+   
+   my $vl = $decor->{VertexLabels};
+   if ($vl !~ $Visual::hidden_re) {
+      if (defined($vl)) {
+         $decor->{VertexLabels} = map_to_deco($vertex_map,\@{$bounded->VERTICES},$vl," ");
+      } else {
+         # we provide labels if they're undefined in decor and VERTEX_LABELS
+         my @newarray = map { $vertex_map->{$_} // " " } @{$bounded->VERTICES};
+         $decor->{VertexLabels} = \@newarray;
+      }
+   }
+
+   my $vt = $decor->{VertexThickness} // 1;
+   $decor->{VertexThickness} = map_to_deco($vertex_map,\@{$bounded->VERTICES},$vt,0) if ($vt);
+
+   my $vc = $decor->{VertexColor};
+   if (defined ($vc)) {
+      $decor->{VertexColor} = map_to_deco($vertex_map,\@{$bounded->VERTICES},$vc,$Visual::Color::cutoff);
+   }
 }
 
 # @category Visualization
@@ -321,39 +368,44 @@ precondition : BOUNDED;
 # @hide
 user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : VERTICES, VIF_CYCLIC_NORMAL {
    my ($this, $decor, $geom)=@_;
+   $decor->{VertexLabels} //= $this->lookup("VERTEX_LABELS");
+   my $to_vis=$this;
+   $decor->{FacetLabels} //= $this->lookup("FACET_LABELS") // "hidden" if ($this->CONE_DIM==4);
 
-   my $vertex_labels=$this->lookup("VERTEX_LABELS");
-   my $to_visualize=$this;
-   my $bbox_facets={};
-
-   if (defined($geom->{BoundingFacets})) {
-       my $vertex_map={};
-       ($to_visualize, $bbox_facets, $vertex_map) = @{apply_bounding_facets($this,$geom->{BoundingFacets})};
-
-       my @vertex_labels=map { $vertex_map->{$_} // " " } @{$to_visualize->VERTICES};
-       $vertex_labels=\@vertex_labels;
+   
+   # we also allow to bound BOUNDED polytopes
+   my $bbox = $geom->{BoundingFacets};
+   if (defined($bbox)) {
+      my $offsets = $this->VERTICES*transpose($bbox);
+      OUTER: foreach my $row (@$offsets) {
+         foreach my $entry (@$row) {
+            if ($entry < 0) {
+               #only apply bounding facets if they have an effect
+               $to_vis = apply_bounding_facets($this,$geom->{BoundingFacets});
+               convert_this_decor_to_bounded_decor($this,$to_vis,$decor);
+               last outer;
+            }
+         }
+      }
    }
-
-   my $P= $this->CONE_DIM==3
-       ? new Visual::Polygon( Name => $this->name,
-                              Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}),
-                              VertexLabels => $this->lookup("VERTEX_LABELS"),
-                              Facet => $this->VIF_CYCLIC_NORMAL->[0],
-                              NEdges => $this->N_EDGES,
+   # visual boundings should not alter CONE_DIM (use the full_dim option in polytope::bounding_[box]_facets)
+   my $vis = $this->CONE_DIM==3
+       ? new Visual::Polygon( Name => $to_vis->name,
+                              Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($to_vis->VERTICES)),$geom->{Transformation},$geom->{Offset}),
+                              Facet => $to_vis->VIF_CYCLIC_NORMAL->[0],
+                              NEdges => $to_vis->N_EDGES,
                               $decor
        )
-       : new Visual::Polygons( Name => $this->name,
-                               Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($this->VERTICES)),$geom->{Transformation},$geom->{Offset}),
-                               VertexLabels => $this->lookup("VERTEX_LABELS"),
-                               Facets => $this->VIF_CYCLIC_NORMAL,
-                               FacetNormals => Visual::transform_float_facets(convert_to<Float>($this->FACETS),$geom->{Transformation},$geom->{Offset}),
-                               FacetNeighbors => $this->NEIGHBOR_FACETS_CYCLIC_NORMAL,
-                               FacetLabels => $this->lookup("FACET_LABELS") || "hidden",
+       : new Visual::Polygons( Name => $to_vis->name,
+                               Vertices => Visual::transform_float(dehomogenize(convert_to<Float>($to_vis->VERTICES)),$geom->{Transformation},$geom->{Offset}),
+                               Facets => $to_vis->VIF_CYCLIC_NORMAL,
+                               FacetNormals => Visual::transform_float_facets(convert_to<Float>($to_vis->FACETS),$geom->{Transformation},$geom->{Offset}),
+                               FacetNeighbors => $to_vis->NEIGHBOR_FACETS_CYCLIC_NORMAL,
                                Closed => 1,
-                               NEdges => $this->N_EDGES,
+                               NEdges => $to_vis->N_EDGES,
                                $decor
        );
-   visualize( new Visual::Polytope(Name => $this->name, Polytope => $this, $P));
+   visualize( new Visual::Polytope(Name => $this->name, Polytope => $this, $vis));
 }
 precondition : CONE_DIM { $this->CONE_DIM>=3 }
 precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
@@ -373,37 +425,15 @@ precondition : BOUNDED;
 # @hide
 user_method VISUAL(%Visual::Polygons::decorations, %geometric_options) : CONE_DIM {
    my ($this, $decor, $geom)=@_;
-
-   # since we are unbounded we have to cut off somewhere
-   my ($bounded, $bbox_facets, $vertex_map) = @{apply_bounding_facets($this,$geom->{BoundingFacets})};
-
-   my @vertex_labels;
-   if (defined (my $labels=$this->lookup("VERTEX_LABELS"))) {
-       @vertex_labels=map { $labels->[$vertex_map->{$_}] // " " } @{$bounded->VERTICES};
-   } else {
-       @vertex_labels=map { $vertex_map->{$_} // " " } @{$bounded->VERTICES};
-   }
-   $bounded->VERTEX_LABELS=\@vertex_labels;
-
-   my $dv = $decor->{VertexColor};
-   my @vertex_colors;
-   if (defined($dv) and ref($dv) eq "ARRAY") {
-       my @original_colors = @$dv;
-       @vertex_colors = map { $original_colors[$vertex_map->{$_}] // $Visual::Color::cutoff } @{$bounded->VERTICES};
-   }
-   my %to_merge=();
-   my $bv;
-
-   # now call VISUAL for bounded polyhedra
-   if ($bounded->CONE_DIM==4)  {
-       map { $to_merge{FacetColor}->{$_}=$Visual::Color::cutoff } @$bbox_facets;
-   }
-   if (scalar(@vertex_colors)>0) {
-       $decor->{VertexColor} = \@vertex_colors;
-   }
-	$bv = $bounded->VISUAL(VertexThickness => sub { $vertex_labels[$_[0]] ne " " }, $decor, $geom);
-   $bv->basis_solid->merge(%to_merge);
-   visualize($bv);
+   # if no facets are specified we simply make a box
+   # the surplus of 6/5 for the bounding box is just a random choice
+   # we delete the bbox from $geom so that it doesn't get applied a second time in $bounded->VISUAL
+   my $bbox = delete $geom->{BoundingFacets} // bounding_box_facets($this->VERTICES, surplus_k=>6/5, fulldim=>1);
+   my $bounded = apply_bounding_facets($this,$bbox);
+   $decor->{VertexLabels} //= $this->lookup("VERTEX_LABELS"); 
+   $decor->{FacetLabels} //= $this->lookup("FACET_LABELS") // "hidden" if ($this->CONE_DIM==4);
+   convert_this_decor_to_bounded_decor($this,$bounded,$decor);
+	visualize($bounded->VISUAL($decor, $geom));
 }
 precondition : CONE_AMBIENT_DIM { $this->CONE_AMBIENT_DIM<=4 }
 precondition : !BOUNDED;

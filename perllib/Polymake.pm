@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -49,11 +49,12 @@ require JSON;
 # Global variables
 #
 
-declare $Version = "4.3";
+declare $Version = "4.4";
 declare $VersionNumber = eval "v$Version";    # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
          $PrivateDir,           # where the user's private settings, wrappers, etc. dwell
+         $Settings,             # user's preferences, custom variables, auto-configuration
         );
 
 declare $Shell = new NoShell;   # alternatively: Shell object listening to the console or some pipe
@@ -79,10 +80,10 @@ require Polymake::TempChangeDir;
 require Polymake::OverwriteFile;
 require Polymake::Overload;
 require Polymake::Schema;
-require Polymake::Core::Customize;
+require Polymake::Core::UserSettings;
 require Polymake::Core::Preference;
-require Polymake::User;
 require Polymake::Core::Help;
+require Polymake::User;
 require Polymake::Core::PropertyType;
 require Polymake::Core::Property;
 require Polymake::Core::Permutation;
@@ -98,17 +99,15 @@ require Polymake::Core::Extension;
 require Polymake::Core::CPlusPlus;
 require Polymake::Core::StoredScript;
 require Polymake::Core::RuleFilter;
-require Polymake::Core::UserSettings;
 
 package Polymake::Core;
 
-declare $Custom = new Customize;
 declare $Prefs = new Preference;
 declare $enable_plausibility_checks = true;
 
-my @custom_blocks;
-sub add_custom_vars {
-   push @custom_blocks, @_;
+my @settings_callbacks;
+sub add_settings_callback {
+   push @settings_callbacks, @_;
 }
 
 ########################################################################
@@ -143,7 +142,7 @@ sub greeting {
 
    my @messages = ("polymake version $full_version", <<'.' . $mainURL . "\n", <<'.');
 
-Copyright (c) 1997-2020
+Copyright (c) 1997-2021
 Ewgenij Gawrilow, Michael Joswig, and the polymake team
 Technische Universität Berlin, Germany
 .
@@ -158,7 +157,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 # initialize some modules in proper order
 # "config path" =>
 sub init {
-   Core::UserSettings::init(@_, @custom_blocks);
+   $Settings = Core::UserSettings::init(@_);
+   $_->($Settings) for @settings_callbacks;
+   @settings_callbacks = ();
    Core::Extension::init();
    Core::CPlusPlus::init();
 }

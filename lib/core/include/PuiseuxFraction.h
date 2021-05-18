@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PUISEUX_FRACTION_H
-#define POLYMAKE_PUISEUX_FRACTION_H
+#pragma once
 
 #include <cstddef>
 #include "polymake/Rational.h"
@@ -1360,7 +1359,6 @@ namespace std {
    };
 }
 
-#endif // POLYMAKE_PUISEUX_FRACTION_H
 
 // Local Variables:
 // mode:C++

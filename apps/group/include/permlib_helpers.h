@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GROUP_DATAHELPERS_H_
-#define POLYMAKE_GROUP_DATAHELPERS_H_
+#pragma once
 
 namespace polymake { namespace group {
 
@@ -63,4 +62,3 @@ IntType** polymakeArray2Arrays(const Array<Array<Int>>& array)
 
 }} // end NS
 
-#endif

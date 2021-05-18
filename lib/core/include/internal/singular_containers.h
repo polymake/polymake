@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_SINGULAR_CONSTANT_CONTAINERS_H
-#define POLYMAKE_SINGULAR_CONSTANT_CONTAINERS_H
+#pragma once
 
 #include "polymake/internal/shared_object.h"
 
@@ -363,7 +362,6 @@ namespace polymake {
    using pm::same_value;
 }
 
-#endif // POLYMAKE_INTERNAL_CONSTANT_CONTAINERS_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -49,10 +49,18 @@ BigObject weighted_digraph_polyhedron(const GenericMatrix<MatrixType, Scalar>& W
 }
 
 UserFunctionTemplate4perl("# @category Producing a polytope from graphs"
-                          "# Weighted digraph polyhedron of a directed graph with a weight function."
+                          "# Weighted digraph polyhedron of a directed graph with a weight function as studied in"
+                          "#   Joswig, Loho: Weighted digraph polyhedra and tropical cones, LAA (2016)."
                           "# The graph and the weight function are combined into a matrix."
                           "# @param Matrix encoding weighted digraph"
-                          "# @return polytope::Polytope",
+                          "# @return polytope::Polytope"
+                          "# @example This digraph has two nodes and a single arc (with weight 2)."
+                          "# > $enc = new Matrix([[0,2],[\"inf\",0]]);"
+                          "# > $Q = weighted_digraph_polyhedron($enc);"
+                          "# > print $Q->FACETS;"
+                          "# | 2 -1 1"
+                          "# | 1 0 0"
+                          "# These are the one defining inequality and the trivial inequality, which contains the far face.",
                           "weighted_digraph_polyhedron<Scalar>(Matrix<Scalar,_>)");
 } }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Vector.h
     @brief Implementation of pm::Vector class
  */
 
-#ifndef POLYMAKE_VECTOR_H
-#define POLYMAKE_VECTOR_H
 
 #include "polymake/GenericVector.h"
 #include "polymake/internal/shared_object.h"
@@ -217,7 +216,6 @@ namespace std {
    void swap(pm::Vector<E>& v1, pm::Vector<E>& v2) { v1.swap(v2); }
 }
 
-#endif // POLYMAKE_VECTOR_H
 
 // Local Variables:
 // mode:C++

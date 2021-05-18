@@ -1,6 +1,6 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
-   Technische Universit䴠Berlin, Germany
+   Technische Universität Berlin, Germany
    https://polymake.org
 
    This program is free software; you can redistribute it and/or modify it

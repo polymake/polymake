@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -80,7 +80,7 @@ BigObject check_poly(const IncidenceMatrix<>& VIF, OptionSet options)
       max_d--;
       if (verbose) cout << "\n" << F << "\n" << endl;
 
-      F = ridges(entire(F));
+      F = ridges(F);
       d++;
    }
 

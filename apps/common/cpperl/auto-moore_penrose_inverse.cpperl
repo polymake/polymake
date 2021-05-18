@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<double>&>"], "func": "moore_penrose_inverse", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "moore_penrose_inverse.X"},
+ null ],
+"version": 3}

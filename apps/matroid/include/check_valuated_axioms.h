@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MATROID_CHECK_VALUATED_AXIOMS_H
-#define POLYMAKE_MATROID_CHECK_VALUATED_AXIOMS_H
+#pragma once
 
 #include "polymake/Rational.h"
 #include "polymake/list"
@@ -180,7 +179,6 @@ bool check_valuated_circuit_axioms(const Matrix<TropicalNumber<Addition,Scalar>>
 
 } }
 
-#endif // POLYMAKE_MATROID_CHECK_VALUATED_AXIOMS_H
 
 // Local Variables:
 // mode:C++

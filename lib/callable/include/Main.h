@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MAIN_H
-#define POLYMAKE_MAIN_H
+#pragma once
 
 #ifdef POLYMAKE_APPNAME
 #error polymake::Main cannot be used in clients
@@ -234,7 +233,6 @@ using pm::perl::Scope;
 
 }
 
-#endif // POLYMAKE_MAIN_H
 
 // Local Variables:
 // mode:C++

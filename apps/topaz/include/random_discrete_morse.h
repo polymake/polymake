@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_TOPAZ_RANDOM_DISCRETE_MORSE_H
-#define POLYMAKE_TOPAZ_RANDOM_DISCRETE_MORSE_H
+#pragma once
 
 namespace polymake { namespace topaz {
 
@@ -25,4 +24,3 @@ Map<Array<Int>, Int> random_discrete_morse(const Lattice<BasicDecoration>& orig_
 
 } }
 
-#endif // POLYMAKE_TOPAZ_RANDOM_DISCRETE_MORSE_H

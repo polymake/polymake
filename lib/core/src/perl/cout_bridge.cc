@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -16,6 +16,13 @@
 */
 
 #include "polymake/perl/cout_bridge.h"
+#include "polymake/internal/PlainParser.h"
+
+namespace polymake { namespace perl {
+
+std::ostream cout{nullptr};
+
+} }
 
 namespace pm { namespace perl { namespace glue {
 
@@ -70,14 +77,11 @@ int ostreambuf_bridge::sync()
 void connect_cout(pTHX)
 {
    static ostreambuf_bridge cout_bridge_buf(aTHX_ get_named_variable(aTHX_ "STDOUT", SVt_PVGV));
-   cout.rdbuf(&cout_bridge_buf);
+   polymake::perl::cout.rdbuf(&cout_bridge_buf);
+   pm::cout.set_ostream(polymake::perl::cout);
 }
 
-}
-
-std::ostream cout(nullptr);
-
-} }
+} } }
 
 // Local Variables:
 // mode:C++

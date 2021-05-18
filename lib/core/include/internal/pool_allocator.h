@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
-#define POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
+#pragma once
 
 #include <cstddef>
 #include <memory>
@@ -61,7 +60,6 @@ public:
 
 #undef PM_ALLOCATOR_BASE
 
-#endif // POLYMAKE_INTERNAL_POOL_ALLOCATOR_H
 
 // Local Variables:
 // mode:C++

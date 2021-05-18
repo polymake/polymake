@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -55,7 +55,7 @@ Map<Rational, Rational> sum_of_square_roots_naive(const Array<Rational>& a)
 
 UserFunction4perl("# @category Arithmetic"
 		  "# Make a naive attempt to sum the square roots of the entries of the input array."
-		  "# @param Array<Rational> input_array a list of rational numbers (other coefficents are not implemented)."
+		  "# @param Array<Rational> input_array a list of rational numbers (other coefficients are not implemented)."
 		  "# @return Map<Rational, Rational> a map collecting the coefficients of roots encountered in the sum."
 		  "# @example To obtain sqrt{3/4} + sqrt{245}, type"
                   "# > print sum_of_square_roots_naive(new Array<Rational>([3/4, 245]));"

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef __POLYMAKE_GROUP_INDUCED_ACTION_H
-#define __POLYMAKE_GROUP_INDUCED_ACTION_H
+#pragma once
 
 #include "polymake/group/orbit.h"
 #include "polymake/Array.h"
@@ -108,7 +107,6 @@ Array<Array<Int>> induced_permutations_impl(const Array<PERM>& original_permutat
 
   }}
 
-#endif // __POLYMAKE_GROUP_INDUCED_ACTION_H
 
 
 // Local Variables:

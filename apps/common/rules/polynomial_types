@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -151,8 +151,8 @@ declare property_type Polynomial<Coefficient=Rational, Exponent=Int> \
    user_method reset_var_names(:static) : c++;
 
    type_method init {
-      my ($proto)=@_;
-      if (defined (my $names=$polynomial_var_names{$proto->pkg})) {
+      my ($proto) = @_;
+      if (defined(my $names = $polynomial_var_names{$proto->pkg})) {
          set_var_names($proto, $names);
       }
    }
@@ -178,11 +178,11 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
 
    method pow(*) : operator ** : c++;
 
-   # The highest degree occuring in the polynomial.
+   # The highest degree occurring in the polynomial.
    # @return Exponent
    user_method deg() : c++;
 
-   # The lowest degree occuring in the polynomial.
+   # The lowest degree occurring in the polynomial.
    # @return Exponent
    user_method lower_deg() : c++;
 
@@ -250,8 +250,8 @@ declare property_type UniPolynomial<Coefficient=Rational, Exponent=Int> \
    user_method reset_var_names(:static) : c++;
 
    type_method init {
-      my ($proto)=@_;
-      if (defined (my $names=$polynomial_var_names{$proto->pkg})) {
+      my ($proto) = @_;
+      if (defined(my $names = $polynomial_var_names{$proto->pkg})) {
          set_var_names($proto, $names);
       }
    }
@@ -310,36 +310,16 @@ user_function get_var_names<PolynomialType>[ polynomial_type(PolynomialType) ]()
 #                         an empty list resets to the default naming scheme
 
 user_function set_var_names<PolynomialType>[ polynomial_type(PolynomialType) ](@) {
-   my $pkg=polynomial_type(typeof PolynomialType)->pkg;
+   my $pkg = polynomial_type(typeof PolynomialType)->pkg;
 
-   if (@_==0) {
-      self()->_reset_custom(undef, "%polynomial_var_names", $pkg);
+   if (@_ == 0) {
+      delete $polynomial_var_names{$pkg};
       $pkg->reset_var_names;
       return;
    }
-   my $names=prepare_var_names(@_, $pkg);
-   self()->_set_custom(undef, "%polynomial_var_names", $pkg, $names);
-   $pkg->set_var_names($names);
-}
-
-# @category Arithmetic
-# Set the list of variable names for given polynomial class temporarily.
-# The existing name list or the default scheme is restored at the end of the current user cycle,
-# similarly to [[prefer_now]].
-# @param String names ... variable names, see [[set_var_names]].
-
-user_function local_var_names<PolynomialType>[ polynomial_type(PolynomialType) ](@) {
-   my $pkg = polynomial_type(typeof PolynomialType)->pkg;
    my $names = prepare_var_names(@_, $pkg);
-   my $saver = new VarNameSaver($pkg, exists $polynomial_var_names{$pkg} ? @{ $pkg->get_var_names } : ());
-   local with($Scope->locals) {
-      local $polynomial_var_names{$pkg} = $saver;
-   }
-   if (@$names) {
-      $pkg->set_var_names($names);
-   } else {
-      $pkg->reset_var_names;
-   }
+   $polynomial_var_names{$pkg} = $names;
+   $pkg->set_var_names($names);
 }
 
 package VarNameSaver;
@@ -359,6 +339,27 @@ sub DESTROY {
 }
 
 package application;
+my $var_name_saver;
+
+# @category Arithmetic
+# Set the list of variable names for given polynomial class temporarily.
+# The existing name list or the default scheme is restored at the end of the current user cycle,
+# similarly to [[prefer_now]].
+# @param String names ... variable names, see [[set_var_names]].
+
+user_function local_var_names<PolynomialType>[ polynomial_type(PolynomialType) ](@) {
+   my $pkg = polynomial_type(typeof PolynomialType)->pkg;
+   my $names = prepare_var_names(@_, $pkg);
+   local with($Scope->locals) {
+      local scalar $var_name_saver = new VarNameSaver($pkg, exists $polynomial_var_names{$pkg} ? @{ $pkg->get_var_names } : ());
+      local $polynomial_var_names{$pkg} = $names;
+   }
+   if (@$names) {
+      $pkg->set_var_names($names);
+   } else {
+      $pkg->reset_var_names;
+   }
+}
 
 sub prepare_var_names {
    my $pkg=pop;
@@ -530,7 +531,6 @@ sub parse_polynomial {
 user_function gcd(UniPolynomial, UniPolynomial) : c++;
 
 
-# the same with type deduction
 # @category Algebraic Types
 # @tparam Coefficient default: [[Rational]]
 # @tparam Exponent default: [[Int]]

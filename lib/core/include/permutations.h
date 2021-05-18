@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERMUTATIONS_H
-#define POLYMAKE_PERMUTATIONS_H
+#pragma once
 
 #include "polymake/GenericMatrix.h"
 #include "polymake/Integer.h"
@@ -279,7 +278,67 @@ permuted_inv(const Container& c, const Permutation& perm)
    return result;
 }
 
-
+namespace operations {
+
+template <typename Container, typename Permutation>
+struct permute {
+   using first_argument_type = const Container&;
+   using second_argument_type = const Permutation&;
+   using result_type = decltype(pm::permuted(std::declval<first_argument_type>(), std::declval<second_argument_type>()));
+
+   result_type operator() (first_argument_type c, second_argument_type perm) const
+   {
+      return pm::permuted(c, perm);
+   }
+};
+
+template <typename Container, typename Permutation>
+struct permute_inv {
+   using first_argument_type = const Container&;
+   using second_argument_type = const Permutation&;
+   using result_type = decltype(pm::permuted_inv(std::declval<first_argument_type>(), std::declval<second_argument_type>()));
+
+   result_type operator() (first_argument_type c, second_argument_type perm) const
+   {
+      return pm::permuted_inv(c, perm);
+   }
+};
+
+}
+
+template <typename Container, typename Permutation>
+std::enable_if_t<std::is_same<typename object_traits<Container>::model, is_container>::value,
+                 Array<Container>>
+permuted_elements(const Array<Container>& arr, const Permutation& perm)
+{
+   return Array<Container>(arr.size(), attach_operation(arr, same_value(perm), operations::permute<Container, Permutation>()).begin());
+}
+
+template <typename Container, typename Permutation>
+std::enable_if_t<std::is_same<typename object_traits<Container>::model, is_container>::value,
+                 Array<Container>>
+permuted_elements_inv(const Array<Container>& arr, const Permutation& perm)
+{
+   return Array<Container>(arr.size(), attach_operation(arr, same_value(perm), operations::permute_inv<Container, Permutation>()).begin());
+}
+
+template <typename Container, typename Comparator, typename Permutation>
+std::enable_if_t<std::is_same<typename object_traits<Container>::model, is_container>::value,
+                 Set<Container, Comparator>>
+permuted_elements(const Set<Container, Comparator>& set, const Permutation& perm)
+{
+   return Set<Container, Comparator>(entire(attach_operation(set, same_value(perm), operations::permute<Container, Permutation>())));
+}
+
+template <typename Container, typename Comparator, typename Permutation>
+std::enable_if_t<std::is_same<typename object_traits<Container>::model, is_container>::value,
+                 Set<Container, Comparator>>
+permuted_elements_inv(const Set<Container, Comparator>& set, const Permutation& perm)
+{
+   return Set<Container, Comparator>(entire(attach_operation(set, same_value(perm), operations::permute_inv<Container, Permutation>())));
+}
+
+
 enum permutation_sequence {
    permutations_heap,
    permutations_adjacent,
@@ -702,7 +761,7 @@ permutation_subgroup_generators(const Array<Permutation>& gens,
 {
    Map<Int, Int> index_of;
    Int index = 0;
-   for (const auto& s: subdomain)
+   for (const auto s: subdomain)
       index_of[s] = index++;
    
    Set<Array<Int>> subgens;
@@ -711,7 +770,7 @@ permutation_subgroup_generators(const Array<Permutation>& gens,
    for (const auto& g: gens) {
       Array<Int> candidate_gen(subdomain.size());
       bool candidate_ok(true);
-      for (const auto& i: subdomain) {
+      for (const auto i: subdomain) {
          if (!index_of.exists(g[i])) {
             candidate_ok = false;
             break;
@@ -744,7 +803,6 @@ namespace polymake {
    using pm::permutation_subgroup_generators;
 }
 
-#endif // POLYMAKE_PERMUTATIONS_H
 
 // Local Variables:
 // mode:C++

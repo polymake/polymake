@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_MATRIX_LINALG_H
-#define POLYMAKE_MATRIX_LINALG_H
+#pragma once
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -197,7 +196,6 @@ solve_left(const GenericMatrix<TMatrix1, E>& A, const GenericMatrix<TMatrix2, E>
 
 } // end namespace pm
 
-#endif // POLYMAKE_MATRIX_LINALG_H
 
 // Local Variables:
 // mode:C++

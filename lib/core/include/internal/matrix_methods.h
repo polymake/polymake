@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_MATRIX_METHODS_H
-#define POLYMAKE_INTERNAL_MATRIX_METHODS_H
+#pragma once
 
 #include "polymake/IndexedSubset.h"
 #include "polymake/ContainerChain.h"
@@ -136,11 +135,17 @@ decltype(auto) T(TMatrix&& m)
 }
 
 template <typename TMatrix>
-class Rows< Transposed<TMatrix> > : public Cols<TMatrix> {};
+class Rows< Transposed<TMatrix> > : public Cols<TMatrix> {
+protected:
+   ~Rows();
+};
 
 template <typename TMatrix>
-class Cols< Transposed<TMatrix> > : public Rows<TMatrix> {};
-
+class Cols< Transposed<TMatrix> > : public Rows<TMatrix> {
+protected:
+   ~Cols();
+};
+
 /* ------------------------------------------------
  *  Methods defined for all matrices,
  *  depending on Rows::category and Cols::category
@@ -879,7 +884,6 @@ void swap(pm::BlockMatrix<MatrixList, rowwise>& m1, pm::BlockMatrix<MatrixList, 
 
 }
 
-#endif // POLYMAKE_INTERNAL_MATRIX_METHODS_H
 
 // Local Variables:
 // mode:C++

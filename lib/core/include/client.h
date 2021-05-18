@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_CLIENT_H
-#define POLYMAKE_CLIENT_H
+#pragma once
 
 #include "polymake/perl/constants.h"
 #include "polymake/perl/Value.h"
@@ -41,8 +40,8 @@ using pm::perl::AnchorArg;
 using pm::perl::load_data;
 using pm::perl::save_data;
 using pm::perl::get_custom;
-using pm::perl::cout;
 
+extern std::ostream cout;
 }
 
 using pm::perl::BigObject;
@@ -130,7 +129,6 @@ namespace polymake { namespace perl_bindings {
 ///==== Automatically generated contents end here.  Please do not delete this line. ====
 } }
 
-#endif // POLYMAKE_CLIENT_POLYMAKE_H
 
 // Local Variables:
 // mode:C++

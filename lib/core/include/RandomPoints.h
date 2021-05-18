@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_RANDOM_SPHERE_POINTS_H
-#define POLYMAKE_RANDOM_SPHERE_POINTS_H
+#pragma once
 
 #include "polymake/RandomGenerators.h"
 #include <cmath>
@@ -227,7 +226,6 @@ using pm::RandomNormalPoints;
 
 }
 
-#endif // POLYMAKE_RANDOM_SPHERE_POINTS_H
 
 // Local Variables:
 // mode:C++

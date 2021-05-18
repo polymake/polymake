@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GROUP_REPRESENTATIONS_H
-#define POLYMAKE_GROUP_REPRESENTATIONS_H
+#pragma once
 
 #include "polymake/Array.h"
 #include "polymake/hash_map"
@@ -89,7 +88,6 @@ public:
 
 } }
 
-#endif // POLYMAKE_GROUP_REPRESENTATIONS_H
 
 
 // Local Variables:

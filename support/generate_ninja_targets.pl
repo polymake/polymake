@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -213,7 +213,7 @@ build $obj_file : cxxcompile $src_file_in_rules$pre_gen
    }
 
    if ($bundled) {
-      if (defined (my $staticlib_flags=delete $custom_flags{staticlib})) {
+      if (defined(my $staticlib_flags = delete $custom_flags{staticlib})) {
          process_staticlib($app, $staticlib_flags, $pre_gen, $bundled, $link_flags);
       }
       if (length($ConfigFlags{"bundled.$bundled.LDFLAGS"})) {
@@ -300,7 +300,7 @@ build $obj_file : cxxcompile $src_dir/$src_file$pre_gen
    check_for_unknown_flags($staticlib_flags, "flags for staticlib in $app");
 
    $lib_name="$out_dir/lib$lib_name.a";
-   $out .= "build $lib_name : staticlib " . join(" ", @obj_files) . "\n";
+   $out .= "build $lib_name : staticlib @obj_files\n";
    push @{$link_flags->{staticlibs}}, $lib_name;
    push @{$link_flags->{staticlibcmds}}, $out;
 }
@@ -375,7 +375,7 @@ sub generate_targets {
          print $B "bundled.$bundled.includes=", (map { " -I$_" } @includes), "\n\n";
       }
       close $B;
-      print "include \${builddir}/bundled_flags.ninja\n";
+      print "include \${buildroot}/bundled_flags.ninja\n";
    } else {
       # an extension might depend on bundled extensions, in particular the private wrapper collection
       if (my @prereq_bundled=grep { /^\w+$/ } @prereq_exts) {
@@ -464,10 +464,10 @@ build \${buildtop}/.apps.built : emptyfile | @all_app_targets
    if ($core_mode) {
       if ($ConfigFlags{LDcallableFLAGS} ne "none") {
          print <<"---";
-build \${builddir}/applib/fake.c : gen_applib_stubs @all_app_targets
-build \${buildtop}/lib/callable/fake.o : ccompile \${builddir}/applib/fake.c
+build \${buildroot}/applib/fake.c : gen_applib_stubs @all_app_targets
+build \${buildtop}/lib/callable/fake.o : ccompile \${buildroot}/applib/fake.c
   CextraFLAGS=-DPOLYMAKE_FAKE_FUNCTIONS
-build \${buildtop}/lib/callable/stub.o : ccompile \${builddir}/applib/fake.c
+build \${buildtop}/lib/callable/stub.o : ccompile \${buildroot}/applib/fake.c
 
 ---
       }
@@ -536,12 +536,13 @@ sub generate_corelib_targets {
 
    my $Ext_module="\${buildtop}/\${perlxpath}/auto/Polymake/Ext/Ext.$Config::Config{dlext}";
 
-   my ($callable_libname, $callable_link, $fakeapps_libname, $fakeapps_link, $stubapps_libname, $stubapps_link);
+   my ($callable_libname, $callable_link, $fakeapps_libname, $fakeapps_link, $stubapps_libname, $stubapps_link, $corelib_archive);
    if ($ConfigFlags{LDcallableFLAGS} ne "none") {
       my $callable_version = extract_polymake_version($root);
       ($callable_libname, $callable_link) = compose_sharedlib_names("polymake", $callable_version);
       ($fakeapps_libname, $fakeapps_link) = compose_sharedlib_names("polymake-apps", $callable_version);
       ($stubapps_libname, $stubapps_link) = compose_sharedlib_names("polymake-apps-rt", $callable_version);
+      $corelib_archive = "libpolymake-core.a";
       print <<"---";
 callable_lib =\${buildtop}/\${perlxpath}/$callable_libname
 callable_link=\${buildtop}/\${perlxpath}/$callable_link
@@ -549,11 +550,12 @@ fakeapps_lib =\${buildtop}/lib/callable/$fakeapps_libname
 fakeapps_link=\${buildtop}/lib/callable/$fakeapps_link
 stubapps_lib =\${buildtop}/lib/callable/$stubapps_libname
 stubapps_link=\${buildtop}/lib/callable/$stubapps_link
+corelib_archive=\${buildtop}/lib/$corelib_archive
 ---
    }
 
    if (!$testscenario_pico_mode) {
-      my (@corelib_objects, @callable_objects);
+      my (@corelib_objects, @corelib_xs_objects, @callable_objects);
 
       # perl-independent modules
       my $out_dir = '${buildtop}/lib/core';
@@ -574,7 +576,7 @@ stubapps_link=\${buildtop}/lib/callable/$stubapps_link
       my @perl_cc = glob("$root/lib/core/src/perl/*.cc");
       my @perl_xxs = glob("$root/lib/core/src/perl/*.xxs");
       push @all_source_files, @perl_cc, @perl_xxs;
-      my @cc_from_xxs = map { "\${builddir}/\${perlxpath}/".basename($_, "xxs").".cc" } @perl_xxs;
+      my @cc_from_xxs = map { "\${buildroot}/\${perlxpath}/".basename($_, "xxs").".cc" } @perl_xxs;
 
       foreach my $src_file (@cc_from_xxs) {
          my $xxs_file = shift(@perl_xxs);
@@ -593,7 +595,7 @@ stubapps_link=\${buildtop}/lib/callable/$stubapps_link
          my ($src_name, $obj_file) = basename($src_file, "cc");
          $src_file =~ s/^\Q$root\E/$srcrootname/;
          $obj_file="$out_dir/$obj_file.o";
-         push @corelib_objects, $obj_file;
+         push @corelib_xs_objects, $obj_file;
          print "build $obj_file : cxxcompile $src_file\n",
                "  CXXextraFLAGS = $glue_custom_flags{CXXFLAGS} $glue_custom_flags{$src_name}\n",
                $mode_flags,
@@ -601,7 +603,7 @@ stubapps_link=\${buildtop}/lib/callable/$stubapps_link
       }
 
       print <<"---";
-build $Ext_module : sharedmod @corelib_objects
+build $Ext_module : sharedmod @corelib_objects @corelib_xs_objects
   LIBSextra=$glue_custom_flags{LIBS}
 
 ---
@@ -611,7 +613,7 @@ build $Ext_module : sharedmod @corelib_objects
       if ($ConfigFlags{LDcallableFLAGS} ne "none") {
          my %callable_custom_flags=read_custom_script("$root/lib/callable/src/perl/build_flags.pl");
          print <<"---";
-bootstrapXS.h=\${builddir}/\${perlxpath}/polymakeBootstrapXS.h
+bootstrapXS.h=\${buildroot}/\${perlxpath}/polymakeBootstrapXS.h
 build \${bootstrapXS.h} : gen_xs_bootstrap @cc_from_xxs
 
 ---
@@ -624,11 +626,11 @@ build \${bootstrapXS.h} : gen_xs_bootstrap @cc_from_xxs
             print "build $obj_file : cxxcompile $src_file || \${bootstrapXS.h}\n",
                   "  CXXextraFLAGS = $callable_custom_flags{CXXFLAGS} $callable_custom_flags{$src_name} $glue_custom_flags{CXXFLAGS}\n",
                   $mode_flags,
-                  "  CXXincludes= -I\${builddir}/\${perlxpath} \${core.includes} -I\${root}/include/callable\n\n";
+                  "  CXXincludes= -I\${buildroot}/\${perlxpath} \${core.includes} -I\${root}/include/callable\n\n";
          }
 
          print <<"---";
-build \${callable_lib} : sharedmod @corelib_objects @callable_objects
+build \${callable_lib} : sharedmod @corelib_objects @corelib_xs_objects @callable_objects
   LDsharedFLAGS=\${LDcallableFLAGS}
   LDextraFLAGS=\${LDsonameFLAGS}$callable_libname \${LIBperlFLAGS}
   LIBSextra=$glue_custom_flags{LIBS}
@@ -644,6 +646,8 @@ build \${stubapps_lib} : sharedmod \${buildtop}/lib/callable/stub.o
   LDextraFLAGS=\${LDsonameFLAGS}$stubapps_libname
 build \${stubapps_link} : symlink_samedir \${stubapps_lib}
 
+build \${corelib_archive} : staticlib @corelib_objects
+
 ---
          push @all_source_dirs, "$root/lib/callable/src/perl";
       }
@@ -653,6 +657,7 @@ build \${stubapps_link} : symlink_samedir \${stubapps_lib}
       print <<"---";
 build all.libs : phony $Ext_module \${callable_link}
 build callable-apps-libs : phony \${fakeapps_link} \${stubapps_link}
+build all.corelib : phony \${corelib_archive}
 ---
       return ('callable-apps-libs',
               '--xs '.$Ext_module.' --callable ${callable_lib} ${callable_link} --fakelibs ${stubapps_lib} ${stubapps_link} ${fakeapps_lib} ${fakeapps_link}');
@@ -800,7 +805,7 @@ build $filename_in_rules : inspect @all_inputs || @all_generated
 }
 ########################################################################################
 sub generate_filelist_rules {
-   my %file_in_rules=map { ($_ => s/\Q$builddir\E/\${builddir}/r) }
+   my %file_in_rules=map { ($_ => s/\Q$builddir\E/\${buildroot}/r) }
                      $source_list_file, $cpperl_list_file, $cpperl_gen_file;
 
    my $after_cpperl_gen="";

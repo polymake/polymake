@@ -21,5 +21,6 @@
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<pm::VectorChain<mlist<pm::SameElementVector<pm::Rational> const, pm::Vector<pm::Rational> const&> >>&>>", "perl::AnchorArg<perl::Canned<pm::Complement<pm::SingleElementSetCmp<Int, pm::operations::cmp> const>>>"], "func": "slice", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "kind": "meth", "ret": "lvalue", "sig": "slice:F:M14.X11"},
   {"args": ["perl::AnchorArg<perl::Canned<Wary<Vector<Rational>>>>", "perl::AnchorArg<perl::Canned<pm::Series<Int, true>>>"], "func": "slice", "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "kind": "meth", "ret": "lvalue", "sig": "slice:F:M14.X11"},
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<Int, true> const, mlist<> >>&>>", "perl::TryCanned<const Array<Int>>"], "func": "slice", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "kind": "meth", "ret": "lvalue", "sig": "slice:F:M14.X11"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<Vector<Int>>&>>", "perl::AnchorArg<perl::Canned<const Set<Int>&>>"], "func": "slice", "include": ["polymake/Set.h", "polymake/Vector.h"], "kind": "meth", "ret": "lvalue", "sig": "slice:F:M14.X11"},
  null ],
 "version": 3}

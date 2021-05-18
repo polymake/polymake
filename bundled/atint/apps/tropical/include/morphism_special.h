@@ -18,7 +18,7 @@
 	Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
 	---
-	Copyright (c) 2016-2020
+	Copyright (c) 2016-2021
 	Ewgenij Gawrilow, Michael Joswig, and the polymake team
 	Technische Universität Berlin, Germany
 	https://polymake.org
@@ -26,8 +26,7 @@
 	Functions to create special morphisms.
 	*/
 
-#ifndef POLYMAKE_ATINT_MORPHISM_SPECIAL_H
-#define POLYMAKE_ATINT_MORPHISM_SPECIAL_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Matrix.h"
@@ -238,4 +237,3 @@ BigObject forgetful_map(Int n, const Set<Int>& leaves_to_forget)
 
 } }
 
-#endif

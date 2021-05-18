@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_ITERATORS_H
-#define POLYMAKE_INTERNAL_ITERATORS_H
+#pragma once
 
 #include "polymake/internal/type_manip.h"
 #include "polymake/internal/converters_basic_defs.h"
@@ -2826,7 +2825,6 @@ namespace polymake {
    using pm::allow_conversion;
 } // end namespace polymake
 
-#endif // POLYMAKE_INTERNAL_ITERATORS_H
 
 // Local Variables:
 // mode:C++

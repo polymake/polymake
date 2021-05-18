@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GENERIC_IO_H
-#define POLYMAKE_GENERIC_IO_H
+#pragma once
 
 #include "polymake/internal/sparse.h"
 #include "polymake/internal/shared_object.h"
@@ -1224,7 +1223,6 @@ struct is_writeable {
 
 }
 
-#endif // POLYMAKE_GENERIC_IO_H
 
 // Local Variables:
 // mode:C++

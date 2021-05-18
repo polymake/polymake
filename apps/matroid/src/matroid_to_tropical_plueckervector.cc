@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -66,7 +66,7 @@ ListReturn matroid_plueckervector(BigObject matroid)
 BigObject matroid_from_characteristic_vector(const Vector<Integer>& vec, const Int r, const Int n)
 {
    if (vec.dim() != Integer::binom(n,r)) {
-      throw std::runtime_error("matroid_from_characteristic_vector: dimension of the vector does not fit with the given rank and the number of elments");
+      throw std::runtime_error("matroid_from_characteristic_vector: dimension of the vector does not fit with the given rank and the number of elements");
    }
    std::list<Set<Int>> bases;
    Int n_bases = 0;

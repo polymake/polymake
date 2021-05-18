@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -204,14 +204,6 @@ sub disable_rules {
    $application->disable_rules(@_);
 }
 #################################################################################
-sub set_custom {
-   $application->_set_custom($Core::Prefs->custom, Core::name_of_custom_var(1));
-}
-
-sub reset_custom {
-   $application->_reset_custom($Core::Prefs->custom, Core::name_of_custom_var(0));
-}
-#################################################################################
 sub script {
    my $name = shift;
    replace_special_paths($name);
@@ -256,44 +248,48 @@ namespaces::memorize_lexical_scope;
 namespaces::intercept_operation(undef, "print", "bool");
 
 #################################################################################
-# prepare for custom variables and preferences
+# prepare custom variables
 
 package Polymake::User::Verbose;
 *Polymake::Verbose::=get_symtab(__PACKAGE__);
 
-Core::add_custom_vars sub {
-   my $ch = $Core::Prefs->create_custom("Polymake::User");
+Core::add_settings_callback sub {
+   my ($settings) = @_;
+   my %docs;
 
-   $ch->pkg_help->{__PACKAGE__}=<<'.';
-# The following variables control the display of various informational message classes.
-.
-   declare $credits=1;
-   $ch->add('$credits', <<'.');
+   declare $credits = 1;
+   $settings->add_item("Polymake::User::Verbose::credits", \$credits,
+                       $docs{'$Polymake::User::Verbose::credits'} = <<'.', 0);
 # Display the copyright notices and URLs of third-party software:
 # 0 - never, 1 - at the first use in the current session, 2 - always
 .
-   declare $rules=1;
-   $ch->add('$rules', <<'.');
+   declare $rules = 1;
+   $settings->add_item("Polymake::User::Verbose::rules", \$rules,
+                       $docs{'$Polymake::User::Verbose::rules'} = <<'.', 0);
 # Display the information about the rules:
 # 0 - nothing, 1 - significant failures, 2 - summary and all failed preconditions, 3 - executed rule executed
 .
-   declare $scheduler=0;
-   $ch->add('$scheduler', <<'.');
+   declare $scheduler = 0;
+   $settings->add_item("Polymake::User::Verbose::scheduler", \$scheduler,
+                       $docs{'$Polymake::User::Verbose::scheduler'} = <<'.', 0);
 # Reveal the internals of the rule scheduler:
 # 0 - nothing, 1 - summary and statistics, 2 - initial rule selection,
 # 3 - shortest path search (overwhelming amount of data)
 .
-   declare $cpp=0;
-   $ch->add('$cpp', <<'.');
+   declare $cpp = 0;
+   $settings->add_item("Polymake::User::Verbose::cpp", \$cpp,
+                       $docs{'$Polymake::User::Verbose::cpp'} = <<'.', 0);
 # Tell about the actions of the perl/C++ interface generator:
 # 0 - nothing, 1 - compiler calls and source file updates, 2 - source code generated
 .
-   declare $files=1;
-   $ch->add('$files', <<'.');
+   declare $files = 1;
+   $settings->add_item("Polymake::User::Verbose::files", \$files,
+                       $docs{'$Polymake::User::Verbose::files'} = <<'.', 0);
 # Notify about nontrivial actions during data file processing
 .
-   declare $external=0;
-$ch->add('$external', <<'.');
+   declare $external = 0;
+   $settings->add_item("Polymake::User::Verbose::external", \$external,
+                       $docs{'$Polymake::User::Verbose::external'} = <<'.', 0);
 # Notify about external programs starting in the background
 # (not to be mixed up with credits!)
 .
@@ -301,62 +297,72 @@ $ch->add('$external', <<'.');
    package Polymake::User;
 
    declare @start_applications;
-   $ch->add('@start_applications', <<'.');
+   $settings->add_item("Polymake::User::start_applications", \@start_applications,
+                       $docs{'@start_applications'} = <<'.', 0);
 # Applications to be loaded at the beginning of each interactive or batch session
 .
    declare $default_application;
-   $ch->add('$default_application', <<'.');
+   $settings->add_item("Polymake::User::default_application", \$default_application,
+                       $docs{'$default_application'} = <<'.', 0);
 # Application to start with as the current one
 .
    declare @extensions;
-   $ch->add('@extensions', <<'.', Core::Customize::State::accumulating);
+   $settings->add_item("Polymake::User::extensions", \@extensions,
+                       $docs{'@extensions'} = <<'.', Core::UserSettings::Item::Flags::accumulating);
 # A list of directories containing imported and/or locally created extensions
 .
-   declare %disabled_extensions;
-   $ch->add('%disabled_extensions', <<'.', Core::Customize::State::config | Core::Customize::State::hidden | Core::Customize::State::noexport);
-# Extensions which could not be configured for given architecture
-.
    declare @lookup_scripts;
-   $ch->add('@lookup_scripts', <<'.', Core::Customize::State::accumulating);
+   $settings->add_item("Polymake::User::lookup_scripts", \@lookup_scripts,
+                       $docs{'@lookup_scripts'} = <<'.', Core::UserSettings::Item::Flags::accumulating);
 # A list of directories where to look for scripts
 .
-   declare $history_size=200;
-   $ch->add('$history_size', <<'.');
+   declare $init_script;
+   $settings->add_item("Polymake::User::init_script", \$init_script,
+                       $docs{'$init_script'} = <<'.', 0);
+# Script executed at the beginning of every session.
+# If specified without absolute path, looked up in the private settings directory (~/.polymake).
+# The script can perform custom initialization actions, e.g. define simple shortcut commands,
+# amend package lookup paths, or load additional rule files.
+.
+   declare $history_size = 200;
+   $settings->add_item("Polymake::User::history_size", \$history_size,
+                       $docs{'$history_size'} = <<'.', 0);
 # Maximal number of commands stored in the interactive shell's history.
 # If set to undef, history list grows unlimited.
 .
-   declare $history_editor=$ENV{VISUAL} || $ENV{EDITOR} || "vi";
-   $ch->add('$history_editor', <<'.');
+   declare $history_editor = $ENV{VISUAL} || $ENV{EDITOR} || "vi";
+   $settings->add_item("Polymake::User::history_editor", \$history_editor,
+                       $docs{'$history_editor'} = <<'.', 0);
 # Editor for the ''history'' command.
 # Must be a complete shell command. If the temporary file name is expected somewhere in the middle
 # of the arguments, please use the placeholder %f.
 .
-   declare $help_key="_k1";
-$ch->add('$help_key', <<'.');
+   declare $help_key = "_k1";
+   $settings->add_item("Polymake::User::help_key", \$help_key,
+                       $docs{'$help_key'} = <<'.', 0);
 # Key to press for interactive help in the shell.  Defaults to F1.
 .
-   declare $help_delimit=1;
-$ch->add('$help_delimit', <<'.');
+   declare $help_delimit = 1;
+   $settings->add_item("Polymake::User::help_delimit", \$help_delimit,
+                       $docs{'$help_delimit'} = <<'.', 0);
 # Add delimiters for better readability in help text.
 .
-
-   $ch->cleanup;
-   $ch->end_loading;
-
-   # rescue the old-fashioned lookup_applications list
-   if (defined (my $lookup_apps=*lookup_applications{ARRAY})) {
-      push @extensions, @$lookup_apps;
-      $ch->set('@extensions');
-   }
 
    # treat relative paths as starting at $HOME
    s{^(?:~/|(?!/))}{$ENV{HOME}/} for @extensions, @lookup_scripts;
 
    if (!@start_applications) {
-      $ch->set('@start_applications', map { m{apps/([^/]+)/rules} } glob("$InstallTop/apps/*/rules/main.rules"));
+      @start_applications = map { m{apps/([^/]+)/rules} } glob("$InstallTop/apps/*/rules/main.rules");
    }
    if (!$default_application) {
-      $ch->set('$default_application', string_list_index(\@start_applications, "polytope")>=0 ? "polytope" : $start_applications[0]);
+      $default_application = string_list_index(\@start_applications, "polytope") >= 0 ? "polytope" : $start_applications[0];
+   }
+
+   Core::Help::add_activation_callback sub {
+      my ($help) = @_;
+      while (my ($varname, $text) = each %docs) {
+         $help->add(['custom', $varname], $text);
+      }
    }
 };
 

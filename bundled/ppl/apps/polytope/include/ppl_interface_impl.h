@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_PPL_INTERFACE_IMPL_H
-#define POLYMAKE_POLYTOPE_PPL_INTERFACE_IMPL_H
+#pragma once
 
 #include <cstddef> // needed for gcc 4.9, see http://gcc.gnu.org/gcc-4.9/porting_to.html
 
@@ -390,7 +389,6 @@ LP_Solver<Scalar>::solve(const Matrix<Scalar>& Inequalities, const Matrix<Scalar
 
 } } }
 
-#endif // POLYMAKE_POLYTOPE_PPL_INTERFACE_IMPL_H
 
 // Local Variables:
 // mode:C++

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GROUP_ORBITS_H
-#define POLYMAKE_GROUP_ORBITS_H
+#pragma once
 
 
 #include <polymake/Array.h>
@@ -116,7 +115,6 @@ orbit_representatives(const Array<GeneratorType>& generators)
 }
 }
 
-#endif
 
 // Local Variables:
 // mode:C++

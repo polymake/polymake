@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Matrix.h
     @brief Implementation of pm::Matrix class
  */
 
-#ifndef POLYMAKE_MATRIX_H
-#define POLYMAKE_MATRIX_H
 
 #include "polymake/GenericMatrix.h"
 #include "polymake/internal/shared_object.h"
@@ -491,7 +490,6 @@ void swap(pm::Matrix<E>& m1, pm::Matrix<E>& m2) { m1.swap(m2); }
 
 }
 
-#endif // POLYMAKE_MATRIX_H
 
 // Local Variables:
 // mode:C++

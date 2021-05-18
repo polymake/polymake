@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,7 +21,7 @@
 #include "polymake/client.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
-#include "polymake/PowerSet.h"
+#include "polymake/FacetList.h"
 
 /*
 Chari, Manoj K.
@@ -32,14 +32,14 @@ Discrete Math. 217 (2000), no. 1-3, 101-113.
 
 namespace polymake { namespace topaz {
 
-bool is_generalized_shelling(const Array<Set<Int>>& FaceList, OptionSet options)
+bool is_generalized_shelling(const Array<Set<Int>>& faceList, OptionSet options)
 {
   const bool verbose = options["verbose"];
  
   std::vector<Int> h; // h-vector
   bool success = true; // let's be optimistic
 
-  for (auto i=entire(FaceList); !i.at_end(); ++i) {
+  for (auto i=entire(faceList); !i.at_end(); ++i) {
     const Set<Int>& thisFace(*i);
     const Int thisSize = thisFace.size();
     const Int thisDim = thisSize-1;
@@ -53,8 +53,8 @@ bool is_generalized_shelling(const Array<Set<Int>>& FaceList, OptionSet options)
     }
 
     // collect maximal intersection with previous facets
-    PowerSet<Int> maxIntersections;
-    for (auto j = entire(FaceList); j != i; ++j)
+    FacetList maxIntersections;
+    for (auto j = entire(faceList); j != i; ++j)
       maxIntersections.insertMax(thisFace*(*j));
     
     // examine the intersections
@@ -77,7 +77,7 @@ bool is_generalized_shelling(const Array<Set<Int>>& FaceList, OptionSet options)
     } else { // bad cases
       success=false;
       if (verbose) {
-	cout << "Bad face " << thisFace << " with intersections " << maxIntersections << "\n";
+	cout << "Bad face " << thisFace << " with intersections " << as_list(maxIntersections) << "\n";
       }
     }
   }

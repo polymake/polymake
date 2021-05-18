@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,13 +15,12 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file Set.h
     @brief Implementation of pm::Set class
 */
 
 
-#ifndef POLYMAKE_SET_H
-#define POLYMAKE_SET_H
 
 #include "polymake/internal/AVL.h"
 #include "polymake/internal/tree_containers.h"
@@ -821,7 +820,6 @@ namespace std {
    void swap(pm::Set<E,Comparator>& s1, pm::Set<E,Comparator>& s2) { s1.swap(s2); }
 }
 
-#endif // POLYMAKE_SET_H
 
 // Local Variables:
 // mode:C++

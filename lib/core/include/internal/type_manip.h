@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_TYPE_MANIP_H
-#define POLYMAKE_INTERNAL_TYPE_MANIP_H
+#pragma once
 
 #include "polymake/internal/pool_allocator.h"
 #include "polymake/meta_list.h"
@@ -1552,7 +1551,6 @@ namespace polymake {
    using pm::All;
 }
 
-#endif // POLYMAKE_INTERNAL_TYPE_MANIP_H
 
 // Local Variables:
 // mode:C++

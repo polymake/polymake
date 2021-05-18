@@ -1,5 +1,8 @@
 {"app": "common",
  "inst": [
   {"args": ["Int", "Int"], "func": "div_exact", "include": ["polymake/numerical_functions.h"], "sig": "div_exact.X16.X16"},
+  {"args": ["perl::Canned<Matrix<Rational>&>", "Int"], "func": "div_exact", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "kind": "meth", "sig": "div_exact:M1.X"},
+  {"args": ["perl::Canned<Vector<Rational>&>", "Int"], "func": "div_exact", "include": ["polymake/Rational.h", "polymake/Vector.h"], "kind": "meth", "sig": "div_exact:M1.X"},
+  {"args": ["perl::Canned<Vector<Int>&>", "Int"], "func": "div_exact", "include": ["polymake/Vector.h"], "kind": "meth", "sig": "div_exact:M1.X"},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -101,7 +101,7 @@ weight 0.1;
 
 # If no [[LINEALITY_SPACE]] is given, it is assumed to be trivial.
 # Note: as there is only one target this rule is only called if LINEALITY_SPACE has not been written by the user, but RAYS have been.
-rule LINEALITY_SPACE : RAYS, MAXIMAL_CONES {
+rule LINEALITY_SPACE : RAYS {
    $this->LINEALITY_SPACE=new Matrix<Scalar>(0, $this->RAYS->cols);
 }
 weight 0.10;
@@ -207,12 +207,11 @@ rule MAXIMAL_CONES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DI
 }
 weight 1.10;
 
-rule CONES : HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, N_RAYS {
-   my $d=$this->HASSE_DIAGRAM->rank;
-   $this->CONES=[ map {
-                     my @rows=map { $this->HASSE_DIAGRAM->DECORATION->[$_]->face } @{$this->HASSE_DIAGRAM->nodes_of_rank($_)};
-                     @rows ? new IncidenceMatrix(\@rows, $this->N_RAYS) : new IncidenceMatrix(0, $this->N_RAYS)
-                  } 1..$d-1 ];
+rule CONES : HASSE_DIAGRAM { #.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE, N_RAYS {
+    my $d=$this->HASSE_DIAGRAM->rank;
+    $this->CONES(temporary)=[ map {
+                    $this->HASSE_DIAGRAM->cones_of_dim($_)
+                       } 1..$d-1 ];
 }
 weight 1.20;
 

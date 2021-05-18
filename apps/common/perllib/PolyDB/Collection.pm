@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -212,6 +212,15 @@ sub insert_one {
 }
 
 
+sub insert_many {
+   my ($collection, $query) = @_;
+   try {
+      $collection->SUPER::insert_many([ @$query ]);
+   } catch {
+      die_neatly($_, $collection);
+   }
+}
+
 # the current date as a string in the form yyyy-mm-dd
 sub get_date {
    my $now = `date '+%Y-%m-%d'`;
@@ -256,6 +265,37 @@ sub insert_or_replace {
 
    return 1;
 }
+
+sub insert_array_impl {
+   my ($self, $obj_array_ref, $options) = @_;
+
+   my $metadata = ();
+   ($metadata->{section}, $metadata->{collection}) = $self->{name} =~ /([\w.]+)\.([\w-]+)/;
+   if ( defined($options->{uri}) ) {
+      $metadata->{uri} = $options->{uri};
+   }
+
+   $metadata->{creation_date} = defined($options->{creation_date}) ? $options->{creation_date} : get_date();
+   $metadata->{version} = $PolyDB::default::db_polydb_version;
+
+   my $polymake_object_array = [];
+   foreach my $obj (@$obj_array_ref) {
+      print "adding ".$obj->name."\n" if $options->{verbose};
+      $obj->remove_attachment("polyDB");
+      $obj->attach("_polyDB",$metadata);
+      my $polymake_object = $options->{schema} ? Core::Serializer::serialize($obj, { schema => $options->{schema} } ) : Core::Serializer::serialize($obj);
+      $polymake_object->{_ns}->{polymake}->[1] = $options->{polymake_version} // $Polymake::Version;
+      $polymake_object->{_id} = $obj->name; # objects must have a unique name in the collection. This is not checked!
+      push @$polymake_object_array, $polymake_object;
+   }
+
+   print "writing to database\n" if $options->{verbose};
+   my $output = $self->insert_many($polymake_object_array);
+   die "Error while inserting into database\n" if !$output->acknowledged;
+
+   return 1;
+}
+
 
 1;
 

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -29,10 +29,6 @@ package PolyDB::Collection;
 # @category Database Collection Administration
 # Common options for database insertions
 options %insert_options = (
-   # String id provide an id for the object to be written. 
-   # Can only be used if a single object is written into the database. 
-   # If not given, or for arrays of objects the name of the object is used as id
-   id => undef, 
    # Bool use_schema use the schema for to collection stored in the database 
    # to project the object so that it contains 
    # precisely the required properties
@@ -50,28 +46,30 @@ options %insert_options = (
    # String polymake_version The minimal version needed to read the object from the database, can also be set in collection info
    # precedence: options > info > current version
    polymake_version => undef,
-   # Bool replace if true, an object with the same id in the database will be overwritten if it exists, otherwise it will be inserted
-   replace => false, 
    # Bool verbose if true provides some status output for the insert
-   verbose => false, 
-   # Bool noinsert if true the object is only prepared according to the schema, 
-   # but not written into the database
-   # useful for testing
-   noinsert => false
+   verbose => false
 );
 
 # @category Database Collection Administration
-# Insert one or more objects into a given collection
-# @param Core::BigObject one or more objects to be inserted 
-# to be inserted into the database, or a filename containing an object or an array of objects
-# @options %insert_options
-# @return Int the number of objects written
-user_method insert(Core::BigObject+, %insert_options) {
-   my ($self, $obj, $options) = @_;
+# Additional options if objects are added one by one
+options %insert_one_options = (
+   %insert_options,
+   # String id provide an id for the object to be written. 
+   # Can only be used if a single object is written into the database. 
+   # If not given, or for arrays of objects the name of the object is used as id
+   id => undef, 
+   # Bool replace if true, an object with the same id in the database will be overwritten if it exists, otherwise it will be inserted
+   replace => false,
+   # Bool noinsert if true the object is only prepared according to the schema, 
+   # but not written into the database
+   # useful for testing
+   noinsert => false 
+);
 
-   croak "no object given\n" if scalar(@$obj) == 0;
+sub prepare_schema_and_info {
+   my ($self, $options) = @_;
+
    $options->{use_schema} = false if defined($options->{schema});
-
    if ($options->{use_schema} ) {
       croak "options use_schema and info cannot be used together\n"   if defined($options->{info});
       croak "options use_schema and schema cannot be used together\n" if defined($options->{schema});
@@ -83,6 +81,19 @@ user_method insert(Core::BigObject+, %insert_options) {
       $options->{uri} //= $options->{info}->{uri};
       $options->{polymake_version} //= $options->{info}->{polymake_version};
    }
+}
+
+# @category Database Collection Administration
+# Insert one or more objects into a given collection
+# @param Core::BigObject one or more objects to be inserted 
+# @options %insert_one_options
+# @return Int the number of objects written
+user_method insert(Core::BigObject+, %insert_one_options) {
+   my ($self, $obj, $options) = @_;
+
+   croak "no object given\n" if scalar(@$obj) == 0;
+
+   prepare_schema_and_info($self,$options);
    
    my $count = 0;
    if ( scalar(@$obj) > 1  ) {
@@ -97,6 +108,19 @@ user_method insert(Core::BigObject+, %insert_options) {
    print "Inserted $count objects.\n\n" if ($options->{verbose});
    return $count;
 }
+
+# @category Database Collection Administration
+# Insert array of objects into a given collection, basic operation, use only for new collections
+# @param Array objects to be inserted 
+# @options %insert_options
+user_method insert_array(Core::BigObject+, %insert_options) {
+   my ($self, $obj, $options) = @_;
+
+   croak "no object given\n" if scalar(@$obj) == 0;
+   prepare_schema_and_info($self,$options);
+   $self->insert_array_impl($obj, $options);
+}
+
 
 # @category Database Collection Administration
 # Remove one object from a collection identified by its id

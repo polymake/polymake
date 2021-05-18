@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef _POLYMAKE_SIMPLE_ROOTS_H
-#define _POLYMAKE_SIMPLE_ROOTS_H
+#pragma once
 
 #include "polymake/SparseMatrix.h"
 #include "polymake/Rational.h"
@@ -84,7 +83,6 @@ SparseMatrix<QuadraticExtension<Rational> > simple_roots_type_H4 ();
 
 } }
 
-#endif // _POLYMAKE_SIMPLE_ROOTS_H
 
 // Local Variables:
 // mode:C++

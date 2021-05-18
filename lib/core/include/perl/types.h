@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PERL_TYPES_H
-#define POLYMAKE_PERL_TYPES_H
+#pragma once
 
 #include <functional>
 
@@ -372,7 +371,6 @@ public:
 
 } }
 
-#endif // POLYMAKE_PERL_TYPES_H
 
 // Local Variables:
 // mode:C++

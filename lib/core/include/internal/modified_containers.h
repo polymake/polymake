@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_INTERNAL_MODIFIED_CONTAINERS_H
-#define POLYMAKE_INTERNAL_MODIFIED_CONTAINERS_H
+#pragma once
 
 #include "polymake/internal/singular_containers.h"
 #include "polymake/internal/SeriesRaw.h"
@@ -1512,7 +1511,6 @@ using pm::single_value_as_container;
 
 }
 
-#endif // POLYMAKE_INTERNAL_MODIFIED_CONTAINERS_H
 
 // Local Variables:
 // mode:C++

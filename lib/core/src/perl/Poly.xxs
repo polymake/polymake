@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -84,13 +84,6 @@ GV* retrieve_gv(pTHX_ OP* o, OP* const_op, SV** const_sv, PERL_CONTEXT* cx, PERL
    return gv;
 }
 
-SV* compose_varname(pTHX_ OP* o, OP* const_op, SV** const_sv, const char prefix, PERL_CONTEXT* cx, PERL_CONTEXT* cx_bottom)
-{
-   GV* gv = retrieve_gv(aTHX_ o, const_op, const_sv, cx, cx_bottom);
-   SV* varname = newSVpvf("%c%.*s::%.*s", prefix, PmPrintHvNAME(GvSTASH(gv)), PmPrintGvNAME(gv));
-   return sv_2mortal(varname);
-}
-
 OP* convert_eval_to_sub(pTHX)
 {
    CV* cv = cxstack[cxstack_ix].blk_sub.cv;
@@ -107,11 +100,6 @@ MAGIC* array_flags_magic(pTHX_ SV* sv)
    return mg_findext(sv, PERL_MAGIC_ext, &array_flags_vtbl);
 }
 
-}
-
-int canned_dup(pTHX_ MAGIC* mg, CLONE_PARAMS* param)
-{
-   return 0;
 }
 
 OP* select_method_helper_op(pTHX)
@@ -276,6 +264,15 @@ OP* is_hash(pTHX)
    dSP;
    dTOPss;
    SV* result = SvROK(sv) && !SvOBJECT(SvRV(sv)) && SvTYPE(SvRV(sv)) == SVt_PVHV ? &PL_sv_yes : &PL_sv_no;
+   SETs(result);
+   RETURN;
+}
+
+OP* is_scalar_ref(pTHX)
+{
+   dSP;
+   dTOPss;
+   SV* result = SvROK(sv) && !SvOBJECT(SvRV(sv)) && SvTYPE(SvRV(sv)) <= SVt_PVMG ? &PL_sv_yes : &PL_sv_no;
    SETs(result);
    RETURN;
 }
@@ -823,24 +820,17 @@ PPCODE:
    }
 }
 
-void swap_arrays(SV* avref1, SV* avref2)
+void swap_deref(SV* ref1, SV* ref2)
 PPCODE:
 {
-   if (!SvROK(avref1) || !SvROK(avref2))
-      croak_xs_usage(cv, "\\@array1, \\@array2");
-   AV* av1 = (AV*)SvRV(avref1);
-   AV* av2 = (AV*)SvRV(avref2);
-   if (SvTYPE(av1) != SVt_PVAV || SvTYPE(av2) != SVt_PVAV)
-      croak_xs_usage(cv, "\\@array1, \\@array2");
-   XPVAV* any1 = SvANY(av1);
-   U32 flags1 = SvFLAGS(av1);
-   SvANY(av1) = SvANY(av2);
-   SvFLAGS(av1) = SvFLAGS(av2);
-   SvANY(av2) = any1;
-   SvFLAGS(av2) = flags1;
-   SV** array1 = AvARRAY(av1);
-   AvARRAY(av1) = AvARRAY(av2);
-   AvARRAY(av2) = array1;
+   // exchange two scalars/objects/lists/hashes behind given references
+   if (!SvROK(ref1) || !SvROK(ref2))
+      croak_xs_usage(cv, "$ref1, $ref2");
+   SV* sv1 = SvRV(ref1);
+   SV* sv2 = SvRV(ref2);
+   std::swap(SvANY(sv1), SvANY(sv2));
+   std::swap(SvFLAGS(sv1), SvFLAGS(sv2));
+   std::swap(sv1->sv_u, sv2->sv_u);
 }
 
 void capturing_group_boundaries(SV* name)
@@ -944,86 +934,6 @@ PPCODE:
       XPUSHs(var_sv);
    else
       XPUSHs(&PL_sv_undef);
-}
-
-void name_of_custom_var(I32 expect_assignment)
-PPCODE:
-{
-   // to keep things easier, only recognize assignments to whole arrays/hashes and hash element with literally given keys
-
-   for (PERL_CONTEXT *cx_bottom=cxstack, *cx=cx_bottom+cxstack_ix; cx >= cx_bottom; --cx) {
-      if (CxTYPE(cx)==CXt_SUB && !skip_debug_frame(aTHX_ cx)) {
-         OP* o=cx->blk_oldcop->op_next;
-         if (o->op_type == OP_PUSHMARK) {
-            o=OpSIBLING(o);
-            if (o) {
-               bool allow_scalar=false, allow_list=false;
-               if (expect_assignment) {
-                  switch (o->op_type) {
-                  case OP_SASSIGN:
-                     o=cBINOPo->op_last;                        // descend to the last SASSIGN operand = lhs term
-                     allow_scalar=true;
-                     break;
-                  case OP_AASSIGN:
-                     o=cLISTOPo->op_last;                       // descend to the last AASSIGN operand = lhs list
-                     o=OpSIBLING(cUNOPo->op_first);             // pushmark, then lhs item: must be alone
-                     allow_list= o && !OpHAS_SIBLING(o);
-                     break;
-                  }
-               } else {
-                  allow_scalar=allow_list=true;
-               }
-               switch (o->op_type) {
-               case OP_NULL:
-                  if (allow_scalar) {
-                     o=cUNOPo->op_first;
-                     switch (o->op_type) {
-                     case OP_GVSV:
-                        XPUSHs(compose_varname(aTHX_ o, 0, 0, '$', cx, cx_bottom));
-                        break;
-#if PerlVersion >= 5220
-                     case OP_MULTIDEREF:
-                        {
-                           const UNOP_AUX_item* aux_items = cUNOP_AUXo->op_aux;
-                           const UV actions = aux_items->uv;
-                           if (actions == (MDEREF_HV_gvhv_helem | MDEREF_INDEX_const | MDEREF_FLAG_last)) {
-                              SV *key_sv;
-                              XPUSHs(compose_varname(aTHX_ o, 0, &key_sv, '%', cx, cx_bottom));
-                              XPUSHs(key_sv);
-                           }
-                        }
-                        break;
-#endif
-                     }
-                  }
-                  break;
-               case OP_HELEM:
-                  if (allow_scalar) {
-                     o=cUNOPo->op_first;                        // hash element: hash reference comes first
-                     if (o->op_type == OP_RV2HV) {
-                        OP* key_op=OpSIBLING(o);
-                        if (key_op && key_op->op_type == OP_CONST) {
-                           SV* key_sv;
-                           XPUSHs(compose_varname(aTHX_ cUNOPo->op_first, key_op, &key_sv, '%', cx, cx_bottom));
-                           XPUSHs(key_sv);
-                        }
-                     }
-                  }
-                  break;
-               case OP_RV2AV:
-                  if (allow_list)
-                     XPUSHs(compose_varname(aTHX_ cUNOPo->op_first, 0, 0, '@', cx, cx_bottom));
-                  break;
-               case OP_RV2HV:
-                  if (allow_list)
-                     XPUSHs(compose_varname(aTHX_ cUNOPo->op_first, 0, 0, '%', cx, cx_bottom));
-                  break;
-               }
-            }
-         }
-         break;
-      }
-   }
 }
 
 void get_array_flags(SV* avref)
@@ -1202,7 +1112,6 @@ BOOT:
       CvNODEBUG_on(get_cv("Polymake::capturing_group_boundaries", FALSE));
       CvNODEBUG_on(get_cv("Polymake::Core::name_of_arg_var", FALSE));
       CvNODEBUG_on(get_cv("Polymake::Core::name_of_ret_var", FALSE));
-      CvNODEBUG_on(get_cv("Polymake::Core::name_of_custom_var", FALSE));
       CvNODEBUG_on(get_cv("Polymake::Core::rescue_static_code", FALSE));
    }
    CvFLAGS(get_cv("Polymake::readonly", FALSE)) |= CVf_NODEBUG | CVf_LVALUE;

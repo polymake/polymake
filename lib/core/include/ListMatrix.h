@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,12 +15,11 @@
 --------------------------------------------------------------------------------
 */
 
+#pragma once
 /** @file ListMatrix.h
     @brief Implementation of pm::ListMatrix class
  */
 
-#ifndef POLYMAKE_LIST_MATRIX_H
-#define POLYMAKE_LIST_MATRIX_H
 
 #include "polymake/GenericMatrix.h"
 #include "polymake/internal/CombArray.h"
@@ -315,7 +314,6 @@ namespace polymake {
    using pm::ListMatrix;
 }
 
-#endif // POLYMAKE_LIST_MATRIX_H
 
 // Local Variables:
 // mode:C++

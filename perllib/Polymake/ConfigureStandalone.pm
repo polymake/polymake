@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2020
+#  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -390,10 +390,11 @@ sub write_build_ninja_file {
 
    print $conf <<"---";
 builddir=$builddir
+buildroot=$builddir
 buildmode=$mode
-buildtop=\${builddir}/\${buildmode}
+buildtop=\${buildroot}/\${buildmode}
 build.file=$filename
-config.file=\${builddir}/config.ninja
+config.file=\${buildroot}/config.ninja
 ---
    if ($include_list) {
       print $conf <<"---";
@@ -412,7 +413,7 @@ include \${config.file}
    if ($options{perlxpath}) {
       print $conf <<"---";
 perlxpath=$options{perlxpath}
-include \${builddir}/\${perlxpath}/config.ninja
+include \${buildroot}/\${perlxpath}/config.ninja
 ---
    }
    print $conf $options{addvars}, <<"---";
@@ -422,10 +423,10 @@ CexternModeFLAGS=\${Cextern${mode}FLAGS}
 CmodeCACHE=\${C${mode}CACHE}
 LDmodeFLAGS=\${LD${mode}FLAGS}
 
-include \${builddir}/targets.ninja
+include \${buildroot}/targets.ninja
 
 # should rerun the target generation if any of the included files changes
-build \${build.file}: phony | $depends \${builddir}/targets.ninja
+build \${build.file}: phony | $depends \${buildroot}/targets.ninja
 ---
 
    close $conf;
@@ -437,6 +438,7 @@ build \${build.file}: phony | $depends \${builddir}/targets.ninja
 # https://en.wikipedia.org/wiki/Xcode#Toolchain_versions
 sub xcode2clang_version {
    my $ver = eval "v$XcodeVersion";
+   return "10.0" if $ver ge v12.0;
    return "8.0" if $ver ge v11.0;
    return "7.0" if $ver ge v10.2;
    return "6.0" if $ver ge v10.0;

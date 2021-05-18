@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_PLUCKER_H
-#define POLYMAKE_PLUCKER_H
+#pragma once
 
 #include "polymake/Integer.h"
 #include "polymake/Vector.h"
@@ -235,7 +234,6 @@ namespace std {
 }
 */
 
-#endif // POLYMAKE_PLUCKER_H
 
 // Local Variables:
 // mode:C++

@@ -5,5 +5,6 @@
   {"args": ["perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>"], "func": "far_points", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "far_points.X"},
   {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "func": "far_points", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "far_points.X"},
   {"args": ["perl::Canned<const Matrix<double>&>"], "func": "far_points", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "far_points.X"},
+  {"args": ["perl::Canned<const Matrix<PuiseuxFraction<Max, Rational, Rational>>&>"], "func": "far_points", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "far_points.X"},
  null ],
 "version": 3}

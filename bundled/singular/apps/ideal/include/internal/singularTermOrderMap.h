@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_IDEAL_SINGULAR_TERM_ORDER_MAP_H
-#define POLYMAKE_IDEAL_SINGULAR_TERM_ORDER_MAP_H
+#pragma once
 
 #include "polymake/Map.h"
 #include "polymake/ideal/internal/singularTermOrderData.h"
@@ -66,5 +65,4 @@ public:
 } // end namespace ideal
 } // end namespace polymake
 
-#endif
 

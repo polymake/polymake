@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_GRAPH_ALL_SPANNINGTREES_H
-#define POLYMAKE_GRAPH_ALL_SPANNINGTREES_H
+#pragma once
 
 #include "polymake/client.h"
 #include "polymake/Array.h"
@@ -202,7 +201,6 @@ std::pair<Array<Set<Int>>, Array<std::pair<Int,Int>>> all_spanningtrees(const Gr
 
 } }
 
-#endif // POLYMAKE_GRAPH_ALL_SPANNINGTREES_H
 
 // Local Variables:
 // c-basic-offset:3

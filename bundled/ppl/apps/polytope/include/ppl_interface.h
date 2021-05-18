@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -15,8 +15,7 @@
 --------------------------------------------------------------------------------
 */
 
-#ifndef POLYMAKE_POLYTOPE_PPL_INTERFACE_H
-#define POLYMAKE_POLYTOPE_PPL_INTERFACE_H
+#pragma once
 
 #include "polymake/polytope/solve_LP.h"
 #include "polymake/polytope/convex_hull.h"
@@ -42,7 +41,6 @@ public:
 
 } } }
 
-#endif // POLYMAKE_POLYTOPE_PPL_INTERFACE_H
 
 // Local Variables:
 // mode:C++
