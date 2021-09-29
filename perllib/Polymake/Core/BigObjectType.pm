@@ -420,7 +420,7 @@ sub instantiate_permutation {
 sub lookup_overridden_property {
    my ($self, $prop) = @_;
    foreach my $super (@{$self->linear_isa}) {
-      if (!$super->isa($prop->overrides_for) && $super->isa($prop->defined_for)) {
+      if ($super->full_spez_for != $self && !$super->isa($prop->overrides_for) && $super->isa($prop->defined_for)) {
          return lookup_property($super, $prop->overrides);
       }
    }

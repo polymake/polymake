@@ -34,6 +34,7 @@ INCLUDE
   geometric_graph.rules
   lattice.rules
   visual.rules
+  doubly_connected_edge_list.rules
 
 # self-configuring rules
 INCLUDE

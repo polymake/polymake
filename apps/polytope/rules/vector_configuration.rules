@@ -27,6 +27,12 @@ INCLUDE
 
 object VectorConfiguration {
 
+rule CHIROTOPE : VECTORS {
+   $this->CHIROTOPE = chirotope($this->VECTORS);
+}
+precondition : FULL_DIM;
+weight 6.11;
+
 method construct(polytope::Cone) {
   my $cone=$_[1];
   return new VectorConfiguration(VECTORS=>$cone->RAYS/$cone->LINEALITY_SPACE/-$cone->LINEALITY_SPACE);

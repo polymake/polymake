@@ -1,0 +1,5 @@
+{"app": "fan", "embed": "stacky_fundamental_domain.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "stacky_fundamental_domain", "include": ["polymake/Rational.h"], "sig": "stacky_fundamental_domain:T1.B.o", "tp": 1},
+ null ],
+"version": 3}

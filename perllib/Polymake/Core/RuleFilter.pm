@@ -1451,19 +1451,24 @@ sub add_overloaded_instance {
    if (defined $type_params) {
       my $always_deduced = 0;
       $type_params =~ s/^\s+//;
-      while ($type_params =~ m{\G $type_param_re \s* (?: ,\s* | $ ) }xog) {
-         my ($name, $default_type)=@+{qw(name default)};
-         push @type_param_names, $name;
-         if (defined($default_type)) {
-            if ($default_type eq "_") {
-               ++$always_deduced;
+      if ($type_params =~ /^_\s*$/) {
+         # only explicit type parameters or placeholders are used in the signature
+         $type_deduction = true;
+      } else {
+         while ($type_params =~ m{\G $type_param_re \s* (?: ,\s* | $ ) }xog) {
+            my ($name, $default_type)=@+{qw(name default)};
+            push @type_param_names, $name;
+            if (defined($default_type)) {
+               if ($default_type eq "_") {
+                  ++$always_deduced;
+               } else {
+                  translate_type_expr($default_type);
+                  $default_types[$#type_param_names] = $default_type;
+               }
+               push @type_param_mandatory, 0;
             } else {
-               translate_type_expr($default_type);
-               $default_types[$#type_param_names] = $default_type;
+               push @type_param_mandatory, 1;
             }
-            push @type_param_mandatory, 0;
-         } else {
-            push @type_param_mandatory, 1;
          }
       }
       create FunctionTypeParam(scalar(@type_param_names));

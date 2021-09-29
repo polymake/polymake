@@ -34,7 +34,9 @@ BEGIN {
                   GCCversion ICCversion CLANGversion CPPStd XcodeVersion
                   LDFLAGS LDsharedFLAGS LDcallableFLAGS LDsonameFLAGS LIBS
                   ExternalHeaders
-                  Arch FinkBase BrewBase BundledExts BuildModes
+                  Arch 
+                  FinkBase BrewBase ADDITIONAL_PERL_INCLUDES
+                  BundledExts BuildModes
                   InstallTop InstallArch InstallBin InstallInc InstallLib DESTDIR );
 }
 

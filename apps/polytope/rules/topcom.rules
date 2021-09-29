@@ -78,7 +78,7 @@ user_function topcom_input_format($) {
 # @param Matrix V The points or vectors, given as rows.
 # @option Array<Array<Int>> symmetry A list of generators of a symmetry group of the points, given as permutations on the indices. If specified, the chirotope is only computed up to symmetry.
 # @return String
-sub chirotope_impl($$) {
+sub topcom_chirotope($$) {
     my ($p, $V) = @_;
     my $input = new TempTextFile;
     print $input "[", join(",", map { "[".join(",", @{$_})."]" } @{$V}), "]" . "\n" . topcom_sym_string($p) . "\n";
@@ -92,42 +92,6 @@ sub chirotope_impl($$) {
     my $result = `$cmd <$input`;
     $result =~ s/^.*\n\Z//m;   # TOPCOM appends the symmetry generators as text, which we forget here.
     return $result;
-}
-
-# @category Triangulations, subdivisions and volume
-# Compute the chirotope of a polytope using TOPCOM.
-# @param Polytope P
-# @return String
-user_function chirotope<Scalar> [!is_qe(Scalar)] (Polytope<Scalar>) {
-    my $p = shift;
-    return chirotope_impl($p, $p->VERTICES);
-}
-                                  
-# @category Triangulations, subdivisions and volume
-# Compute the chirotope of a point or vector configuration using TOPCOM.
-# @param VectorConfiguration P
-# @return String
-user_function chirotope<Scalar> [!is_qe(Scalar)] (VectorConfiguration<Scalar>) {
-    my $p = shift;
-    return chirotope_impl($p, $p->VECTORS);
-}
-
-# @category Triangulations, subdivisions and volume
-# Compute the chirotope of a polytope using polymake's native implementation.
-# @param Polytope P
-# @return String
-user_function chirotope (Polytope<QuadraticExtension>) {
-    my $p = shift;
-    return chirotope_impl_native($p->VERTICES);
-}
-
-# @category Triangulations, subdivisions and volume
-# Compute the chirotope of a point or vector configuration using polymake's native implementation.
-# @param VectorConfiguration P
-# @return String
-user_function chirotope (VectorConfiguration<QuadraticExtension>) {
-    my $p = shift;
-    return chirotope_impl_native($p->VECTORS);
 }
 
 
@@ -369,12 +333,17 @@ user_function positive_circuits {
 }
 
 
-object Polytope {
+object Polytope<Rational> {
 
-rule CHIROTOPE : VERTICES {
-   $this->CHIROTOPE=chirotope($this);
+rule topcom.chirotope : CHIROTOPE : VERTICES {
+   $this->CHIROTOPE = topcom_chirotope($this, $this->VERTICES);
 }
 weight 6.10;
+
+}
+
+
+object Polytope {
 
 rule topcom.circuits : CIRCUITS : CHIROTOPE {
    $this->CIRCUITS=call_topcom_circuits($this);
@@ -395,13 +364,17 @@ rule topcom.triangulation.poly: TRIANGULATION(new).FACETS : CHIROTOPE {
 } # end object Polytope
 
 
-object VectorConfiguration {
+object VectorConfiguration<Rational> {
 
-rule CHIROTOPE : VECTORS {
-   $this->CHIROTOPE=chirotope($this);
+rule topcom.chirotope : CHIROTOPE : VECTORS {
+   $this->CHIROTOPE = topcom_chirotope($this, $this->VECTORS);
 }
 weight 6.10;
 precondition : FULL_DIM;
+
+}
+
+object VectorConfiguration {
 
 rule topcom.circuits : CIRCUITS : CHIROTOPE {
    $this->CIRCUITS=call_topcom_circuits($this);

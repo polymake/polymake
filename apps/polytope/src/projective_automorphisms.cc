@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2020
+/* Copyright (c) 1997-2021
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,9 +21,11 @@
 #include "polymake/group/action.h"
 #include "polymake/group/named_groups.h"
 #include "polymake/Graph.h"
+#include "polymake/Map.h"
 
 
-namespace polymake { namespace polytope { 
+
+namespace polymake { namespace polytope {
 
 // This implementation for finding the group of projective 
 // automorphism of a cone follows the algorithm implizit 
@@ -40,7 +42,71 @@ namespace polymake { namespace polytope {
 
 
 template<typename Scalar>
-auto  projective_symmetry_group_non_decomposable(BigObject C){
+auto contains_permutation_decomposable(Matrix<Scalar> Rays, Matrix<Scalar> Coef, Set<Int> basis_rows, Array<Int> sigma){
+  // This function checks if a given permutation is contained in the
+  // projective symmetry group of a  fulldimensional (by now) and
+  // non decomposable cone
+  // It use theorem 10 of the paper 'Computing symmetry groups 
+  // of polyhedra'
+  Int p = Rays.cols(); // the number of Rays
+  Int n = Rays.rows(); // the lenght of the Rays and size of a basis
+
+  Matrix<Scalar> Rays_sigma = group::action<group::on_cols>(sigma, Rays);
+  Matrix<Scalar> Pos = zero_vector<Scalar>(p)|unit_matrix<Scalar>(p);
+    
+    
+  // Constructing the equations
+  Matrix<Scalar> U_sigma = Rays_sigma.minor(All,basis_rows);
+  Matrix<Scalar> Equa = zero_matrix<Scalar>( p*n, p+1 );
+  for(Int i = 0; i<n; i++){
+    for(Int j = 0; j<p; j++){
+      Vector<Scalar> v_1 = U_sigma.row(i);
+      Vector<Scalar> v_2 = Coef.col(j);
+      
+      for(Int k = 0; k<n; ++k){
+        Equa(i*p+j,k+1) = v_1[k]*v_2[k];
+      }
+      
+      Equa(i*p+j,j+1) -= Rays_sigma(i,j); 
+    }
+  }
+    
+  BigObject poly("Polytope", mlist<Scalar>());
+  poly.take("INEQUALITIES") << Pos;
+  poly.take("EQUATIONS") << Equa.minor(basis(Equa).first,All);
+    
+  if(!poly.give("FEASIBLE")){
+    return false;
+  }
+    
+  // now check if there is a convex combination of the 
+  // vertices strictly greater 0 and this exist if 
+  // there is no index such that all vertices are zero 
+  // in this entry
+  bool noneZeroEntry = true;
+  Matrix<Scalar> Vertices = poly.give("VERTICES");
+    
+  for(Int i=1; i<Vertices.cols(); i++){
+    Int j=0;
+    while(is_zero(Vertices(j,i))){
+      j++;
+      
+      if( j>=Vertices.rows() ){
+        noneZeroEntry = false;
+        break;
+      }
+    }
+    
+    if(!noneZeroEntry){
+      break;
+    }
+  }
+    
+  return noneZeroEntry;
+}
+
+template<typename Scalar>
+auto projective_symmetry_group_non_decomposable(BigObject C){
   // This function calculate the projective symmetry group of a
   // fulldimensional (by now) and non decomposable cone
   // It use theorem 10 of the paper 'Computing symmetry groups 
@@ -65,72 +131,59 @@ auto  projective_symmetry_group_non_decomposable(BigObject C){
   
   Matrix<Scalar> Coef = solve_right(Basis_Rays,Rays);
   
-  BigObject gro = call_function("group::automorphism_group", C.give("RAYS_IN_FACETS"), false); 
+  // compute subgroup
+  Set<Array<Int>> linGroup;
+  std::vector<Array<Int>> projGroup;
+  
+  BigObject sub_group = call_function("linear_symmetries", C.give("RAYS"));
+    
+  BigObject sub_perm = sub_group.give("PERMUTATION_ACTION");
+    
+  if(p == 1){
+    Array<Int> identety(n);
+    for(Int i = 0; i<n; ++i){
+      identety[i] = i;
+    }
+    linGroup += identety;
+    projGroup.push_back(identety);
+  }else{
+    std::vector<Array<Int>> _projGroup = sub_perm.give("ALL_GROUP_ELEMENTS");
+    projGroup = _projGroup;
+    Set<Array<Int>> _linGroup(projGroup);
+    linGroup = _linGroup;
+  }
+  
+  // compute a larger group
+  BigObject super_gro = call_function("group::automorphism_group", C.give("RAYS_IN_FACETS"), false); 
   //group::symmetric_group(p);
-  BigObject perm = gro.give("PERMUTATION_ACTION");
   
-  // load a larger group to find the projective symmetry group
-  Array<Array<Int>> comb_group = perm.give("ALL_GROUP_ELEMENTS");
-  Set<Array<Int>> proj_group;
+  BigObject super_perm = super_gro.give("PERMUTATION_ACTION");
   
-  for(Int index= 0; index<comb_group.size(); ++index){
-    Array<Int> sigma =  comb_group[index];
-    Matrix<Scalar> Rays_sigma = group::action<group::on_cols>(sigma, Rays);
-    Matrix<Scalar> Pos = zero_vector<Scalar>(p)|unit_matrix<Scalar>(p);
+  // load all element of the larger and smaller group to find the projective symmetry group
+  Set<Array<Int>> _combGroup = super_perm.give("ALL_GROUP_ELEMENTS");
+  if(linGroup.size() == _combGroup.size()){
+    return Array<Array<Int>>(linGroup);
+  }
+  
+  Set<Array<Int>> _diff = _combGroup - linGroup;
+  cout << "diff:"<< endl << _diff << endl;
+  
+  Array<Array<Int>> _linGroup(linGroup);
+  cout << _linGroup << endl;
+  
+  Array<Array<Int>>  combGroup(_diff);//_diff);
+  
+  
+  for(Int index= 0; index<combGroup.size(); ++index){
+    Array<Int> sigma =  combGroup[index];
     
-    
-    // Constructing the equations
-    Matrix<Scalar> U_sigma = Rays_sigma.minor(All,basis_rows);
-    Matrix<Scalar> Equa = zero_matrix<Scalar>( p*n, p+1 );
-    for(Int i = 0; i<n; i++){
-      for(Int j = 0; j<p; j++){
-        Vector<Scalar> v_1 = U_sigma.row(i);
-        Vector<Scalar> v_2 = Coef.col(j);
-        
-        for(Int k = 0; k<n; ++k){
-          Equa(i*p+j,k+1) = v_1[k]*v_2[k];
-        }
-        
-        Equa(i*p+j,j+1) -= Rays_sigma(i,j); 
-      }
-    }
-    
-    BigObject poly1("Polytope", mlist<Scalar>());
-    poly1.take("INEQUALITIES") << Pos;
-    poly1.take("EQUATIONS") << Equa.minor(basis(Equa).first,All);
-    
-    if(!poly1.give("FEASIBLE")){
-      continue;
-    }
-    
-    // now check if there is a convex combination of the 
-    // vertices strictly greater 0 and this exist if 
-    // there is no index such that all vertices are zero 
-    // in this entry
-    bool none_zero_entry = true;
-    Matrix<Scalar> Vertices = poly1.give("VERTICES");
-    
-    for(Int i=1; i<Vertices.cols(); i++){
-      Int j=0;
-      while(is_zero(Vertices(j,i))){
-        j++;
-        if(j>=Vertices.rows()){
-          none_zero_entry = false;
-          break;
-        }
-      }
-      
-      if(!none_zero_entry){
-        break;
-      }
-    }
-    
-    if(none_zero_entry){
-      proj_group += sigma;
+    if( contains_permutation_decomposable<Scalar>( 
+          Rays, Coef,basis_rows, sigma)){
+      projGroup.push_back(sigma);
     }
     
   }
-  return proj_group;
+  return Array<Array<Int>>(projGroup);
   
 }
 
@@ -275,8 +328,6 @@ auto projective_isomorphism(BigObject C1, BigObject C2){
     }
   }
   return std::make_pair(false, empty_array);
-  
-  
 }
 
 template<typename Scalar>
@@ -287,20 +338,17 @@ auto projective_symmetries(BigObject C){
   
   // get the decomposition
   Array< std::pair<BigObject, Array<Int> > > Decomposition = compute_decomposition_projective_symmetry<Scalar>(C, true);
-  Int len = Decomposition.size();
-  Int repr_nr = 0;
-  
-  // TODO find a better solution for the len
-  Array< std::pair< BigObject, Set< Array<Int> > > > Represent(len);
-  
-  for(Int i=0; i<len; i++){
+
+  // find a decomposition in groups of projective isomorphic cones
+  std::vector< std::pair< BigObject, Set< Array<Int> > > > Represent;  
+  for(Int i=0; i<Decomposition.size(); i++){
     
     // get the cones in the decomposition and assume that there of
     // a new type
     std::pair<BigObject, Array<Int> > SubC = Decomposition[i];
     bool newC = true;
     
-    for(Int j=0; j<repr_nr; ++j){
+    for(Int j=0; j<Int(Represent.size()); ++j){
       // check if the isomorphic type is known
       BigObject RepC = Represent[j].first;
       
@@ -314,16 +362,15 @@ auto projective_symmetries(BigObject C){
     if(newC){
       Set< Array<Int> > set;
       set += SubC.second;
-      Represent[repr_nr] = std::make_pair(SubC.first, set);
-      repr_nr += 1;
+      Represent.push_back(std::make_pair(SubC.first, set));
     }
   }
   
   // build an array that contains the index sets of all
   // pair< projective group, index sets cones >
-  Array< std::pair< Array<Array<Int>>, Array<Array<Int>> > > small_proj_groups(repr_nr);
+  Array< std::pair< Array<Array<Int>>, Array<Array<Int>> > > small_proj_groups(Represent.size());
   
-  for(Int i=0; i<repr_nr; ++i){
+  for(Int i=0; i<small_proj_groups.size(); ++i){
     small_proj_groups[i].second = Represent[i].second;
     small_proj_groups[i].first = projective_symmetry_group_non_decomposable<Scalar>(Represent[i].first);
   }
@@ -364,7 +411,7 @@ auto projective_symmetries(BigObject C){
   for(Int index=0; index<amount; ++index){
     Array<Int> perm(n);
     // iterate over the groups of projective isomorphic cones
-    for(Int i=0; i<repr_nr; ++i){
+    for(Int i=0; i<small_proj_groups.size(); ++i){
       // take an element from symmetry group
       Array<Int> sigma = symmertic_group[i][counter[i].first];
       // iterate over the projective isomorphic cones of the current group
@@ -407,20 +454,8 @@ auto projective_symmetries(BigObject C){
   
 }
 
-/*
-UserFunctionTemplate4perl("# @category Geometry"
-                          "# Find the decomposition of a cone in  group of projective automorphisms of a"
-                          "# Cone //C//."
-                          "# This is an implementation of the algorithm described in a"
-                          "# theorem of the paper \"Computing symmetry groups of polyhedra\""
-                          "# LMS J. Comput. Math. 17 (1) (2004)"
-                          "# by By David Bremner, Mathieu Dutour Sikiri'{c},"
-                          "# Dmitrii V. Pasechnik, Thomas Rehn and Achill Sch\"{u}rmann."
-                          "# @param Cone C"
-                          "# @return Array<Pair <Cone<Scalar>, Array<Int>> >",
-                          "compute_decomposition_projective_symmetry<Scalar>(Cone<Scalar>, Bool)");
-*/
-UserFunctionTemplate4perl("# @category Geometry"
+
+UserFunctionTemplate4perl("# @category Symmetry"
                           "# Find the group of projective automorphisms of a"
                           "# Cone //C//. This is a group of all permutations on the"
                           "# rays of the cone (not necessarily there representatives),"
@@ -449,3 +484,9 @@ UserFunctionTemplate4perl("# @category Geometry"
 
 
 } } // end namespaces
+
+// Local Variables:
+// mode:C++
+// c-basic-offset:3
+// indent-tabs-mode:nil
+// End:

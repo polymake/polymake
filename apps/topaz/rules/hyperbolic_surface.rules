@@ -14,23 +14,23 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-#A hyperbolic surface (noncompact, finite area) is given by a triangulation [[DCEL_DATA]] (the topological data) and [[PENNER_COORDINATES]] (the metric data).
+#A hyperbolic surface (noncompact, finite area) is given by a triangulation [[DCEL]] (the topological data) and [[PENNER_COORDINATES]] (the metric data).
 declare object HyperbolicSurface {
 
    # The triangulation of the surface is encoded by a half edge data structure.
    # For each edge i of the triangulation there are two half edges 2i and 2i+1, one for each orientation.
    # Each row reads as follows: [ 2i.head , (2i+1).head , 2i.next , (2i+1).next]
-   # @example A triangulated sphere with three punctures can be given by the following [[DCEL_DATA]]:
-   # > $S3 = new Array<Array<Int>>([ [1,0,2,5],[2,1,4,1],[0,2,0,3] ]);
-   # > $s = new HyperbolicSurface(DCEL_DATA=>$S3);
-   property DCEL_DATA : Array<Array<Int>>;
+   # @example A triangulated sphere with three punctures can be given by the following [[DCEL]]:
+   # > $S3 = new Matrix<Int>([ [1,0,2,5],[2,1,4,1],[0,2,0,3] ]);
+   # > $s = new HyperbolicSurface(DCEL=>$S3);
+   property DCEL : DoublyConnectedEdgeList;
 
    # Penners lambda lengths, sometimes called Penner coordinates, of the hyperbolic surface.
    #	Robert C. Penner. Decorated Teichmüller Theory. QGM Master Class Series. European Mathematical Society, Zürich, 2012.
-   # They are given by one positive rational for each edge of the triangulation, ordered in the sense of the triangulation [[DCEL_DATA]].
+   # They are given by one positive rational for each edge of the triangulation, ordered in the sense of the triangulation [[DCEL]].
    property PENNER_COORDINATES : Vector<Rational>;
 
-   # Each Delaunay triangulations of the surface can be obtained by successively flipping edges of the triangulation [[DCEL_DATA]].
+   # Each Delaunay triangulations of the surface can be obtained by successively flipping edges of the triangulation [[DCEL]].
    # The k-th flip word is a list of integers (the indices of the edges) that describe which edge flips produce the k-th Delaunay triangulation.
    # Note that the k-th Delaunay triangulation also corresponds to the k-th maximal cone of the [[SECONDARY_FAN]].
    property FLIP_WORDS : Array< List<Int> >;
@@ -50,8 +50,8 @@ declare object HyperbolicSurface {
    # @param Int depth
    # @return Matrix<Rational>
    # @example
-   # > $T = new Array<Array<Int>>([[0,0,6,5],[0,0,1,10],[0,0,8,2],[1,0,11,4],[1,0,7,3],[1,0,9,0]]);
-   # > $s = new HyperbolicSurface(DCEL_DATA=>$T, PENNER_COORDINATES=>[1,1,1,1,1,1], SPECIAL_POINT=>[1,0]);
+   # > $T = new Matrix<Int>([[0,0,6,5],[0,0,1,10],[0,0,8,2],[1,0,11,4],[1,0,7,3],[1,0,9,0]]);
+   # > $s = new HyperbolicSurface(DCEL=>$T, PENNER_COORDINATES=>[1,1,1,1,1,1], SPECIAL_POINT=>[1,0]);
    # > print $s->GKZ_VECTORS(2);
    # | 1 240509/380250 517/1950
    # | 1 98473/694950 915006978873/1469257962050
@@ -62,12 +62,12 @@ declare object HyperbolicSurface {
    }
 
    rule initial : {
-      my $dd = $this->DCEL_DATA;
+      my $dd = $this->DCEL;
       my $pc = $this->PENNER_COORDINATES;
-      die "incompatible DCEL_DATA and PENNER_COORDINATES"
-         unless ($dd->size == $pc->dim);
+      die "incompatible DCEL and PENNER_COORDINATES"
+         unless ($dd->getNumEdges == $pc->dim);
    }
-   precondition : exists(DCEL_DATA);
+   precondition : exists(DCEL);
    precondition : exists(PENNER_COORDINATES);
 
 

@@ -30,9 +30,9 @@
 
 namespace polymake { namespace topaz {
 
-using graph::DoublyConnectedEdgeList;
-using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
-using Face = DoublyConnectedEdgeList::Face;
+using DoublyConnectedEdgeList = graph::dcel::DoublyConnectedEdgeList;
+using HalfEdge = graph::dcel::HalfEdge;
+using Face = graph::dcel::Face;
 
 class PotatoVisitor : public graph::NodeVisitor<> {
 private:
@@ -280,11 +280,11 @@ public:
 // The rows of the 2x2 matrix "first_two_vertices" are the vertices of the first edge in R^3 that covers the first edge.
 // The triangulation is calculated up to depth "depth" in the dual spanning tree rooted at the first triangle.
 // Set "lifted" true in order to produce the concrete decorated triangulation in R^3.
-BigObject projective_potato(const Array<Array<Int>>& dcel_data, const Vector<Rational>& a_coords, const Matrix<Rational>& first_two_vertices,
+BigObject projective_potato(const Matrix<Int>& dcel_data, const Vector<Rational>& a_coords, const Matrix<Rational>& first_two_vertices,
                             Int depth, OptionSet options)
 {
    const bool lifted = options["lifted"];
-   DoublyConnectedEdgeList dcel = DoublyConnectedEdgeList(dcel_data);
+   DoublyConnectedEdgeList dcel(dcel_data);
    dcel.setAcoords(a_coords);
    PotatoBuilder pot(dcel, first_two_vertices, depth);
    BigObject triang = pot.computeCoveringTriangulation();
@@ -302,14 +302,14 @@ UserFunction4perl("# @category Producing other objects\n"
                   "# Computes the triangulated convex projective set that covers the convex RP^2 surface."
                   "# The latter is given by the DCEL data for the triangulation of the surface along with A-coordinates (one positive Rational for each oriented edge and each triangle)."
                   "# Obviously, we only can compute a finite part of the infinite covering triangulation"
-                  "# @param Array<Array<Int>> DCEL_data"
+                  "# @param Matrix<Int> DCEL_data"
                   "# @param Vector<Rational> A_coords"
                   "# @param Matrix<Rational> first_two_vertices at the moment has to be the Matrix with rows (1,0,0),(0,1,0)"
                   "# @param Int depth"
                   "# @option Bool lifted for producing the lifted triangulation in R^3 with vertices in the light cone"
                   "# @return fan::PolyhedralComplex<Rational>"
                   "# @example The following computes a covering triangulation of a once punctured torus up to depth 5:"
-                  "# > $T1 = new Array<Array<Int>>([[0,0,2,3,0,1],[0,0,4,5,0,1],[0,0,0,1,0,1]]);"
+                  "# > $T1 = new Matrix<Int>([[0,0,2,3,0,1],[0,0,4,5,0,1],[0,0,0,1,0,1]]);"
                   "# > $p = projective_potato($T1,new Vector([1,1,1,1,1,1,2,2]),new Matrix([[1,0,0],[0,1,0]]),1);"
                   "# > print $p->VERTICES;"
                   "# | 1 1 0 0"

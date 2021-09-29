@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "linear_symmetries_matrix.cc",
+ "inst": [
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>"], "func": "linear_symmetries", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "linear_symmetries:T1.X", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const SparseMatrix<Rational, NonSymmetric>&>"], "func": "linear_symmetries", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "linear_symmetries:T1.X", "tp": 1},
+ null ],
+"version": 3}

@@ -1502,6 +1502,12 @@ bool is_creating_constant(OP* o)
    return o->op_type==OP_NULL && cUNOPo->op_first->op_type==OP_ONCE && o->op_private==4;
 }
 
+SV* get_constant_creation_input(OP* o)
+{
+   o = OpSIBLING(cLOGOPx(cUNOPo->op_first)->op_other);
+   return cSVOPo->op_sv;
+}
+
 const char* looks_like_bigint(SV* sv, const char* buf)
 {
    while (isSPACE(*buf)) ++buf;
@@ -1559,17 +1565,11 @@ OP* intercept_ck_const(pTHX_ OP* o)
       else if (buf && buf == PL_parser->oldbufptr && (SvFLAGS(sv) & (SVf_IOK | SVf_NOK)) && (buf_end = looks_like_bigint(sv, buf)) != nullptr) {
          AV* op_descr = find_intercepted_op_descriptor(aTHX_ 'I' + ('N'<<8) + ('T'<<16));
          if (op_descr) {
-            const char* minus = PL_parser->oldoldbufptr;
-            while (minus < buf) {
-               if (isSPACE(*minus)) {
-                  ++minus;
-               } else {
-                  if (*minus == '-') buf = minus;
-                  break;
-               }
-            }
             SvREADONLY_off(sv);
-            sv_setpvn(sv, buf, buf_end-buf);
+            const STRLEN l = buf_end-buf;
+            SvUPGRADE(sv, SVt_PV);
+            SvGROW(sv, l+2);
+            sv_setpvn(sv, buf, l);
             SvREADONLY_on(sv);
             return construct_const_creation_optree(aTHX_ op_descr, o, true);
          }
@@ -1600,7 +1600,14 @@ OP* intercept_ck_negate(pTHX_ OP* o)
 {
    OP* a = cUNOPo->op_first;
    if (is_creating_constant(a)) {
-      // minus sign is already included in the string constant
+      SV* sv = get_constant_creation_input(a);
+      SvREADONLY_off(sv);
+      STRLEN l;
+      char* str = SvPV(sv, l);
+      SvCUR_set(sv, l+1);
+      Move(str, str+1, l+1, char);
+      *str = '-';
+      SvREADONLY_on(sv);
       clear_bit_flags(o->op_flags, OPf_KIDS);
       FreeOp(o);
       return a;
@@ -4030,8 +4037,8 @@ PPCODE:
             Perl_croak(aTHX_ "subroutine reference expected");
          AV* op_descr1 = newAV();
          AV* op_descr2 = newAV();
-         SV* reset_sv = newSVuv((UV)PL_check[OP_NEGATE]);
-         SV* catch_sv = newSVuv((UV)&intercept_ck_negate);
+         SV* reset_negate_sv = newSVuv((UV)PL_check[OP_NEGATE]);
+         SV* catch_negate_sv = newSVuv((UV)&intercept_ck_negate);
          av_extend(op_descr1, intercept_op_last);
          av_extend(op_descr2, intercept_op_last);
          av_store(op_descr1, intercept_op_code, newSViv('I' + ('N'<<8) + ('T'<<16)));
@@ -4039,8 +4046,8 @@ PPCODE:
          av_store(op_descr1, intercept_op_subref, SvREFCNT_inc_simple_NN(subr));
          if (add_arg)
             av_store(op_descr1, intercept_op_addarg, newSVsv(add_arg));
-         av_store(op_descr2, intercept_op_reset, reset_sv);
-         av_store(op_descr2, intercept_op_catch, catch_sv);
+         av_store(op_descr2, intercept_op_reset, reset_negate_sv);
+         av_store(op_descr2, intercept_op_catch, catch_negate_sv);
          av_push(dotSUBST_OP, newRV_noinc((SV*)op_descr1));
          av_push(dotSUBST_OP, newRV_noinc((SV*)op_descr2));
          XSRETURN_EMPTY;

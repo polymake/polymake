@@ -108,35 +108,6 @@ representation_conversion_up_to_symmetry(BigObject p, OptionSet options)
    return inequalities;
 }
 
-UserFunction4perl("# CREDIT sympol\n\n"
-                  "# @category Symmetry"
-                  "# Use sympol to compute the linear symmetries of"
-                  "# - the rows of a rational matrix //m//, or"
-                  "# - the RAYS|VERTICES, FACETS, or POINTS of a rational cone or polytope //C// (whatever is available, in this order), or"
-                  "# - the VECTORS|POINTS of a rational vector or point configuration //P//."
-                  "# Except for matrices, the action of the symmetry group is stored inside the parent object."
-                  "# In the case of cones, sympol might compute only a subset of the linear symmetry group."
-                  "# Sympol, and therefore this function, can only handle rational objects."
-                  "# @param Matrix m | Cone //C// | VectorConfiguration //P//"
-                  "# @return group::Group the linear symmetry group, together with a PERMUTATION_ACTION, VERTEX_ACTION, FACETS_ACTION, or VECTOR_ACTION"
-                  "# @example"
-                  "# > $ls = linear_symmetries(cube(2)->VERTICES);"
-                  "# > print $ls->PERMUTATION_ACTION->GENERATORS;"
-                  "# | 0 2 1 3"
-                  "# | 3 1 2 0"
-                  "# | 2 3 0 1"
-                  "# > print linear_symmetries(cube(3)->VERTICES)->PERMUTATION_ACTION->GENERATORS;"
-                  "# | 0 4 2 6 1 5 3 7"
-                  "# | 0 1 4 5 2 3 6 7"
-                  "# | 7 6 5 4 3 2 1 0"
-                  "# | 2 6 0 4 3 7 1 5"
-                  "# > print linear_symmetries(cube(3))->FACETS_ACTION->GENERATORS;"
-                  "# | 1 0 2 3 4 5"
-                  "# | 0 1 3 2 4 5"
-                  "# | 2 3 0 1 4 5"
-                  "# | 0 1 2 3 5 4"
-                  "# | 0 1 4 5 2 3",
-                  &linear_symmetries_matrix, "linear_symmetries(Matrix<Rational>)");
 
 Function4perl(&linear_symmetries_impl, "linear_symmetries_impl($)");
 

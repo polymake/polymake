@@ -29,8 +29,9 @@ namespace polymake { namespace tropical {
 
 // Input: list of sites in the tropical projective torus. (d+1) coords
 // Output: the polytropes (as shortest path matrices) and labels of the polytrope partition
-Array<std::pair<Matrix<Rational>, Matrix<Int>>> compute_polytrope_partition(const Matrix<Rational>& sites)
+void compute_polytrope_partition(BigObject tvd)
 {
+  const Matrix<Rational> sites = tvd.give("SITES");
   Int d = sites.cols()-1; // These are tropical projective coordinates: No 1 at the beginning
   std::list<std::pair<Matrix<Rational>, Matrix<Int>>> cells;
 
@@ -131,11 +132,11 @@ Array<std::pair<Matrix<Rational>, Matrix<Int>>> compute_polytrope_partition(cons
     }
   }
 
-  return Array<std::pair<Matrix<Rational>,Matrix<Int>>>(cells.size(), cells.begin());
+  tvd.take("POLYTROPE_PARTITION") << cells;
 }
 
 
-ListReturn visualizable_cells(const Matrix<Rational>& sites, Int d, const Array<std::pair<Matrix<Rational>, Matrix<Int>>>& cells)
+ListReturn visualizable_cells(const Matrix<Rational>& sites, Int d, const Array<std::pair<Matrix<Rational>, Matrix<Int>>>& cells, const Rational& cutoff)
 {
   ListReturn results;
   // list of ridges
@@ -207,7 +208,7 @@ ListReturn visualizable_cells(const Matrix<Rational>& sites, Int d, const Array<
                   for (Int j = 0; j < d+1; ++j)
                     if (i != j) { //Tropical bounding ball
                       Vector<Rational> row(d+2);
-                      row[0] = 20;
+                      row[0] = cutoff;
                       row[j+1] = -1;
                       row[i+1] = 1;
                       ineq /= row;

@@ -1,0 +1,6 @@
+{"app": "polytope", "embed": "chirotope.cc",
+ "inst": [
+  {"args": ["perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>"], "func": "chirotope", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "chirotope.X"},
+  {"args": ["perl::Canned<const Matrix<Rational>&>"], "func": "chirotope", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "chirotope.X"},
+ null ],
+"version": 3}

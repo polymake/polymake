@@ -36,8 +36,8 @@ public:
    // Each DecoratedEdge that appears in the BFS will get an unique index via this map.
    using EdgeMap = Map<Int, DecoratedEdge>;
 
-   using DoublyConnectedEdgeList = graph::DoublyConnectedEdgeList;
-   using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
+   using DoublyConnectedEdgeList = graph::dcel::DoublyConnectedEdgeList;
+   using HalfEdge = graph::dcel::HalfEdge;
 
 private:
    // The graph we want to iterate through, build during iterating.

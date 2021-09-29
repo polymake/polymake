@@ -1,0 +1,7 @@
+{"app": "tropical", "embed": "polynomial_vanishing.cc",
+ "inst": [
+  {"args": ["Max", "Rational", "perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, Int>&>", "perl::Canned<const Vector<TropicalNumber<Max, Rational>>&>"], "func": "polynomial_vanishes", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "polynomial_vanishes:T2.X.X", "tp": 2},
+  {"args": ["Max", "Rational", "perl::Canned<const Polynomial<TropicalNumber<Max, Rational>, Int>&>", "perl::Canned<const Vector<TropicalNumber<Max, Rational>>&>"], "func": "polynomial_support", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "polynomial_support:T2.X.X", "tp": 2},
+  {"args": ["Min", "Rational", "perl::Canned<const Polynomial<TropicalNumber<Min, Rational>, Int>&>", "perl::Canned<const Vector<TropicalNumber<Min, Rational>>&>"], "func": "polynomial_vanishes", "include": ["polymake/Polynomial.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "sig": "polynomial_vanishes:T2.X.X", "tp": 2},
+ null ],
+"version": 3}

@@ -436,7 +436,7 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration, Sequential> {
 # @return Array<Set<Int>>
 user_method faces_of_dim($) {
     my ($this, $d) = @_;
-    return new Array<Set<Int>>(map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($d)});
+    return new Array<Set<Int>>([map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($d)}]);
 }
                                 
 

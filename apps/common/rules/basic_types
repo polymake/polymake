@@ -477,6 +477,18 @@ declare property_type QuadraticExtension<Field=Rational> : upgrades(Field) : c++
    # @param Field a
    method construct(type_upgrades_to<Field>) : c++;
 
+   # The quadratic extension has the form q=a+b*sqrt(r); This returns a.
+   # @return Field
+   method a() : c++;
+   
+   # The quadratic extension has the form q=a+b*sqrt(r); This returns b.
+   # @return Field
+   method b() : c++;
+
+   # The quadratic extension has the form q=a+b*sqrt(r); This returns r.
+   # @return Field
+   method r() : c++;
+
    operator ! neg : c++;
 
    operator @arith (*, *:num) : c++;

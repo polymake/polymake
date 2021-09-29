@@ -25,6 +25,10 @@ declare object DisjointStackyFan<Scalar=Rational> [ is_ordered_field(Scalar) ] :
 object DisjointStackyFan {
 
 # @category Symmetry
+# The RAYS of the stacky fan that were used to generate it.
+property GENERATING_RAYS : Matrix<Scalar>;
+
+# @category Symmetry
 # The number of RAYS of the stacky fan that were used to generate it.
 # By the way orbit_fan works, these rays also show up at the beginning of the RAYS matrix.    
 property N_GENERATING_RAYS : Int;
@@ -77,6 +81,18 @@ rule STACKY_F_VECTOR : STACKY_FACES {
     $this->STACKY_F_VECTOR = \@f;
 }
 
+# @category Symmetry
+# Vertex labels as an array of Set<Set<Int>>.
+# This is more efficient than the String type used in topaz::SimplicialComplex
+property VERTEX_LABELS : Array<Set<Set<Int>>>;
+
+# @category Symmetry
+# for higher barycentric subdivisions, store the original RAYS_ACTION.GENERATORS
+# They are stored outside of a GROUP object, because these generators act on the
+# elements of the innermost sets of the VERTEX_LABELS, but not on anything
+# directly in the object itself
+property ORIGINAL_RAYS_ACTION_GENERATORS : Array<Array<Int>>;
+
 }
 
 # @category Symmetry
@@ -98,9 +114,13 @@ rule STACKY_F_VECTOR : STACKY_FACES {
 # | 2 2
 user_function stacky_fan<Scalar>(Cone<Scalar>) {
     my ($c) = @_;
-    my $f = new PolyhedralFan(RAYS=>$c->RAYS, MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GROUP=>$c->GROUP);
-    my $of = orbit_fan($f, $f->GROUP->HOMOGENEOUS_COORDINATE_ACTION->GENERATORS);
-    return new DisjointStackyFan<Scalar>(N_GENERATING_RAYS=>$c->RAYS->rows, GENERATING_MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GENERATING_HASSE_DIAGRAM=>$c->HASSE_DIAGRAM, GROUP=>$of->GROUP);
+    if ($c->lookup("GROUP")) {
+        my $f = new PolyhedralFan(RAYS=>$c->RAYS, MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GROUP=>$c->GROUP);
+        my $of = orbit_fan($f, $f->GROUP->HOMOGENEOUS_COORDINATE_ACTION->GENERATORS);
+        return new DisjointStackyFan<Scalar>(GENERATING_RAYS=>$c->RAYS, N_GENERATING_RAYS=>$c->RAYS->rows, GENERATING_MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GENERATING_HASSE_DIAGRAM=>$c->HASSE_DIAGRAM, GROUP=>$of->GROUP);
+    } else {
+        return new DisjointStackyFan<Scalar>(GENERATING_RAYS=>$c->RAYS, N_GENERATING_RAYS=>$c->RAYS->rows, GENERATING_MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GENERATING_HASSE_DIAGRAM=>$c->HASSE_DIAGRAM);
+    }
 }
 
 

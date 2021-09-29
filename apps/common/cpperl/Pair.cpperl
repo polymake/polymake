@@ -97,5 +97,8 @@
   {"args": ["std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>"], "include": ["polymake/Array.h", "polymake/Set.h", "polymake/client.h"], "op": "new", "sig": "new"},
   {"args": ["perl::Canned<const std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>&>", "perl::Canned<const std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>&>"], "include": ["polymake/Array.h", "polymake/Set.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"class": "std::pair<Array<Set<Matrix<double>>>, Array<Matrix<double>>>", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Set.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_Array__Set__Matrix_A_Float_I_NonSymmetric_Z_I_Array__Matrix_A_Float_I_NonSymmetric_Z_Z"},
+  {"class": "std::pair<IncidenceMatrix<NonSymmetric>, Array<Int>>", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/client.h"], "pkg": "Polymake::common::Pair_A_IncidenceMatrix__NonSymmetric_I_Array__Int_Z"},
+  {"args": ["std::pair<IncidenceMatrix<NonSymmetric>, Array<Int>>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/client.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<const std::pair<IncidenceMatrix<NonSymmetric>, Array<Int>>&>", "perl::Canned<const std::pair<IncidenceMatrix<NonSymmetric>, Array<Int>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/client.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

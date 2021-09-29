@@ -4,5 +4,6 @@
   {"args": ["perl::AnchorArg<perl::Canned<Wary<Graph<Directed>>&>>", "void", "void"], "func": "edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edge:M14.x.x"},
   {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Directed>>&>>", "void", "void"], "func": "edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edge:M14.x.x"},
   {"args": ["perl::AnchorArg<perl::Canned<Wary<Graph<DirectedMulti>>&>>", "void", "void"], "func": "edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edge:M14.x.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<Graph<Undirected>>&>>", "void", "void"], "func": "edge", "include": ["polymake/Graph.h"], "kind": "meth", "sig": "edge:M14.x.x"},
  null ],
 "version": 3}

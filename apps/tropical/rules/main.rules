@@ -75,6 +75,17 @@ declare object Hypersurface<Addition> : Cycle<Addition>;
 # This encodes a patchworking structure on a hypersurface.
 declare object Patchwork;
 
+# Abstract tropical curve, possibly with marked edges, edge lengths, vertex weights.
+# Additional functionality for moduli space computations.
+# @tparam Scalar Edge length type.
+# @example We construct a tropical quartic curve of genus 3.
+# Edge labels as in Fig. 4 (000) on Brodsky et al., Res. Math. Sci (2015).
+# > ($u,$v,$w,$x,$y,$z)=0..5;
+# > $skeleton = new IncidenceMatrix([[$u,$v,$x],[$v,$w,$z],[$u,$w,$y],[$x,$y,$z]]);
+# > $quartic = new tropical::Curve(EDGES_THROUGH_VERTICES=>$skeleton, EDGE_LENGTHS=>[1,2,3,4,5,6]);
+declare object Curve<Scalar=Rational> [ is_ordered_field(Scalar) ];
+
+
 INCLUDE
   cycle.rules
   hypersurface.rules
@@ -88,7 +99,7 @@ INCLUDE
   visual_covector.rules
   patchwork.rules
   voronoi.rules
-
+  curve.rules
 
 # Local Variables:
 # mode: perl

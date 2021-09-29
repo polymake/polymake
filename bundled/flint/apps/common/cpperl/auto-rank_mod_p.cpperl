@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const Matrix<Integer>&>", "Int(Int)"], "func": "rank_mod_p", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/common/finiteFieldLA.h"], "sig": "rank_mod_p.X.Int"},
+ null ],
+"version": 3}

@@ -26,14 +26,14 @@
 
 namespace polymake { namespace topaz {
 
-using graph::DoublyConnectedEdgeList;
-using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
+using DoublyConnectedEdgeList = graph::dcel::DoublyConnectedEdgeList;
+using HalfEdge = graph::dcel::HalfEdge;
 
 using halfedge_variables = Array<Polynomial<Rational, Int>>;
 using flip_sequence = std::list<Int>;
 
 // return the outitude polynomial for edge of index edge_id (half edges: 2*edge_id, 2*edge_id+1)
-Polynomial<Rational, Int> getOutitudePolynomial(const Array<Array<Int>>& dcel_data, Int edge_id)
+Polynomial<Rational, Int> getOutitudePolynomial(const Matrix<Int>& dcel_data, Int edge_id)
 {
    const auto var = Polynomial<Rational, Int>::monomial;
    DoublyConnectedEdgeList dcel(dcel_data);
@@ -52,7 +52,7 @@ Polynomial<Rational, Int> getOutitudePolynomial(const Array<Array<Int>>& dcel_da
 }
 
 // given dcel data, return all outitudes, one for each edge
-Array<Polynomial<Rational,Int>> outitudePolynomials(const Array<Array<Int>>& dcel_data)
+Array<Polynomial<Rational,Int>> outitudePolynomials(const Matrix<Int>& dcel_data)
 {
    DoublyConnectedEdgeList dcel(dcel_data);
    auto outs = Array<Polynomial<Rational, Int>>(dcel.getNumEdges());
@@ -66,14 +66,14 @@ UserFunction4perl("# @category Other"
                   "# Given a triangulation of a punctured surface this calculates all the outitude polynomials.\n" 
                   "# The first e = #{oriented edges} monomials correspond to A-coordinates of the oriented edges, labeled as in the input.\n" 
                   "# The last t = #{triangles} monomials correspond to A-coordinates of the triangles."
-                  "# @param Array<Array<Int>> dcel_data the data for the doubly connected edge list representing the triangulation."
+                  "# @param Matrix<Int> dcel_data the data for the doubly connected edge list representing the triangulation."
                   "# @return Array<Polynomial<Rational,Int>> an array containing the outitudes in order of the input." 
                   "# @example We may calculate the outitude polynomials of a thrice punctured sphere."
                   "# Here the first six monomials x_0, ... , x_5 are associated to the six oriented edges, x_6 and x_7 are associated to the triangles enclosed by the oriented edges 0,2,4 and 1,3,5 respectively."
-                  "# > $S3 = new Array<Array<Int>>([[1,0,2,5,0,1],[2,1,4,1,0,1],[0,2,0,3,0,1]]);;"
+                  "# > $S3 = new Matrix<Int>([[1,0,2,5,0,1],[2,1,4,1,0,1],[0,2,0,3,0,1]]);;"
                   "# > print outitudePolynomials($S3);"
                   "# | - x_0*x_1*x_6 - x_0*x_1*x_7 + x_0*x_2*x_6 + x_0*x_2*x_7 + x_1*x_5*x_6 + x_1*x_5*x_7 x_1*x_3*x_6 + x_1*x_3*x_7 - x_2*x_3*x_6 - x_2*x_3*x_7 + x_2*x_4*x_6 + x_2*x_4*x_7 x_0*x_4*x_6 + x_0*x_4*x_7 + x_3*x_5*x_6 + x_3*x_5*x_7 - x_4*x_5*x_6 - x_4*x_5*x_7",
-                  &outitudePolynomials,"outitudePolynomials( Array<Array<Int>> )");
+                  &outitudePolynomials,"outitudePolynomials( Matrix<Int> )");
 
 
 
@@ -133,14 +133,14 @@ UserFunction4perl("# @category Other"
 
 
 // return the dual outitude polynomial for edge of index edge_id (half edges: 2*edge_id, 2*edge_id+1)
-Polynomial<Rational,Int> getDualOutitudePolynomial(const Array<Array<Int>>& dcel_data, Int edge_id)
+Polynomial<Rational,Int> getDualOutitudePolynomial(const Matrix<Int>& dcel_data, Int edge_id)
 {
    const auto var = Polynomial<Rational, Int>::monomial;
    
    DoublyConnectedEdgeList dcel(dcel_data);
    Int dim = 4*dcel.getNumHalfEdges()/3;  
    Int e = 2*edge_id;
-   const HalfEdge* halfEdge = &( dcel.getEdges()[e] );
+   const HalfEdge* halfEdge = dcel.getHalfEdge(e);
    Int a = dcel.getHalfEdgeId( halfEdge->getNext() );
    Int aa = dcel.getHalfEdgeId( halfEdge->getNext()->getTwin() );
    Int b = dcel.getHalfEdgeId( halfEdge->getPrev()->getTwin() );
@@ -163,7 +163,7 @@ Polynomial<Rational,Int> getDualOutitudePolynomial(const Array<Array<Int>>& dcel
 
 
 // return all  dual outitudes, one for each edge
-Array<Polynomial<Rational,Int>> dualOutitudePolynomials(const Array<Array<Int>>& dcel_data)
+Array<Polynomial<Rational,Int>> dualOutitudePolynomials(const Matrix<Int>& dcel_data)
 {
    DoublyConnectedEdgeList dcel(dcel_data);
    auto outs = Array<Polynomial<Rational, Int>>(dcel.getNumEdges());
@@ -176,7 +176,7 @@ UserFunction4perl("# @category Other"
                   "# Given a triangulation of a punctured surface this calculates all the outitude polynomials of the dual structure.\n" 
                   "# The first e = #{oriented edges} monomials correspond to A-coordinates of the oriented edges of the primal structure , labeled as in the input.\n" 
                   "# The last t = #{triangles} monomials correspond to A-coordinates of the triangles of the primal structure."
-                  "# @param Array<Array<Int>> dcel_data the data for the doubly connected edge list representing the triangulation."
+                  "# @param Matrix<Int> dcel_data the data for the doubly connected edge list representing the triangulation."
                   "# @return Array<Polynomial<Rational,Int>> an array containing the dual outitudes in order of the input.",
                   &dualOutitudePolynomials,"dualOutitudePolynomials( $ )");
 
@@ -187,7 +187,7 @@ Vector<Rational> outitudes_from_dcel(const DoublyConnectedEdgeList& dcel)
 {
    Vector<Rational> out_vec(dcel.getNumEdges());
    for (Int i = 0; i < dcel.getNumEdges(); ++i) {
-      const HalfEdge* e_edge = &( dcel.getEdges()[2*i] );
+      const HalfEdge* e_edge = dcel.getHalfEdge(2*i);
       const HalfEdge* e_twin = e_edge->getTwin();
       const Rational& e_plus = e_edge->getLength();
       const Rational& e_minus = e_twin->getLength();
@@ -219,7 +219,6 @@ std::pair<Set<Int>, Set<Int>> is_canonical(const DoublyConnectedEdgeList& dcel)
    }
    return { concave_edges, flat_edges };
 }
-Function4perl(&is_canonical,"is_canonical($)");
 
 
 
@@ -228,7 +227,7 @@ Vector<Rational> flip_coords(DoublyConnectedEdgeList& dcel, Vector<Rational> coo
    Vector<Rational> new_coords(coords);
    Int e_plus_id = 2*edge_id;
    Int e_minus_id = 2*edge_id+1;
-   const HalfEdge* halfEdge = &( dcel.getEdges()[e_plus_id] );
+   const HalfEdge* halfEdge = dcel.getHalfEdge(e_plus_id);
    Int A_id = dcel.getFaceId(halfEdge->getFace());
    Int B_id = dcel.getFaceId(halfEdge->getTwin()->getFace());
    Int a_plus_id = dcel.getHalfEdgeId(halfEdge->getNext());
@@ -251,7 +250,7 @@ Vector<Rational> flip_coords(DoublyConnectedEdgeList& dcel, Vector<Rational> coo
    new_coords[B_id] = D;
 
 	//halfEdge->setLength(f_plus);
-	//dcel.getEdges()[e_minus_id].setLength(f_minus);
+	//dcel.getHalfEdge(e_minus_id).setLength(f_minus);
 	//dcel.getFaces()[A_id].setDetCoord(C);
 	//dcel.getFaces()[B_id].setDetCoord(D);
 	return new_coords;
@@ -259,7 +258,7 @@ Vector<Rational> flip_coords(DoublyConnectedEdgeList& dcel, Vector<Rational> coo
 
 
 
-std::pair<flip_sequence, Set<Int>> flips_to_canonical_triangulation(const Array<Array<Int>>& dcel_data, Vector<Rational>& a_coords)
+std::pair<flip_sequence, Set<Int>> flips_to_canonical_triangulation(const Matrix<Int>& dcel_data, Vector<Rational>& a_coords)
 {  
    DoublyConnectedEdgeList dcel(dcel_data,a_coords);
    Vector<Rational> curr_a_coords(a_coords);
@@ -283,20 +282,20 @@ std::pair<flip_sequence, Set<Int>> flips_to_canonical_triangulation(const Array<
 UserFunction4perl("# @category Other\n"
                   "# Computes a flip sequence to a canonical triangulation (first list)."
                   "# The second output is a list of flat edges in the canonical triangulation."
-                  "# @param Array<Array<Int>> DCEL_data"
+                  "# @param Matrix<Int> DCEL_data"
                   "# @param Vector<Rational> A_coords"
                   "# @return Pair<List<Int>,Set<Int>>"
                   "# @example In the following example only edge 2 has negative outitude, so the flip sequence should start with 2. After performing this flip, the triangulation thus obtained is canonical."
-                  "# > $T1 = new Array<Array<Int>>([[0,0,2,3,0,1],[0,0,4,5,0,1],[0,0,0,1,0,1]]);"
+                  "# > $T1 = new Matrix<Int>([[0,0,2,3,0,1],[0,0,4,5,0,1],[0,0,0,1,0,1]]);"
                   "# > print flips_to_canonical_triangulation($T1,[1,2,3,4,5,6,1,2]);"
                   "# | {2} {}",
                   &flips_to_canonical_triangulation,"flips_to_canonical_triangulation($$)");
 
 
-Rational out(Array<Array<Int>> dcel_data, Vector<Rational> a_coords, Int edge_id)
+Rational out(Matrix<Int> dcel_data, Vector<Rational> a_coords, Int edge_id)
 {
    DoublyConnectedEdgeList dcel(dcel_data, a_coords);	
-   const HalfEdge* e_edge = &( dcel.getEdges()[2*edge_id] );
+   const HalfEdge* e_edge = dcel.getHalfEdge(2*edge_id);
    const HalfEdge* e_twin = e_edge->getTwin();
    Rational e_plus = e_edge->getLength();
    Rational e_minus = e_twin->getLength();
@@ -309,10 +308,10 @@ Rational out(Array<Array<Int>> dcel_data, Vector<Rational> a_coords, Int edge_id
    return A*(e_plus*a+e_minus*b-e_plus*e_minus) + B*(e_plus*d+e_minus*c-e_plus*e_minus);
 }
 
-Vector<Rational> outitudes(Array<Array<Int>> dcel_data, Vector<Rational> a_coords)
+Vector<Rational> outitudes(Matrix<Int> dcel_data, Vector<Rational> a_coords)
 {
-   Vector<Rational> out_vec(dcel_data.size());
-   for (Int i = 0; i < dcel_data.size(); ++i) {
+   Vector<Rational> out_vec(dcel_data.rows());
+   for (Int i = 0; i < dcel_data.rows(); ++i) {
       out_vec[i] = out(dcel_data,a_coords, i);
    }
    return out_vec;
@@ -320,11 +319,11 @@ Vector<Rational> outitudes(Array<Array<Int>> dcel_data, Vector<Rational> a_coord
 
 UserFunction4perl("# @category Producing other objects\n"
                   "# Computes the outitudes along edges."
-                  "# @param Array<Array<Int>> DCEL_data"
+                  "# @param Matrix<Int> DCEL_data"
                   "# @param Vector<Rational> A_coords"
                   "# @return Vector<Rational>"
                   "# @example In the following example only edge 2 has negative outitude."
-                  "# > $T1 = new Array<Array<Int>>([[0,0,2,3,0,1],[0,0,4,5,0,1],[0,0,0,1,0,1]]);"
+                  "# > $T1 = new Matrix<Int>([[0,0,2,3,0,1],[0,0,4,5,0,1],[0,0,0,1,0,1]]);"
                   "# > print outitudes($T1,[1,2,3,4,5,6,1,2]);"
                   "# | 37 37 -5",
 &outitudes, "outitudes($ $)");

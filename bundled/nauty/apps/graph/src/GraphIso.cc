@@ -29,8 +29,8 @@
 #define set nauty_set
 #define permutation nauty_permutation
 
-#include <nauty.h>
-#include <naututil.h>
+#include <nauty/nauty.h>
+#include <nauty/naututil.h>
 #include <memory>
 
 namespace {

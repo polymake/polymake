@@ -188,5 +188,7 @@
   {"args": ["Array<Set<Matrix<double>>>", "perl::Canned<const Array<Set<Matrix<double>>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
   {"args": ["Array<Matrix<double>>", "perl::Canned<const Array<Matrix<double>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "op": "new", "sig": "new.X"},
   {"args": ["Array<Array<Int>>", "perl::Canned<const pm::Rows<pm::Transposed<pm::Matrix<long> > >&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h"], "op": "new", "sig": "new.X"},
+  {"args": ["Array<std::pair<Matrix<Rational>, Matrix<Int>>>", "perl::Canned<const std::list<std::pair<Matrix<Rational>, Matrix<Int>>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/client.h", "polymake/list"], "op": "new", "sig": "new.X"},
+  {"args": ["perl::Canned<const Array<Matrix<Integer>>&>", "perl::Canned<const Array<Matrix<Integer>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "op": "_eq", "sig": "_eq:O.X.X"},
  null ],
 "version": 3}

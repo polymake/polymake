@@ -1,0 +1,5 @@
+{"app": "graph",
+ "inst": [
+  {"args": ["perl::Canned<const DoublyConnectedEdgeList&>"], "func": "getNumEdges", "include": ["polymake/graph/DoublyConnectedEdgeList.h"], "kind": "meth", "sig": "getNumEdges:M"},
+ null ],
+"version": 3}

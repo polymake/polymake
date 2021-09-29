@@ -35,7 +35,7 @@ object Cone {
    # too many different cases to check and we do not want an unnnessary slow-down.
    #
    # Here are reasons for the set-up chosen:
-   # * To define an initial rule that silently adds the vertex/facet property we would have to distingiush between cones and polytopes:
+   # * To define an initial rule that silently adds the vertex/facet property we would have to distinguish between cones and polytopes:
    #   the latter always need one entry in [[POINTS]]/[[VERTICES]] or [[INEQUALITIES]]/[[FACETS]] that represents the 
    #   pointed part (i.e. the restriction to x0>=0 in the homogenization.
    # * Another problem of silently adding this would be clients that define a new polytope and 

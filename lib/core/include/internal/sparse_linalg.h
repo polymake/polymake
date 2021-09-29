@@ -28,8 +28,9 @@ det(SparseMatrix<E> M)
    const Int dim = M.rows();
    if (dim == 0) return one_value<E>();
 
-   std::vector<Int> column_permutation(dim);
+   std::vector<Int> column_permutation(dim), column_permutation_inv(dim);
    copy_range(entire(sequence(0, dim)), column_permutation.begin());
+   copy_range(entire(sequence(0, dim)), column_permutation_inv.begin());
    E result = one_value<E>();
 
    for (auto pivotrow = entire(rows(M)); !pivotrow.at_end(); ++pivotrow) {
@@ -40,8 +41,10 @@ det(SparseMatrix<E> M)
       const Int pr = pivotrow.index();
       const Int pc = pivot.index();   // row and column index
       result *= *pivot;
-      if (column_permutation[pr] != pc) {
-         std::swap(column_permutation[pr], column_permutation[pc]);
+      if (column_permutation[pc] != pr) {
+         Int i = column_permutation_inv[pr];
+         std::swap(column_permutation_inv[pr], column_permutation_inv[column_permutation[pc]]);
+         std::swap(column_permutation[i], column_permutation[pc]);
          negate(result);
       }
 

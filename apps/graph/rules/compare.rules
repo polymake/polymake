@@ -86,6 +86,7 @@ user_function find_row_col_permutation(IncidenceMatrix<NonSymmetric>, IncidenceM
 # that preserve vertex-edge connectivity.
 user_function automorphisms(GraphAdjacency) : c++ (include => "polymake/graph/compare.h");
 
+function automorphisms(GraphAdjacency, *) : c++ (include => "polymake/graph/compare.h");
 
 # @category Comparing
 # Find the order of the automorphism group of the graph.

@@ -124,14 +124,15 @@ void cdd_get_non_redundant_inequalities(BigObject p, const bool isCone)
             // polytopes.  Nevertheless it may be implied by the facets
             // returned from cdd. So we check for containment, and if it isn't
             // there, we add it.
+            auto ls = PL.minor(non_red.second, All);
             Matrix<Scalar> F(PL.minor(non_red.first, All));
             Matrix<Scalar> tmp(F / unit_vector<Scalar>(F.cols(), 0));
-            if(rank(tmp) > rank(F)){
+            if(rank(tmp / ls) > rank(F / ls)){
                p.take("FACETS") << tmp;
             } else {
                p.take("FACETS") << F;
             }
-            p.take("AFFINE_HULL") << Matrix<Scalar>(PL.minor(non_red.second, All));
+            p.take("AFFINE_HULL") << Matrix<Scalar>(ls);
          }
       }
    } else {

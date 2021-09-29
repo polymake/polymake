@@ -26,16 +26,6 @@ rule BASES, N_BASES, RANK, N_ELEMENTS : VECTORS {
 }
 weight 4.50;
 
-rule BASES, N_BASES, RANK, N_ELEMENTS : BINARY_VECTORS {
-  bases_from_points($this,2)
-}
-weight 4.51;
-
-rule BASES, N_BASES, RANK, N_ELEMENTS : TERNARY_VECTORS {
-  bases_from_points($this,3)
-}
-weight 4.51;
-
 rule BASES, N_BASES, RANK : LATTICE_OF_FLATS, N_ELEMENTS {
   bases_from_lof($this)
 }

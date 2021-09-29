@@ -42,3 +42,8 @@
 # @topic category any/gfan
 # These +++ are wrappers for gfan functions.
 
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

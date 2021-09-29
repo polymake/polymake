@@ -8,5 +8,6 @@
   {"class": "std::list<Set<Int>>", "include": ["polymake/Set.h", "polymake/list"], "pkg": "Polymake::common::List__Set__Int"},
   {"class": "std::list<std::string>", "include": ["polymake/list"], "pkg": "Polymake::common::List__String"},
   {"class": "std::list<std::pair<Integer, SparseMatrix<Integer, NonSymmetric>>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h", "polymake/client.h", "polymake/list"], "pkg": "Polymake::common::List__Pair_A_Integer_I_SparseMatrix_A_Integer_I_NonSymmetric_Z_Z"},
+  {"class": "std::list<std::pair<Matrix<Rational>, Matrix<Int>>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/client.h", "polymake/list"], "pkg": "Polymake::common::List__Pair_A_Matrix_A_Rational_I_NonSymmetric_Z_I_Matrix_A_Int_I_NonSymmetric_Z_Z"},
  null ],
 "version": 3}

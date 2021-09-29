@@ -86,6 +86,7 @@ $Polymake::DeveloperMode = -d "$root/testscenarios";
 
 my $BuildDir = $options{build} ? "build.$options{build}" : "build";
 my $perlxpath = "perlx/$Config::Config{version}/$Config::Config{archname}";
+my $perlextraflags = "";
 
 load_enabled_bundled_extensions();
 parse_command_line(\@ARGV, $repeating_config);
@@ -846,11 +847,18 @@ If you have renamed the main fink program, please specify the top directory: --w
 #####################################################
 sub check_brew {
    $BrewBase=$options{brew};
-   if ( $BrewBase eq "default" ) {
+   if ( $BrewBase eq "default" || $BrewBase eq "/usr/local" ) {
       $BrewBase = '/usr/local';
       unless (-f "$BrewBase/bin/brew") {
          die "brew installation corrupt: $BrewBase/bin/brew not found\n";
       }
+   } elsif( $BrewBase eq "bottle" ) {
+      $ADDITIONAL_PERL_INCLUDES = "";
+      my @perl_paths = split(/:/, "$ENV{PERL5LIB}");
+      foreach (@perl_paths) {
+         $ADDITIONAL_PERL_INCLUDES .= " -I$_";
+      }
+      $BrewBase = '/usr/local';
    } else {
       if (-d $BrewBase) {
          unless (-f "$BrewBase/bin/brew") {
@@ -1350,7 +1358,8 @@ Otherwise, reconfigure and reinstall your perl.
          $_ =~ s/(?:^|\s+)-arch\s+\w+//g for $perlcflags, $perlldflags; 
       }
    }
-   my $build_error=build_test_program(<<'---', CXXFLAGS => (defined($CLANGversion) && "-Wno-reserved-user-defined-literal ").$perlcflags, LDFLAGS => "$ARCHFLAGS $perlldflags" );
+RETRYLIBPERL:
+   my $build_error=build_test_program(<<'---', CXXFLAGS => (defined($CLANGversion) && "-Wno-reserved-user-defined-literal ")."$perlcflags $perlextraflags", LDFLAGS => "$ARCHFLAGS $perlldflags" );
 #include <EXTERN.h>
 #include <perl.h>
 
@@ -1389,6 +1398,14 @@ perl-devel or libperl-dev.  Please look for such a package and install it.
 ---
       }
    } else {
+      if (defined($GCCversion) && $perlextraflags !~ /-D_Thread_local/ && $build_error =~ /error:.+_Thread_local.+does not name a type/s) {
+         # The PERL_THREAD_LOCAL macro might be set to _Thread_local (since perl 5.35.5).
+         # This is defined in the C11 standard and supported by all relevant gcc versions.
+         # But g++ (gcc in C++ mode) does not accept _Thread_local so we define that to thread_local instead.
+         # clang and clang++ both accept _Thread_local.
+         $perlextraflags .= " -D_Thread_local=thread_local";
+         goto RETRYLIBPERL;
+      }
       $error = <<"---";
 Could not compile a test program for the libperl.$Config::Config{so} shared library.
 The build error is as follows:
@@ -1755,7 +1772,7 @@ sub write_perl_specific_configuration_file {
 
    print $conf <<"---";
 PERL=$Config::Config{perlpath}
-CXXglueFLAGS=$includePerlCore$Config::Config{archlibexp}/CORE $Config::Config{ccflags} -DPerlVersion=$PerlVersion $no_warn
+CXXglueFLAGS=$includePerlCore$Config::Config{archlibexp}/CORE $Config::Config{ccflags} $perlextraflags -DPerlVersion=$PerlVersion $no_warn
 LIBperlFLAGS=-L$Config::Config{archlib}/CORE -lperl $Config::Config{ccdlflags}
 ExtUtils_xsubpp=$xsubpp
 ExtUtils_typemap=$typemap

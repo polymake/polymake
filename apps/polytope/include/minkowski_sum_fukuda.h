@@ -303,6 +303,7 @@ template <typename E>
 bool are_parallel(const Vector<E>& e1, const Vector<E>& e2)
 {
    const Int dim = e1.dim();
+   assert(dim == e2.dim());
    E q(0);              // quotient e2[j]/e1[j] -- should be constant
    Int j = 1;
    for (; j < dim; ++j) {
@@ -522,6 +523,10 @@ class Node {
       }
 
       bool has_predecessor(const Node& node) const {
+         // we need to avoid running into the root here as the local search
+         // function is not well defined in that case
+         if (indices == AO.get_root_indices())
+            return false;
          const auto tmp = AO.local_search(indices);
          return node.indices == tmp;
       }

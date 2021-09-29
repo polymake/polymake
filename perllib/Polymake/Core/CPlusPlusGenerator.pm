@@ -531,7 +531,7 @@ sub cpperl_filename {
    if (defined $self->in_cc_file) {
       "wrap-".(split /\./, $self->in_cc_file, 2)[0]
    } else {
-      "auto-".$self->name;
+      "auto-".$self->name =~ s/:+/_/gr;
    }
 }
 

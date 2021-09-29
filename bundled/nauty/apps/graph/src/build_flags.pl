@@ -1,6 +1,6 @@
 # input for generate_ninja_targets.pl
 
-my $foreign_src = $ConfigFlags{'bundled.nauty.NautySrc'};
+my $foreign_src = $ConfigFlags{'bundled.nauty.NautySrc'} ne "bundled" && $ConfigFlags{'bundled.nauty.NautySrc'};
 my $nauty_src = $foreign_src ? '${bundled.nauty.NautySrc}' : '${root}/bundled/nauty/external/nauty';
 my $generated_dir = '${buildroot}/staticlib/nauty';
 my @generated_headers = qw( nauty.h naututil.h gtools.h );
@@ -9,17 +9,21 @@ my @generated_out = map { "$generated_dir/$_" } @generated_headers;
 my $include_generated = ($foreign_src && grep { -f "$foreign_src/$_" } @generated_headers)
                         ? join(" ", map { "-include $_" } @generated_out)
                         : "-I$generated_dir";
+my $nauty_inc = $ConfigFlags{'bundled.nauty.NautySrc'}
+                ? " -I$generated_dir -I$nauty_src"
+                : "";
 
-( CXXFLAGS => "-DBIGNAUTY -I$generated_dir -I$nauty_src",
+( 'GraphIso.cc' => $nauty_inc,
 
-  GENERATED => {
-    out => "@generated_out", in => "@generated_in",
-    command => "cd $generated_dir; CC=\"\${CC}\" CFLAGS=\"\${CFLAGS}\" $nauty_src/configure --quiet >/dev/null 2>/dev/null; rm -f makefile",
-  },
-
-  staticlib => {
-    SOURCEDIR => $nauty_src,
-    SOURCES => [ qw(naugraph.c naurng.c nausparse.c nautaux.c nautil.c nautinv.c naututil.c nauty.c rng.c schreier.c) ],
-    CFLAGS => "-DBIGNAUTY $include_generated -I$nauty_src",
-  }
+  $ConfigFlags{'bundled.nauty.NautySrc'}
+  ? ( GENERATED => {
+        out => "@generated_out", in => "@generated_in",
+        command => "cd $generated_dir; CC=\"\${CC}\" CFLAGS=\"\${CFLAGS}\" $nauty_src/configure --quiet >/dev/null 2>/dev/null; rm -rf makefile nauty; ln -s . nauty",
+      },
+      staticlib => {
+        SOURCEDIR => $nauty_src,
+        SOURCES => [ qw(naugraph.c naurng.c nausparse.c nautaux.c nautil.c nautinv.c naututil.c nauty.c rng.c schreier.c) ],
+        CFLAGS => "$include_generated -I$nauty_src",
+      } )
+  : ()
 )

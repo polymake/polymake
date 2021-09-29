@@ -42,7 +42,7 @@ public:
    using flip_sequence = std::list<Int>;
    using Fan_Vertices = Map<Vector<Rational>, Int>;
    using Fan_Max_Cells = std::list<Set<Int>>;
-   using DoublyConnectedEdgeList = graph::DoublyConnectedEdgeList;
+   using DoublyConnectedEdgeList = graph::dcel::DoublyConnectedEdgeList;
 private:
 
    // the graph we want to iterate through, built during iterations

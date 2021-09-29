@@ -1,0 +1,8 @@
+{"app": "tropical", "embed": "moduli_cell_of_curve.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "auto_group_on_coordinates", "include": ["polymake/Rational.h"], "sig": "auto_group_on_coordinates:T1.B.o", "tp": 1},
+  {"args": ["Rational", "void", "void", "void"], "func": "moduli_cell_of_curve", "include": ["polymake/Rational.h"], "sig": "moduli_cell_of_curve:T1.B.B.o", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Array<Int>&>", "perl::Canned<const Vector<Rational>&>", "perl::Canned<const Vector<Rational>&>", "void"], "func": "isomorphic_curves", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "isomorphic_curves:T1.X.X.X.X.o", "tp": 1},
+  {"args": ["Rational", "void", "void", "void"], "func": "isomorphic_curves", "include": ["polymake/Rational.h"], "sig": "isomorphic_curves:T1.B.B.o", "tp": 1},
+ null ],
+"version": 3}

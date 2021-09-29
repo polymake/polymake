@@ -48,8 +48,8 @@ object topaz::HyperbolicSurface {
    # @param Int depth
    # @return fan::PolyhedralComplex<Rational>
    # @example
-   # > $T = new Array<Array<Int>>([[0,0,6,5],[0,0,1,10],[0,0,8,2],[1,0,11,4],[1,0,7,3],[1,0,9,0]]);
-   # > $s = new HyperbolicSurface(DCEL_DATA=>$T, PENNER_COORDINATES=>[1,1,1,1,1,1], SPECIAL_POINT=>[1,0]);
+   # > $T = new Matrix<Int>([[0,0,6,5],[0,0,1,10],[0,0,8,2],[1,0,11,4],[1,0,7,3],[1,0,9,0]]);
+   # > $s = new HyperbolicSurface(DCEL=>$T, PENNER_COORDINATES=>[1,1,1,1,1,1], SPECIAL_POINT=>[1,0]);
    # > $d = $s->gkz_dome(0,3);
    # > $d->VISUAL;
    #

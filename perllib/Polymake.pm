@@ -49,7 +49,7 @@ require JSON;
 # Global variables
 #
 
-declare $Version = "4.4";
+declare $Version = "4.5";
 declare $VersionNumber = eval "v$Version";    # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle

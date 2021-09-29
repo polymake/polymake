@@ -1,0 +1,5 @@
+{"app": "tropical", "embed": "moduli_space_of_curve.cc",
+ "inst": [
+  {"args": ["Rational", "void", "void"], "func": "moduli_space", "include": ["polymake/Rational.h"], "sig": "moduli_space:T1.B.o", "tp": 1},
+ null ],
+"version": 3}

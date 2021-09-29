@@ -85,6 +85,9 @@ int main (int argc, char *argv[])
 #ifdef NMZ_FLINT
    std::cout << " -lflint";
 #endif
+#ifdef NMZ_NAUTY
+   std::cout << " -lnauty";
+#endif
    std::cout << std::endl;
    return 0;
 }

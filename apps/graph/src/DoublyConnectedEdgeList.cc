@@ -16,51 +16,162 @@
 */
 
 #include "polymake/graph/DoublyConnectedEdgeList.h"
+#include "polymake/Map.h"
+#include "polymake/Set.h"
+#include "polymake/pair.h"
 
-namespace polymake { namespace graph {
+namespace polymake { 
+namespace graph {
+namespace dcel {
 
-Int DoublyConnectedEdgeList::getNumVert(const Array<Array<Int>>& half_edge_list)
+Int DoublyConnectedEdgeList::getNumVert(const Matrix<Int>& half_edge_list)
 {
    Int num_vertices = 0;
-   for (const auto& half_edge : half_edge_list) {
+   for (const auto& half_edge : rows(half_edge_list)) {
       assign_max(num_vertices, half_edge[0]);
       assign_max(num_vertices, half_edge[1]);
    }
    return num_vertices+1;
 }
 
-Int DoublyConnectedEdgeList::getNumTriangs(const Array<Array<Int>>& half_edge_list)
+Int DoublyConnectedEdgeList::getNumTriangs(const Matrix<Int>& half_edge_list)
 {
    Int num_triangles = 0;
-   for (const auto& half_edge : half_edge_list) {
+   for (const auto& half_edge : rows(half_edge_list)) {
       assign_max(num_triangles, half_edge[4]);
       assign_max(num_triangles, half_edge[5]);
    }
    return num_triangles+1;
 }
 
-DoublyConnectedEdgeList::DoublyConnectedEdgeList(const Array<Array<Int>>& half_edge_list)
+void DoublyConnectedEdgeList::verifyHalfedge(Int& counter, const std::pair<Int, Int>& key, Map<std::pair<Int, Int>, Int>& existing_edges){
+   if(!existing_edges.exists(key)){
+      std::pair<Int, Int> twin_key(key.second, key.first);
+      existing_edges[key] = counter++;
+      existing_edges[twin_key] = counter++;
+      halfedges[counter-2].setTwin(&halfedges[counter-1]);
+      halfedges[counter-2].setHead(&vertices[key.second]);
+      halfedges[counter-1].setHead(&vertices[twin_key.second]);
+   }
+}
+
+void DoublyConnectedEdgeList::insert_container(){
+   for(auto& halfedge : halfedges){
+      halfedge.setContainer(this);
+   }
+   for(auto& vertex : vertices){
+      vertex.setContainer(this);
+   }
+   if(with_faces){
+      for(auto& face : faces){
+         face.setContainer(this);
+      }
+   }
+}
+
+
+DoublyConnectedEdgeList::DoublyConnectedEdgeList(const Array<Array<Int>>& vif_cyclic_normals) : with_faces(true)
+{
+   // Prune these
+   Int n_halfedges = 0;
+   Set<Int> vertices_tmp;
+   for(const auto& cycle : vif_cyclic_normals){
+      n_halfedges += cycle.size();
+      vertices_tmp += Set<Int>(cycle);
+   }
+   Int n_vertices = vertices_tmp.size();
+   Int n_facets = vif_cyclic_normals.size();
+
+   resize(n_vertices, n_halfedges, n_facets);
+
+   Map<std::pair<Int, Int>, Int> halfedge_indices;
+   Int halfedge_counter = 0;
+   for(Int i = 0; i<n_facets; i++){
+      const Array<Int>& cycle = vif_cyclic_normals[i];
+      for(Int j = 0; j<cycle.size(); j++){
+         Int a = cycle[(j-1+cycle.size()) % cycle.size()];
+         Int b = cycle[j % cycle.size()];
+         Int c = cycle[(j+1) % cycle.size()];
+         Int d = cycle[(j+2) % cycle.size()];
+         
+         std::pair<Int, Int> prev_key(a,b);
+         std::pair<Int, Int> key(b,c);
+         std::pair<Int, Int> next_key(c,d);
+         std::pair<Int, Int> twin_key(c,b);
+         verifyHalfedge(halfedge_counter, prev_key, halfedge_indices);
+         verifyHalfedge(halfedge_counter, key, halfedge_indices);
+         verifyHalfedge(halfedge_counter, next_key, halfedge_indices);
+         verifyHalfedge(halfedge_counter, twin_key, halfedge_indices);
+         halfedges[halfedge_indices[key]].setPrev(&halfedges[halfedge_indices[prev_key]]);
+         halfedges[halfedge_indices[key]].setNext(&halfedges[halfedge_indices[next_key]]);
+         halfedges[halfedge_indices[key]].setFace(&faces[i]);
+         if(j == cycle.size()-1){
+            faces[i].setHalfEdge(&halfedges[halfedge_indices[next_key]]);
+         }
+      }
+   }
+
+}
+
+
+DoublyConnectedEdgeList::DoublyConnectedEdgeList(const Matrix<Int>& half_edge_list)
    : with_faces(false)
 {
-   const Int num_edges = half_edge_list.size();
-   const Int num_vertices = getNumVert(half_edge_list);    
-   const Int num_faces = 2*num_edges/3;
-   vertices.resize(num_vertices);
-   edges.resize(num_edges*2);
-   faces.resize(num_faces);
+   matrix_representation = half_edge_list;
+   resize();
+   populate();
+}
+
+void DoublyConnectedEdgeList::populate(){
+   populate(matrix_representation);
+}
+
+void DoublyConnectedEdgeList::resize(){
+   const Int num_edges = matrix_representation.rows();
+   const Int num_vertices = getNumVert(matrix_representation);    
+   if(matrix_representation.cols() == 6){
+      Set<Int> tmp;
+      for (const auto& half_edge : rows(matrix_representation)) {
+         tmp += half_edge[4];
+         tmp += half_edge[5];
+      }
+      if(tmp != sequence(0,tmp.size())) throw std::runtime_error("Faces are not labelled consequetively");
+      resize(num_vertices, num_edges*2, tmp.size());
+   } else {
+      resize(num_vertices, num_edges*2);
+   }
+}
+
+void DoublyConnectedEdgeList::resize(Int nvert, Int nhe, Int nfaces){
+   vertices.resize(nvert);
+   halfedges.resize(nhe);
+   faces.resize(nfaces);
+   with_faces = true;
+   insert_container();
+}
+
+void DoublyConnectedEdgeList::resize(Int nvert, Int nhe){
+   vertices.resize(nvert);
+   halfedges.resize(nhe);
+   insert_container();
+}
+
+void DoublyConnectedEdgeList::populate(const Matrix<Int>& half_edge_list){
+   if(half_edge_list.rows() == 0){
+      return;
+   }
 
    Int i = 0;
-   for (const auto& half_edge : half_edge_list) {
+   for (const auto& half_edge : rows(half_edge_list)) {
       setEdgeIncidences(i, half_edge[0], half_edge[1], half_edge[2], half_edge[3]);
       if (half_edge.size() == 6) {
          setFaceIncidences(i, half_edge[4], half_edge[5]);
-         with_faces = true;
       }
       ++i;
    }
 }
 
-DoublyConnectedEdgeList::DoublyConnectedEdgeList(const Array<Array<Int>>& half_edge_list, const Vector<Rational>& coords)
+DoublyConnectedEdgeList::DoublyConnectedEdgeList(const Matrix<Int>& half_edge_list, const Vector<Rational>& coords)
       : DoublyConnectedEdgeList(half_edge_list)
 {
    if (half_edge_list[0].size() == 4)
@@ -69,15 +180,62 @@ DoublyConnectedEdgeList::DoublyConnectedEdgeList(const Array<Array<Int>>& half_e
       setAcoords(coords);
 }
 
+const Matrix<Int>& DoublyConnectedEdgeList::toMatrixInt() const {
+   // Do the opposite of the constructor
+   Int n = getNumHalfEdges();
+   Int nrows = n/2;
+   Int ncols = with_faces ? 6 : 4;
+   matrix_representation = Matrix<Int>(nrows, ncols);
+   for(Int i=0; i<nrows; i++){
+      // Do the opposite of DoublyConnectedEdgeList::setEdgeIncidences
+      const HalfEdge* halfEdge = &halfedges[2*i];
+      matrix_representation(i,0) = halfEdge->getHead()->getID();
+      matrix_representation(i,1) = halfEdge->getTwin()->getHead()->getID();
+      matrix_representation(i,2) = halfEdge->getNext()->getID();
+      matrix_representation(i,3) = halfEdge->getTwin()->getNext()->getID();
+      if(with_faces){
+         matrix_representation(i,4) = halfEdge->getFace()->getID();
+         matrix_representation(i,5) = halfEdge->getTwin()->getFace()->getID();
+      }
+   }
+   return matrix_representation;
+}
+
+Array<Array<Int>> DoublyConnectedEdgeList::faces_as_cycles() const {
+   if(!with_faces) throw std::runtime_error("This is not a DCEL with faces.");
+   Int n = getNumFaces();
+   Array<Array<Int>> result(n);
+   for(Int i=0; i<n; i++){
+      const Face& face = faces[i];
+      std::vector<Int> tmp;
+      HalfEdge* he = face.getHalfEdge();
+      Int first = he->getPrev()->getHead()->getID();
+      tmp.push_back(first);
+      Int current_id = he->getHead()->getID();
+      while(first != current_id){
+         tmp.push_back(current_id);
+         if(he->getNext() != nullptr){
+            he = he->getNext();
+         } else {
+            throw std::runtime_error("No cycle around face in DCEL");
+         }
+         current_id = he->getHead()->getID();
+      }
+      result[i] = Array<Int>(tmp.begin(), tmp.end());
+   }
+   return result;
+}
+
+
 void DoublyConnectedEdgeList::setEdgeIncidences(const Int halfEdgeId, const Int headId, const Int twinHeadId, const Int nextId, const Int twinNextId)
 {
-   HalfEdge& halfEdge = edges[2*halfEdgeId];
-   halfEdge.setHead(getVertex(headId));
-   halfEdge.setNext(getHalfEdge(nextId));
+   HalfEdge& halfEdge = halfedges[2*halfEdgeId];
+   halfEdge.setHead(&vertices[headId]);
+   halfEdge.setNext(&halfedges[nextId]);
 
-   HalfEdge& twinHalfEdge = edges[2*halfEdgeId+1];
-   twinHalfEdge.setHead(getVertex(twinHeadId));
-   twinHalfEdge.setNext(getHalfEdge(twinNextId));
+   HalfEdge& twinHalfEdge = halfedges[2*halfEdgeId+1];
+   twinHalfEdge.setHead(&vertices[twinHeadId]);
+   twinHalfEdge.setNext(&halfedges[twinNextId]);
 
    halfEdge.setTwin(&twinHalfEdge);
 }
@@ -86,13 +244,13 @@ void DoublyConnectedEdgeList::setFaceIncidences(const Int half_edge_id, const In
 {
    Face& face = faces[face_id];
    Face& twin_face = faces[twin_face_id];
-   HalfEdge& half_edge = edges[2*half_edge_id];
-   HalfEdge& twin_half_edge = edges[2*half_edge_id+1];
+   HalfEdge& half_edge = halfedges[2*half_edge_id];
+   HalfEdge& twin_half_edge = halfedges[2*half_edge_id+1];
 
    face.setHalfEdge(&half_edge);
    twin_face.setHalfEdge(&twin_half_edge);
-   half_edge.setFace(getFace(face_id));
-   twin_half_edge.setFace(getFace(twin_face_id));
+   half_edge.setFace(&faces[face_id]);
+   twin_half_edge.setFace(&faces[twin_face_id]);
 }
 
 SparseMatrix<Int> DoublyConnectedEdgeList::EdgeVertexIncidenceMatrix() const
@@ -101,7 +259,7 @@ SparseMatrix<Int> DoublyConnectedEdgeList::EdgeVertexIncidenceMatrix() const
    SparseMatrix<Int> M(numEdges, vertices.size());
 
    for (Int i = 0 ; i < numEdges; ++i) {
-      const HalfEdge& halfEdge = edges[2*i];
+      const HalfEdge& halfEdge = halfedges[2*i];
       M(i, getVertexId(halfEdge.getHead())) = 1;
       M(i, getVertexId(halfEdge.getTwin()->getHead())) = 1;
    }
@@ -111,7 +269,7 @@ SparseMatrix<Int> DoublyConnectedEdgeList::EdgeVertexIncidenceMatrix() const
 
 bool DoublyConnectedEdgeList::isFlippable(const Int edgeId) const
 {
-   const HalfEdge* halfEdge = &edges[2*edgeId];
+   const HalfEdge* halfEdge = &halfedges[2*edgeId];
    return halfEdge != halfEdge->getNext()
        && halfEdge != halfEdge->getNext()->getNext()
        && halfEdge != halfEdge->getNext()->getTwin()
@@ -146,7 +304,7 @@ void DoublyConnectedEdgeList::flipHalfEdge(HalfEdge* const halfEdge)
 
 void DoublyConnectedEdgeList::flipEdgeWithFaces(const Int edge_id)
 {
-   HalfEdge* halfEdge = &edges[2*edge_id];
+   HalfEdge* halfEdge = &halfedges[2*edge_id];
    HalfEdge* twin = halfEdge->getTwin();
    HalfEdge* a_edge = halfEdge->getNext();
    HalfEdge* b_edge = a_edge->getNext();
@@ -198,7 +356,7 @@ void DoublyConnectedEdgeList::flipEdgeWithFaces(const Int edge_id)
 
 void DoublyConnectedEdgeList::flipEdge(const Int edgeId)
 {
-   HalfEdge* halfEdge = &edges[2*edgeId];
+   HalfEdge* halfEdge = &halfedges[2*edgeId];
    if (halfEdge != halfEdge->getNext()
        && halfEdge != halfEdge->getNext()->getNext()
        && halfEdge != halfEdge->getNext()->getTwin()
@@ -236,7 +394,7 @@ void DoublyConnectedEdgeList::unflipHalfEdge(HalfEdge* const halfEdge)
 
 void DoublyConnectedEdgeList::unflipEdge(const Int edgeId)
 {
-   HalfEdge* halfEdge = &edges[2*edgeId];
+   HalfEdge* halfEdge = &halfedges[2*edgeId];
    if (halfEdge != halfEdge->getNext()
        && halfEdge != halfEdge->getNext()->getNext()
        && halfEdge != halfEdge->getNext()->getTwin()
@@ -246,7 +404,7 @@ void DoublyConnectedEdgeList::unflipEdge(const Int edgeId)
 
 std::array<Int, 8> DoublyConnectedEdgeList::getQuadId(const Int id) const
 {
-   const HalfEdge* halfEdge = &edges[id];
+   const HalfEdge* halfEdge = &halfedges[id];
 
    Int kl = getHalfEdgeId(halfEdge->getNext());
    Int il = getHalfEdgeId(halfEdge->getNext()->getNext());
@@ -264,8 +422,8 @@ std::array<Int, 8> DoublyConnectedEdgeList::getQuadId(const Int id) const
 void DoublyConnectedEdgeList::setMetric(const Vector<Rational>& metric)
 {
    for (Int i = 0, end = getNumEdges(); i < end; ++i) {
-      edges[2*i].setLength(metric[i]);
-      edges[2*i+1].setLength(metric[i]);
+      halfedges[2*i].setLength(metric[i]);
+      halfedges[2*i+1].setLength(metric[i]);
    }
 }
 
@@ -274,7 +432,7 @@ void DoublyConnectedEdgeList::setAcoords(const Vector<Rational>& acoords)
    const Int numHalfEdges = getNumHalfEdges();
    const Int numFaces = getNumFaces();
    for (Int i = 0; i < numHalfEdges; ++i) {
-      edges[i].setLength(acoords[i]);
+      halfedges[i].setLength(acoords[i]);
    }
    for (Int j = 0; j < numFaces; ++j) {
       faces[j].setDetCoord(acoords[numHalfEdges+j]);
@@ -286,7 +444,7 @@ Vector<Rational> DoublyConnectedEdgeList::edgeLengths() const
    const Int numEdges = getNumEdges();
    Vector<Rational> metric(numEdges);
    for (Int i = 0; i < numEdges ; ++i)
-      metric[i] = edges[2*i].getLength();
+      metric[i] = halfedges[2*i].getLength();
    return metric;
 }
 
@@ -298,11 +456,11 @@ Matrix<Rational> DoublyConnectedEdgeList::DelaunayInequalities() const
    for (Int a = 0; a < numEdges; ++a) {
       const auto quadId = getQuadId(2*a);
 
-      const Rational& ik = edges[2*a].getLength();
-      const Rational& kl = edges[quadId[5]].getLength();
-      const Rational& il = edges[quadId[7]].getLength();
-      const Rational& ij = edges[quadId[1]].getLength();
-      const Rational& jk = edges[quadId[3]].getLength();
+      const Rational& ik = halfedges[2*a].getLength();
+      const Rational& kl = halfedges[quadId[5]].getLength();
+      const Rational& il = halfedges[quadId[7]].getLength();
+      const Rational& ij = halfedges[quadId[1]].getLength();
+      const Rational& jk = halfedges[quadId[3]].getLength();
 
       const Int i = quadId[0];
       const Int j = quadId[2];
@@ -449,11 +607,11 @@ bool DoublyConnectedEdgeList::is_Delaunay(const Int id, const Vector<Rational>& 
 {
    const auto quadId = getQuadId(2 * id);
 
-   const Rational& ik = edges[2 * id].getLength();
-   const Rational& kl = edges[quadId[5]].getLength();
-   const Rational& il = edges[quadId[7]].getLength();
-   const Rational& ij = edges[quadId[1]].getLength();
-   const Rational& jk = edges[quadId[3]].getLength();
+   const Rational& ik = halfedges[2 * id].getLength();
+   const Rational& kl = halfedges[quadId[5]].getLength();
+   const Rational& il = halfedges[quadId[7]].getLength();
+   const Rational& ij = halfedges[quadId[1]].getLength();
+   const Rational& jk = halfedges[quadId[3]].getLength();
    const Int i = quadId[0];
    const Int j = quadId[2];
    const Int k = quadId[4];
@@ -480,11 +638,11 @@ Vector<Int> DoublyConnectedEdgeList::DelaunayConditions(const Vector<Rational>& 
    for (Int id = 0 ; id < numEdges; ++id) {
       const auto quadId = getQuadId(2*id);
 
-      const Rational& ik = edges[2 * id].getLength();
-      const Rational& kl = edges[quadId[5]].getLength();
-      const Rational& il = edges[quadId[7]].getLength();
-      const Rational& ij = edges[quadId[1]].getLength();
-      const Rational& jk = edges[quadId[3]].getLength();
+      const Rational& ik = halfedges[2 * id].getLength();
+      const Rational& kl = halfedges[quadId[5]].getLength();
+      const Rational& il = halfedges[quadId[7]].getLength();
+      const Rational& ij = halfedges[quadId[1]].getLength();
+      const Rational& jk = halfedges[quadId[3]].getLength();
       const Int i = quadId[0];
       const Int j = quadId[2];
       const Int k = quadId[4];
@@ -515,7 +673,7 @@ DoublyConnectedEdgeList::flip_sequence DoublyConnectedEdgeList::flipToDelaunayAl
 
 Rational DoublyConnectedEdgeList::angleSum(const Int id) const
 {
-   const Vertex* v = getVertex(id);
+   const Vertex* v = &vertices[id];
    HalfEdge* e = v->getIncidentEdge();
    HalfEdge* a = e->getTwin();
    HalfEdge* b = a->getNext();
@@ -545,13 +703,42 @@ const Map<Int, Int> DoublyConnectedEdgeList::triangleMap() const
    Map<Int, Int> triangle_map;
    const Int numHalfEdges = getNumHalfEdges();
    for (Int i = 0; i < numHalfEdges; ++i) {
-      const HalfEdge& halfEdge = edges[i];
+      const HalfEdge& halfEdge = halfedges[i];
       triangle_map[i] = numHalfEdges + getFaceId(halfEdge.getFace());
    }
    return triangle_map;
 }
 
-} }
+DoublyConnectedEdgeList DoublyConnectedEdgeList::dual() const
+{
+   if(!with_faces) throw std::runtime_error("Only DCELs with faces can be dualized");
+   DoublyConnectedEdgeList result;
+   result.resize(faces.size(), halfedges.size(), vertices.size());
+   Map<std::pair<Int, Int>, Int> halfedge_indices;
+   Int halfedge_counter = 0;
+   for(const auto& vertex: vertices){
+      HalfEdge* current_edge = vertex.getIncidentEdge();
+      Face& current_face = result.faces[vertex.getID()];
+      std::pair<Int, Int> start_key(current_edge->getFace()->getID(), current_edge->getTwin()->getFace()->getID());
+      std::pair<Int, Int> key(start_key), prev_key(start_key);
+      result.verifyHalfedge(halfedge_counter, key, halfedge_indices);
+      current_face.setHalfEdge(&result.halfedges[halfedge_indices[key]]);
+      do {
+         std::pair<Int, Int> twin_key(key.second, key.first);
+         current_edge = current_edge->getTwin()->getPrev();
+         prev_key = key;
+         key = std::pair<Int, Int>(current_edge->getFace()->getID(), current_edge->getTwin()->getFace()->getID());
+         result.verifyHalfedge(halfedge_counter, key, halfedge_indices);
+         result.halfedges[halfedge_indices[key]].setFace(&current_face);
+         result.connect_halfedges(&result.halfedges[halfedge_indices[prev_key]], &result.halfedges[halfedge_indices[key]]);
+      } while (start_key != key);
+   }
+   return result;
+}
+
+} // namespace dcel
+} // namespace graph 
+} // namespace polytope
 
 // Local Variables:
 // mode:C++

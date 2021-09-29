@@ -929,9 +929,10 @@ public:
    long operator% (const Integer& a, long b)
    {
       if (__builtin_expect(isfinite(a), 1)) {
-         if (__builtin_expect(b, 1))
-            return mpz_tdiv_ui(&a, std::abs(b));
-         else
+         if (__builtin_expect(b, 1)) {
+             long r = mpz_tdiv_ui(&a, std::abs(b));
+             return mpz_sgn(&a) >= 0 ? r : -r;
+         } else
             throw GMP::ZeroDivide();
       } else {
          throw GMP::NaN();

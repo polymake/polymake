@@ -30,6 +30,11 @@ use Polymake::Struct (
 
 sub new {
    my $self = &_new;
+   if ($self->type eq "ANY_DATA_TYPE" and
+       defined($self->paths) || !is_code($self->body)) {
+      croak("ANY_DATA_TYPE rule must have a body and no property path");
+   }
+
    $self->paths &&= [ map { [ split /\./ ] } split /\s*\|\s*/, $self->paths ];
 
    unless (is_code($self->body)) {

@@ -123,5 +123,8 @@
   {"args": ["perl::Canned<const Map<Vector<double>, Int>&>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<double> const&>, pm::Series<long, true> const, mlist<> >&>"], "func": "exists", "include": ["polymake/IncidenceMatrix.h", "polymake/Map.h", "polymake/Matrix.h", "polymake/Vector.h"], "kind": "meth", "sig": "exists:CORE.M.X"},
   {"class": "Map<Set<Int>, Set<Set<Int>>>", "include": ["polymake/Map.h", "polymake/Set.h"], "pkg": "Polymake::common::Map_A_Set__Int_I_Set__Set__Int_Z"},
   {"args": ["Map<Set<Int>, Set<Set<Int>>>"], "include": ["polymake/Map.h", "polymake/Set.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<Map<Set<Int>, Rational>&>", "perl::Canned<const pm::PointedSubset<pm::Series<long, true> >&>"], "include": ["polymake/Map.h", "polymake/PowerSet.h", "polymake/Rational.h", "polymake/Set.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
+  {"class": "Map<Array<Int>, Array<Array<Int>>>", "include": ["polymake/Array.h", "polymake/Map.h"], "pkg": "Polymake::common::Map_A_Array__Int_I_Array__Array__Int_Z"},
+  {"args": ["Map<Array<Int>, Array<Array<Int>>>"], "include": ["polymake/Array.h", "polymake/Map.h"], "op": "new", "sig": "new"},
  null ],
 "version": 3}

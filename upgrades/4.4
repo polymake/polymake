@@ -164,18 +164,11 @@ sub extract_old_group_data_pcom {
 }
 
 
-# replace PowerSet with Set<Set<Int>> as property type
+# replace PowerSet with Set<Set<Int>>
 
-upgrade 4.3.2 common::PowerSet {
+upgrade 4.3.2 ANY_DATA_TYPE {
    my ($obj, $attrs) = @_;
-   ($attrs // $obj)->{_type} =~ s/common::\KPowerSet(?:<\w+>)?\b/ $1 ? "Set<Set$1>" : "Set<Set<Int>>" /e;
-}
-
-# replace PowerSet with Set<Set<Int>> as attachment type
-
-upgrade 4.3.2 PowerSet {
-   my ($obj, $attrs) = @_;
-   $attrs->{_type} =~ s/^PowerSet(?:<\w+>)?\b/ $1 ? "Set<Set$1>" : "Set<Set<Int>>" /e;
+   $attrs->{_type} =~ s/(?:common::|<\s*|,\s*|^\s*)\KPowerSet(<\w+>)?\b/ $1 ? "Set<Set$1>" : "Set<Set<Int>>" /eg;
 }
 
 # fulton::BinomialIdeal is now ideal::Ideal with object_specialization Binomial

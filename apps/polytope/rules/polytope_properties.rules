@@ -731,6 +731,12 @@ property SPLIT_COMPATIBILITY_GRAPH : Graph;
 # @depends topcom
 property CHIROTOPE : Text;
 
+rule CHIROTOPE : VERTICES {
+   $this->CHIROTOPE = chirotope($this->VERTICES);
+}
+precondition : FULL_DIM && BOUNDED;
+weight 6.11;
+
 # @category Matroid properties
 # Circuits in [[VECTORS]]
 # @depends topcom

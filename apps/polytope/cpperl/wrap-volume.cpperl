@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Array<Set<Int>>&>"], "func": "squared_relative_volumes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "squared_relative_volumes.X.X"},
   {"args": ["perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "perl::Canned<const Array<Set<Int>>&>"], "func": "squared_relative_volumes", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/Set.h", "polymake/SparseMatrix.h"], "sig": "squared_relative_volumes.X.X"},
+  {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "perl::Canned<const Vector<Rational>&>"], "func": "normalized_smooth_volume", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Vector.h"], "sig": "normalized_smooth_volume:T1.X.X.X.X", "tp": 1},
  null ],
 "version": 3}

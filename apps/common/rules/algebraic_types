@@ -1017,7 +1017,7 @@ user_function householder_trafo(Vector<Float>) : c++ (include => "polymake/linal
 # > $M = new Matrix<Float>([[2,0,0],[0,3,4],[0,4,9]]);
 # > print(eigenvalues($M));
 # | 2 11 1
-user_function eigenvalues(Matrix<Float>) : c++ (include => "polymake/linalg.h");
+user_function eigenvalues<_>(Matrix<Float,_>) : c++ (include => "polymake/linalg.h");
 
 
 # @category Linear Algebra
@@ -1036,7 +1036,7 @@ user_function eigenvalues(Matrix<Float>) : c++ (include => "polymake/linalg.h");
 # > print $qr->first * $qr->second ;
 # | 23 4
 # | 6 42
-user_function qr_decomp(Matrix<Float>) : c++ (include => "polymake/linalg.h");
+user_function qr_decomp<_>(Matrix<Float,_>) : c++ (include => "polymake/linalg.h");
 
 # @topic category property_types/Linear Algebra
 # These types are needed as return types of algebraic computations.
@@ -1071,7 +1071,7 @@ declare property_type SingularValueDecomposition : c++ (include => "polymake/lin
 # > print $SVD->left_companion * $SVD->sigma * transpose($SVD->right_companion);
 # | 1 2
 # | 23 24
-user_function singular_value_decomposition(Matrix<Float>) : c++ (include => "polymake/linalg.h");
+user_function singular_value_decomposition<_>(Matrix<Float,_>) : c++ (include => "polymake/linalg.h");
 
 # @category Linear Algebra
 # Computes the Moore-Penrose Inverse of a [[Matrix]] //M//.
@@ -1082,7 +1082,7 @@ user_function singular_value_decomposition(Matrix<Float>) : c++ (include => "pol
 # > print(moore_penrose_inverse($M));
 # | 1 0 0
 # | 0 0.5 0.5
-user_function moore_penrose_inverse(Matrix<Float>) : c++ (include => "polymake/linalg.h");
+user_function moore_penrose_inverse<_>(Matrix<Float,_>) : c++ (include => "polymake/linalg.h");
 
 # @category Data Conversion
 # Return the input [[Vector]] (which is already in the dense form).

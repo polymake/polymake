@@ -61,17 +61,17 @@ rule ccompile
 
 # prepare a perl extension module source
 rule xxs_to_cc
-  command = ${PERL} ${ExtUtils_xsubpp} -typemap ${ExtUtils_typemap} ${XSextraTYPEMAPS} --output $out $in
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${ExtUtils_xsubpp} -typemap ${ExtUtils_typemap} ${XSextraTYPEMAPS} --output $out $in
   description = GENERATE $out
 
 # generate a bootstrapping sequence for the callable library
 rule gen_xs_bootstrap
-  command = ${PERL} ${root}/lib/core/src/perl/createBootstrap.pl $in >$out
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${root}/lib/core/src/perl/createBootstrap.pl $in >$out
   description = GENERATE $out
 
 # generate dummy companions for callable library
 rule gen_applib_stubs
-  command = ${PERL} ${root}/support/generate_applib_fake.pl $in >$out
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${root}/support/generate_applib_fake.pl $in >$out
   description = GENERATE $out
 
 # fill a static library
@@ -103,7 +103,7 @@ rule symlink_samedir
 
 # generate the list of all targets
 rule gen_targets
-  command = ${PERL} ${root}/support/generate_ninja_targets.pl $out ${root} $in
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${root}/support/generate_ninja_targets.pl $out ${root} $in
   description = GENERATE $out
   generator = 1
   depfile = $out.d
@@ -111,7 +111,7 @@ rule gen_targets
 
 # generate the list of all source files
 rule gen_file_list
-  command = ${PERL} ${root}/support/generate_ninja_targets.pl --$what $out $in
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${root}/support/generate_ninja_targets.pl --$what $out $in
   description = GENERATE $out
   restat = 1
 
@@ -123,7 +123,7 @@ rule inspect
 
 # generate a cpperl module from the input list (JSON)
 rule gen_cpperl_mod
-  command = ${PERL} ${root}/support/generate_cpperl_modules.pl --gen-rules ${buildroot}/cpperl/gen.ninja ${CPPERLextraFlags} $in $out
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${root}/support/generate_cpperl_modules.pl --gen-rules ${buildroot}/cpperl/gen.ninja ${CPPERLextraFlags} $in $out
   description = GENERATE C++ modules from $in
   restat = 1
 
@@ -137,17 +137,17 @@ rule gen_sources
 
 # rerun the configuration if the configuration script has changed, unless we are using an alternative perl configuration right now
 rule reconfigure
-  command = if [ '${build.file}' = build.ninja ]; then ${PERL} -I${root}/perllib ${root}/support/configure.pl --builddir=${builddir}; else true; fi
+  command = if [ '${build.file}' = build.ninja ]; then ${PERL} ${ADDITIONAL_PERL_INCLUDES} -I${root}/perllib ${root}/support/configure.pl --builddir=${builddir}; else true; fi
   description = RECONFIGURE $out
   restat = 1
   pool = console
 
 # install the core system
 rule install_core
-  command = ${PERL} ${root}/support/install.pl --root ${root} --builddir ${builddir} --config ${config.file} --mode ${buildmode} ${install_libs}
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${root}/support/install.pl --root ${root} --builddir ${builddir} --config ${config.file} --mode ${buildmode} ${install_libs}
   description = INSTALL core system in mode ${buildmode} at ${InstallTop}
 
 # install an extension
 rule install_ext
-  command = ${PERL} ${root}/support/install.pl --root ${root} --extroot ${extroot} --builddir ${builddir} --config ${root.config.file} --mode ${buildmode}
+  command = ${PERL} ${ADDITIONAL_PERL_INCLUDES} ${root}/support/install.pl --root ${root} --extroot ${extroot} --builddir ${builddir} --config ${root.config.file} --mode ${buildmode}
   description = INSTALL $extroot in mode ${buildmode} at ${InstallTop}/ext

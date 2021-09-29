@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["Graph<Directed>", "Int(Int)"], "include": ["polymake/Graph.h"], "op": "new", "sig": "new.Int"},
+ null ],
+"version": 3}

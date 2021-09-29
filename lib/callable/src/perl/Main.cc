@@ -199,6 +199,17 @@ Main::Main(const std::string& user_opts, std::string install_top, std::string in
    std::string fink_base=read_rel_link(install_arch + "/fink-base", false);
    if (!fink_base.empty())
       script_arg += ", \"" + fink_base + "/lib/perl5\"";
+   #if defined(POLYMAKE_CONF_ADDITIONAL_PERL_INCLUDES)
+      std::stringstream additional_perl_paths(ConfParamAsString(POLYMAKE_CONF_ADDITIONAL_PERL_INCLUDES));
+      while( additional_perl_paths.good() ) {
+         std::string substr;
+         std::getline( additional_perl_paths, substr, ' ' );
+         std::string::size_type i = substr.find("-I");
+         if (i != std::string::npos)
+            substr.erase(0,i+2);
+         script_arg += ", \"" + substr + "\"";
+      }
+   #endif
 #endif
    script_arg += scr8useLib;
    script_arg += user_opts;

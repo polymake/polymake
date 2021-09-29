@@ -841,7 +841,7 @@ object topaz::HyperbolicSurface {
    # See M. Joswig, R. Löwe, and B. Springborn. Secondary fans and secondary polyhedra of punctured Riemann surfaces. arXiv:1708.08714.
    property SECONDARY_FAN : PolyhedralFan<Rational>;
 
-   rule SECONDARY_FAN, FLIP_WORDS : DCEL_DATA, PENNER_COORDINATES {
+   rule SECONDARY_FAN, FLIP_WORDS : DCEL, PENNER_COORDINATES {
       secondary_fan_and_flipwords($this);
    }
 

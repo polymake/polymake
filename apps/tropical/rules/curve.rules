@@ -1,0 +1,180 @@
+#  Copyright (c) 1997-2021
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+object Curve {
+
+# @category Weights and lattices
+# The rows of this IncidenceMatrix correspond to the nodes of the tropical graph,
+# the columns to the edges.
+# Therefore, each row records the indices of the edges incident to that vertex.
+property EDGES_THROUGH_VERTICES : IncidenceMatrix;
+
+# @category Weights and lattices
+# Some edges can be "marked", which means they go off to infinity, and may not
+# be permuted by any automorphism.
+# By default there are no marked edges.
+property MARKED_EDGES : Set<Int>;
+
+# @category Weights and lattices
+# Each vertex may have an integer weight, which is affected by edge contractions:
+# if a loop on that vertex is contracted, the weight increases by 1,
+# if a non-loop edge incident to that vertex is contracted, the new weight
+# is the sum of the weights of the two endpoints.
+# Default weights are zero.
+property VERTEX_WEIGHTS : Array<Int>;
+
+# @category Weights and lattices
+# Each edge may have a Scalar length.
+# These are taken into account when determining isomorphism, but not when
+# calculating a MODULI_CELL.
+property EDGE_LENGTHS : Vector<Scalar>;
+
+# @category Weights and lattices
+# Some additional inequalities may be imposed on the lengths of edges.
+# The columns of this Matrix correspond to the columns of EDGES_THROUGH_VERTICES.
+property INEQUALITIES : Matrix<Scalar>;
+
+# @category Weights and lattices
+# The simplicial complex that records exactly one vertex for each
+# isomorphism class of assignments of lengths to the edges.
+# See the documentation of the function moduli_cell() for an example.
+property MODULI_CELL : topaz::GeometricSimplicialComplex;
+
+rule MODULI_CELL : EDGES_THROUGH_VERTICES {
+    $this->MODULI_CELL = moduli_cell($this);
+}
+
+# @category Combinatorics
+# Number of edges of the underlying graph.
+property N_EDGES : Int;
+
+rule N_EDGES : EDGES_THROUGH_VERTICES {
+    $this->N_EDGES = $this->EDGES_THROUGH_VERTICES->cols();
+}
+weight 0.10;
+
+# @category Combinatorics
+# Number of vertices (or nodes) of the underlying graph.
+property N_VERTICES : Int;
+
+rule N_VERTICES : EDGES_THROUGH_VERTICES {
+    $this->N_VERTICES = $this->EDGES_THROUGH_VERTICES->rows();
+}
+weight 0.10;
+
+# @category Weights and lattices
+# Genus of the abstract tropical curve, taking [[VERTEX_WEIGHTS]] into account
+# @example with weights explicitly given
+# > $C = new Curve(EDGES_THROUGH_VERTICES=>[[0,1],[1]], VERTEX_WEIGHTS=>[0,1]);
+# > print $C->GENUS;
+# | 2
+# @example genus as abstract graph
+# > $K4 = new Curve(EDGES_THROUGH_VERTICES=>[[0,1,2],[0,3,4],[1,3,5],[2,4,5]]);
+# > print $K4->GENUS;
+# | 3
+property GENUS : Int;
+
+rule GENUS : N_EDGES, N_VERTICES, VERTEX_WEIGHTS {
+    $this->GENUS = $this->N_EDGES - $this->N_VERTICES + 1 + sum($this->VERTEX_WEIGHTS);
+}
+
+# default weights are zero
+rule VERTEX_WEIGHTS : N_VERTICES {
+    $this->VERTEX_WEIGHTS = new Array<Int>($this->N_VERTICES);
+}
+weight 0.10;
+
+# no marked edges by default
+rule MARKED_EDGES :  {
+    $this->MARKED_EDGES = new Set<Int>();
+}
+weight 0.10;
+
+}
+
+# @category Weights and lattices
+# Construct the stacky fan corresponding to a Curve.
+# This is a fan with one representative for each orbit of faces under 
+# the symmetry group of the graph.
+# @param Curve G
+# @return fan::DisjointStackyFan
+# @example
+# To find the stacky f-vector of the complex of tropically smooth K_4 plane curves,
+# first construct the appropriate Curve:
+# > $UnitMatrix = unit_matrix(6);
+# > ($u, $v, $w, $x, $y, $z) = 0..5;
+# > ($U, $V, $W, $X, $Y, $Z) = map { new Vector($UnitMatrix->[$_]) } (0..5);
+# > $D_ineqs  = new Matrix( [$U-$V, $V-$W, $W-$Y, $W-$Z, $V-$X] );
+# > $skeleton = new IncidenceMatrix([[$u,$v,$x],[$v,$w,$z],[$u,$w,$y],[$x,$y,$z]]);
+# > $g = new Curve(EDGES_THROUGH_VERTICES=>$skeleton, INEQUALITIES=>$D_ineqs);
+# Now we are ready to compute the stacky f-vector:
+# > print stacky_fan($g)->STACKY_F_VECTOR;
+# | 7 18 25 21 8
+user_function stacky_fan(Curve) {
+    my ($tg) = @_;
+    my $autos = auto_group_on_coordinates($tg);
+    my $n_marked_edges = $tg->MARKED_EDGES->size();
+    my $n_unmarked_edges = $tg->EDGES_THROUGH_VERTICES->cols - $n_marked_edges;
+    my $ineqs = new Matrix(unit_matrix($n_unmarked_edges));
+    if (defined(my $additional_ineqs = $tg->lookup("INEQUALITIES"))) {
+        $ineqs /= $additional_ineqs;
+    }
+    
+    my $sf = ($autos->size() != 0)
+        ? fan::stacky_fan(new polytope::Cone(INEQUALITIES=>$ineqs, GROUP=>new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>new group::PermutationAction(GENERATORS=>$autos))))
+        : fan::stacky_fan(new polytope::Cone(INEQUALITIES=>$ineqs));
+    return $sf;
+}
+
+# @category Weights and lattices
+# Calculate the moduli cell of a given tropical graph G.
+# This is a simplicial complex with one vertex for each isomorphism class
+# of an assignment of lengths to the edges of G, that triangulates the
+# space of all such isomorphism classes.
+# @param Curve G the input graph. EDGE_LENGTHS are ignored.
+# @option Int verbosity 0 (default) = off ... 5 (most verbose)
+# @return topaz::GeometricSimplicialComplex
+# @example
+# The following incidence matrix defines a triangle with edges x,y,z,
+# along extra edges a,b,c incident to each vertex.
+# > ($a,$b,$c,$x,$y,$z,$w)=0..6;
+# > $etv = new IncidenceMatrix([[$a,$x,$z],[$b,$x,$y],[$c,$y,$z]]);
+# We consider the edges a,b,c to be marked.
+# > $g = new Curve(EDGES_THROUGH_VERTICES=>$etv, MARKED_EDGES=>[$a,$b,$c]);
+# The resulting moduli cell is homeomorphic to a 2-sphere:
+# > print $g->MODULI_CELL->HOMOLOGY;
+# | ({} 0)
+# | ({} 0)
+# | ({} 1)
+# You can also include a matrix of INEQUALITIES among the edges, but be careful
+# because the columns of that matrix correspond to the _unmarked_ edges:
+# > $h = new Curve(EDGES_THROUGH_VERTICES=>$etv, MARKED_EDGES=>[$a,$b,$c], INEQUALITIES=>new Matrix([[1,-1,0]]));
+# > print $h->MODULI_CELL->HOMOLOGY;
+# | ({} 0)
+# | ({} 0)
+# | ({} 0)
+
+user_function moduli_cell(Curve, { verbosity=>0 }) {
+    my ($tg, $options) = @_;
+    return moduli_cell_of_curve(fan::stacky_fundamental_domain(stacky_fan($tg), $options), $tg, $options);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

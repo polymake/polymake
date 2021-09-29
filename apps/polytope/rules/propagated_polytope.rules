@@ -21,6 +21,29 @@
 # For details see 
 #	Joswig: Polytope Propagation on Graphs.
 #	Chapter 6 in Pachter/Sturmfels: Algebraic Statistics for Computational Biology, Cambridge 2005.
+#
+# @example
+# We define an acyclic digraph on 8 nodes with a unique source and a unique sink.
+# Each arc is equipped with a vector in Q^2.
+# > $Gamma = new GraphAdjacency<Directed>(8);
+# > $Vectors = new EdgeMap<Directed, Vector>($Gamma);
+# > $Vectors->edge(0,1) = [1,0]; $Vectors->edge(0,2) = [0,0];
+# > $Vectors->edge(1,3) = [1,0]; $Vectors->edge(1,4) = [0,1];
+# > $Vectors->edge(2,3) = [0,0]; $Vectors->edge(2,4) = [0,2];
+# > $Vectors->edge(3,5) = [1,0]; $Vectors->edge(3,6) = [0,1];
+# > $Vectors->edge(4,5) = [0,0]; $Vectors->edge(4,6) = [0,2];
+# > $Vectors->edge(5,7) = [0,0];
+# > $Vectors->edge(6,7) = [0,0];
+# Then we can define the propagated polytope implicitly:
+# > $P = new PropagatedPolytope(CONE_AMBIENT_DIM=>3, "SUM_PRODUCT_GRAPH.ADJACENCY"=>$Gamma, "SUM_PRODUCT_GRAPH.TRANSLATIONS"=>$Vectors);
+# > print $P->VERTICES;
+# | 1 3 0
+# | 1 1 0
+# | 1 0 1
+# | 1 1 3
+# | 1 0 4
+# Note that it is necessary to specify the dimension of the (homogeneous) ambient space by setting [[CONE_AMBIENT_DIM]].
+
 declare object PropagatedPolytope<Scalar=Rational> : Polytope<Scalar> {
 
 # Directed graph to define the propagated polytope.  There is a (translation) vector assigned to each arc.

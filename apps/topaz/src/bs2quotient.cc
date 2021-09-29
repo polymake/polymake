@@ -104,6 +104,7 @@ identify_labels_by_equivalence(const Array<Set<Set<Set<Int>>>>& face_orbits,
                                const IncidenceMatrix<>& VIF,
                                Array<Set<Set<Int>>>& labels_as_set)
 {
+   cerr << "identify_labels_by_equivalence. VIF=\n" << VIF << endl;
    Map<Set<Int>, Set<Int>> face_rep; // maps each faces to its representative
    for (auto bydim_it = entire(face_orbits); !bydim_it.at_end(); ++bydim_it) { // *: Set<Set<Set>> = set of orbits of faces
       for (auto orbit_it = entire(*bydim_it); !orbit_it.at_end(); ++orbit_it) {// *: Set<Set> = one orbit of faces
@@ -114,13 +115,17 @@ identify_labels_by_equivalence(const Array<Set<Set<Set<Int>>>>& face_orbits,
          }
       }
    }
-   for (auto lit = entire(labels_as_set); !lit.at_end(); ++lit)
+   for (auto lit = entire(labels_as_set); !lit.at_end(); ++lit) {
+      Set<Set<Int>> flag;
+      for (auto fit = entire(*lit); !fit.at_end(); ++fit)
+         flag += face_rep[*fit];
+      cerr << "ilbe: " << *lit << " --> " << flag << endl;
       if (on_boundary(*lit, VIF)) {
-         Set<Set<Int>> flag;
-         for (auto fit = entire(*lit); !fit.at_end(); ++fit)
-            flag += face_rep[*fit];
          *lit = flag;
+      } else {
+         cerr << "not on boundary: " << *lit << endl;
       }
+   }
 }
 
 template<typename ClassesOrGroup>   

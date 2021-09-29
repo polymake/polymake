@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const QuadraticExtension<Rational>&>"], "func": "r", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "kind": "meth", "sig": "r:M"},
+ null ],
+"version": 3}

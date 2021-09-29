@@ -206,16 +206,17 @@ BigObject set_theoretic_intersection(BigObject A, BigObject B)
   const IncidenceMatrix<> &bcones = B.give("MAXIMAL_POLYTOPES");
   const Matrix<Rational> &blineality = B.give("LINEALITY_SPACE");
 
-  fan_intersection_result result = fan_intersection(arays,alineality,acones, brays,blineality,bcones);
+
+  fan_intersection_result result = fan_intersection(tdehomog(arays),tdehomog(alineality),acones,tdehomog(brays),tdehomog(blineality),bcones);
 
   // Check for contained cones
   FacetList flist;
   for (auto c = entire(rows(result.cones)); !c.at_end(); ++c) flist.insertMax(*c);
 
   return BigObject("fan::PolyhedralComplex",
-                   "VERTICES", tdehomog(result.rays),
+                   "VERTICES", result.rays,
                    "MAXIMAL_POLYTOPES", flist,
-                   "LINEALITY_SPACE", tdehomog(result.lineality_space));
+                   "LINEALITY_SPACE", result.lineality_space);
 }
 
 

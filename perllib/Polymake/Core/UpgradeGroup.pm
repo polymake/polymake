@@ -53,7 +53,7 @@ sub prepare {
    my (%interesting, $repeat);
    my $is_interesting_subobject = sub {
       my ($type) = @_;
-      exists($self->rules_by_type->{$type}) || $interesting{$type}
+      exists($self->rules_by_type->{ANY_DATA_TYPE}) || exists($self->rules_by_type->{$type}) || $interesting{$type}
    };
    my $all_descends = $self->big_objects->{descend};
    do {
@@ -142,11 +142,21 @@ sub apply {
    my $type = is_hash($obj) && $obj->{_type} =~ s/^$qual_id_re\K.*//r || $default_type;
    defined($type)
      or die "can't determine the object type\n";
+
    my $cnt = 0;
+   if (!defined($default_type) && defined(my $data = $obj->{data})) {
+      foreach my $type_tag ($type, "ANY_DATA_TYPE") {
+         if (defined(my $rules = $self->rules_by_type->{$type_tag})) {
+            $cnt += $_->apply($data, $obj) for @$rules;
+         }
+      }
+      return $cnt;
+   }
    if (defined(my $rules = $self->rules_by_type->{$type})) {
       $cnt += $_->apply($obj) for @$rules;
    }
-   is_hash($obj) or return $cnt;
+   # this is still necessary because of a hack in Serializer::upgrade_data
+   return $cnt unless is_hash($obj);
 
    my $subobjects = $self->subobjects_by_type->{$type};
    if (defined($descends)) {
@@ -159,6 +169,26 @@ sub apply {
          $subobjects = $descends;
       }
    }
+
+   # convert attachments and small data properties with explicit types
+
+   if (defined(my $attrs = $obj->{_attrs})) {
+      my $any_data_rules = $self->rules_by_type->{ANY_DATA_TYPE};
+      while (my ($prop_name, $prop_attrs) = each %$attrs) {
+         if (defined($type = $prop_attrs->{_type}) and
+             $prop_attrs->{attachment} ||
+             defined($any_data_rules) && !exists $subobjects->{$prop_name}) {
+            $type =~ s/^$qual_id_re\K.*//;
+            if (defined(my $rules = $self->rules_by_type->{$type})) {
+               $cnt += $_->apply($obj->{$prop_name}, $prop_attrs) for @$rules;
+            }
+            if (defined($any_data_rules)) {
+               $cnt += $_->apply($obj->{$prop_name}, $prop_attrs) for @$any_data_rules;
+            }
+         }
+      }
+   }
+
    if (defined($subobjects)) {
       # can't use each %$subobjects here because we might re-enter the same place recursively,
       # while one hash iterator can't be shared between two scopes (perl is a catastrophe)
@@ -171,18 +201,6 @@ sub apply {
                }
             } else {
                $cnt += apply($self, $child, is_array($descend) ? @$descend : $descend);
-            }
-         }
-      }
-   }
-
-   # attachments might need to be converted too
-   if (defined(my $attrs = $obj->{_attrs})) {
-      while (my ($prop_name, $prop_attrs) = each %$attrs) {
-         if ($prop_attrs->{attachment} && defined($type = $prop_attrs->{_type})) {
-            $type =~ s/^$qual_id_re\K.*//;
-            if (defined(my $rules = $self->rules_by_type->{$type})) {
-               $cnt += $_->apply($obj->{$prop_name}, $prop_attrs) for @$rules;
             }
          }
       }

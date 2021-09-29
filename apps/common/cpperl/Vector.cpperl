@@ -266,5 +266,6 @@
   {"args": ["Vector<TropicalNumber<Min, Rational>>", "perl::Canned<const pm::IndexedSlice<pm::masquerade<pm::ConcatRows, pm::Matrix_base<pm::Rational> const&>, pm::Series<long, false> const, mlist<> >&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
   {"args": ["Vector<PuiseuxFraction<Max, Rational, Rational>>", "perl::Canned<const SparseVector<PuiseuxFraction<Max, Rational, Rational>>&>"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseVector.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
   {"args": ["Vector<PuiseuxFraction<Max, Rational, Rational>>", "perl::Canned<const SparseVector<PuiseuxFraction<Max, Rational, Rational>>&>"], "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseVector.h", "polymake/TropicalNumber.h", "polymake/Vector.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
+  {"args": ["Vector<Rational>", "perl::Canned<const pm::Series<long, true>&>"], "include": ["polymake/Rational.h", "polymake/Set.h", "polymake/Vector.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

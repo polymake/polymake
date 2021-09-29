@@ -14,6 +14,12 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+package Visual::TVD;
+
+# cutoff factor for visualizing a tropical Voronoi diagram
+custom $cutoff=new Rational(20);
+
+
 # Voronoi diagram with respect to the tropical metric in the tropical projective torus.
 # Its combinatorics is controlled by a [[POLYTROPE_PARTITION]].
 # See P. Criado, M. Joswig, P. Santos: Tropical bisectors and Voronoi diagrams, arXiv:1906.10950
@@ -47,7 +53,7 @@ declare object VoronoiDiagram {
   # Each such polyhedron is a domain in which the distance to the set of sites $S$ is a minimum of linear functions.
   # This list of regions is represented as an array of pairs of matrices.
   # The first matrix in each pair represents the region itself (a polytrope) as a shortest path matrix.
-  # The second matrix (the labels) gives the index of the site $s\in S$ with maximum $s_j-s_i$ such that the cone $\{x:x_i-s_i<= x_k-s_k <= x_j-s_j \forall k\in [d+1]\}$ intersects this cell. (or $-1$ if no such index exists).
+  # The second matrix (the labels) gives the index of the site $s\in S$ with maximum $s_j-s_i$ such that the cone $\{x:x_i-s_i<= x_k-s_k <= x_j-s_j \forall k\in [d+1]\}$ intersects this cell (or $-1$ if no such index exists).
   # Then, in this region, $dist(x,S)$ is a minimum of the linear functions $(x_j-s_j)-(x_i-s_i)$ for each $s$ labelled with $(i,j)$.
   # @example Here is one polytrope cell.
   # > $T= new VoronoiDiagram(SITES=>[[-4,-4,0,0],[-3,0,2,0],[-2,-5,-2,0]]);
@@ -65,15 +71,14 @@ declare object VoronoiDiagram {
   property POLYTROPE_PARTITION : Array<Pair<Matrix<Rational>, Matrix<Int>>>;
 
   rule POLYTROPE_PARTITION : SITES {
-    my $s= $this->SITES;
-    $this->POLYTROPE_PARTITION= compute_polytrope_partition($s);
+      compute_polytrope_partition($this);
   }
 
   user_method VISUAL : AMBIENT_DIM, SITES, POLYTROPE_PARTITION {
-    my $this= shift;
-
-    my @result = visualizable_cells($this->SITES, $this->AMBIENT_DIM, $this->POLYTROPE_PARTITION);
-    compose(map {$_->VISUAL} @result);
+      my $this= shift;
+      
+      my @result = visualizable_cells($this->SITES, $this->AMBIENT_DIM, $this->POLYTROPE_PARTITION, $Visual::TVD::cutoff);
+      compose(map {$_->VISUAL} @result);
   }
 }
 

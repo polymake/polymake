@@ -22,6 +22,7 @@
 #include "polymake/linalg.h"
 #include "polymake/list"
 
+
 namespace polymake { namespace matroid {
 
 void bases_from_points(BigObject m)
@@ -29,7 +30,7 @@ void bases_from_points(BigObject m)
    const Matrix<Rational> points=m.give("VECTORS");
    const Int n_elements = points.rows();
    const Int r = rank(points);
-  
+
    std::list<Set<Int>> bases;
    Int n_bases = 0;
 
@@ -48,33 +49,7 @@ void bases_from_points(BigObject m)
    m.take("N_ELEMENTS") << n_elements;
 }
 
-void bases_from_points_finite_char(BigObject m, const Int p)
-{
-   if (p != 2 && p != 3) throw std::runtime_error("the characteristic of the field has to be 2 or 3");
-   const Matrix<Int> points= p==2 ? m.give("BINARY_VECTORS") : m.give("TERNARY_VECTORS");
-   const Int n_elements = points.rows();
-   const Int r = rank(points);
-  
-   std::list<Set<Int>> bases;
-   Int n_bases = 0;
-  
-   //test for each subset of size r
-   for (auto i = entire(all_subsets_of_k(sequence(0, n_elements), r)); !i.at_end(); ++i) {
-      const Matrix<Int> b = points.minor(*i, All);
-      if (det(b)%p != 0) {
-         bases.push_back(*i);
-         ++n_bases;
-      }
-   }
-
-   m.take("BASES") << bases;
-   m.take("N_BASES") << n_bases;
-   m.take("RANK") << r;
-   m.take("N_ELEMENTS") << n_elements;
-}
-
 Function4perl(&bases_from_points, "bases_from_points(Matroid)");
-Function4perl(&bases_from_points_finite_char, "bases_from_points(Matroid,$)");
 
 } }
 

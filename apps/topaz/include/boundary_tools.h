@@ -39,7 +39,9 @@ struct ind2map_consumer {
   }
 };
 
-std::pair<Array<Set<Int>>, Array<Int>> squeeze_faces(IncidenceMatrix<> faces)
+inline      
+std::pair<Array<Set<Int>>, Array<Int>>
+squeeze_faces(IncidenceMatrix<> faces)
 {
   auto c = ind2map_consumer(faces.cols());
   faces.squeeze_cols(c);

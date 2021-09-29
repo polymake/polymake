@@ -34,7 +34,7 @@ use Polymake::Struct (
    '%failed_rules | sensitive_to',      # Rule => undef  rules should not be applied to the object any more
                                         # Property->key (permutation) => contains properties sensitive to this permutation
    [ '$persistent' => 'undef' ],        # some object with load() and save() methods (only for top-level objects)
-   [ '$has_cleanup' => 'undef' ],       # has registered a cleanup handler
+   [ '$cleanup_table' => 'undef' ],     # cleanup table from Scope
    [ '$parent' => 'undef' ],            # parent BigObject
    [ '$property' => 'undef' ],          # as what this is kept in the parent object
    [ '$is_temporary' => 'undef' ],      # subobject or its ancestor was temporarily added
@@ -209,11 +209,11 @@ sub commit {
       }
    }
    if (@{$self->temporaries}) {
-      if ($object->has_cleanup) {
-         merge_temporaries($Scope->cleanup->{$object}, $self->temporaries);
+      if ($object->cleanup_table) {
+         merge_temporaries($object->cleanup_table->{$object}, $self->temporaries);
       } else {
-         $object->has_cleanup = 1;
-         $Scope->cleanup->{$object} = $self->temporaries;
+         $object->cleanup_table = $Scope->cleanup;
+         $object->cleanup_table->{$object} = $self->temporaries;
       }
    }
 }
@@ -1458,13 +1458,13 @@ sub cleanup {
       $#{$self->contents} -= $gap;
    }
 
-   $self->has_cleanup = 0;
+   $self->cleanup_table = 0;
 }
 
 sub cleanup_now {
    local interrupts(block);
    my ($self) = @_;
-   cleanup($self, delete $Scope->cleanup->{$self});
+   cleanup($self, delete $self->cleanup_table->{$self});
 }
 ####################################################################################
 sub prepare_for_save {
@@ -1473,7 +1473,7 @@ sub prepare_for_save {
       croak( "A sub-object can't be saved without its parent" );
    }
    close_pending_transaction($self);
-   cleanup_now($self) if $self->has_cleanup;
+   cleanup_now($self) if $self->cleanup_table;
    delete $save_at_end{$self};
    $self->changed = false;
    $self->name //= is_code($name_proposal) ? $name_proposal->($self) : $name_proposal;
@@ -1485,7 +1485,7 @@ sub prepare_for_schema_creation {
       croak( "Can't create a standalone schema for a sub-object" );
    }
    close_pending_transaction($self);
-   cleanup_now($self) if $self->has_cleanup;
+   cleanup_now($self) if $self->cleanup_table;
 }
 ####################################################################################
 sub DESTROY {
@@ -1505,16 +1505,16 @@ sub DESTROY {
             $self->transaction->rollback($self);
          }
          if ($self->changed) {
-            if ($self->has_cleanup) {
-               cleanup($self, delete $Scope->cleanup->{$self});
+            if ($self->cleanup_table) {
+               cleanup($self, delete $self->cleanup_table->{$self});
             }
             $self->persistent->save($self);
-         } elsif ($self->has_cleanup) {
-            delete $Scope->cleanup->{$self};
+         } elsif ($self->cleanup_table) {
+            delete $self->cleanup_table->{$self};
          }
          delete $save_at_end{$self};
-      } elsif ($self->has_cleanup) {
-         delete $Scope->cleanup->{$self};
+      } elsif ($self->cleanup_table) {
+         delete $self->cleanup_table->{$self};
       }
    }
 }
@@ -1527,8 +1527,8 @@ sub dont_save {
          $self->transaction->rollback($self);
       }
       if ($self->changed) {
-         if ($self->has_cleanup) {
-            cleanup($self, delete $Scope->cleanup->{$self});
+         if ($self->cleanup_table) {
+            cleanup($self, delete $self->cleanup_table->{$self});
          }
          $self->changed = 0;
          delete $save_at_end{$self};
@@ -2233,7 +2233,7 @@ sub ensure_save_changes {
             if (defined $obj->transaction) {
                $obj->rollback;
             }
-            if ($obj->has_cleanup) {
+            if ($obj->cleanup_table) {
                err_print( "object $obj ", defined($obj->name) && "(".$obj->name.")",
                           ": pending cleanup at end" );
             } elsif (!$obj->changed) {

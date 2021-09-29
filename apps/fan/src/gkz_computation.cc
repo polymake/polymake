@@ -16,9 +16,8 @@ typedef std::list<Int> flip_sequence;
 // flip words and the coresponding secondary fan, and stores them in the surface object.
 void secondary_fan_and_flipwords(BigObject surface)
 {
-   Array<Array<Int>> dcel_data = surface.give("DCEL_DATA");
    const Vector<Rational> penner_coord = surface.give("PENNER_COORDINATES");
-   graph::DoublyConnectedEdgeList dcel{dcel_data};
+   graph::DoublyConnectedEdgeList dcel = surface.give("DCEL");
    dcel.setMetric( penner_coord );
    Vector<Rational> angleVec = dcel.angleVector();
 

@@ -40,42 +40,9 @@ Vector<Scalar> gkz_vector(const GenericMatrix<MatrixTop,Scalar>& vert, const Con
    return gkz;
 }
 
-namespace {
-
-template <typename E>
-char
-sign2char(const E& x)
-{
-   return is_zero(x)
-      ? '0'
-      : x > 0
-      ? '+'
-      : '-';
-}
-   
-} // end anonymous namespace
-      
-template <typename E>
-std::string
-chirotope_impl_native(const Matrix<QuadraticExtension<E>>& V)
-{
-#if POLYMAKE_DEBUG
-   if (rank(V) != V.cols())
-      throw std::runtime_error("chirotope_impl_native: Input polytope or point configuration must be full-dimensional");
-#endif
-   const Int n = V.rows(), d = V.cols();
-   std::ostringstream os;
-   os << n << "," << d << ":\n";
-   for (auto sit = entire(all_subsets_of_k(sequence(0,n), d)); !sit.at_end(); ++sit)
-      os << sign2char(sign(det(V.minor(*sit, All))));
-   os << "\n";
-   return os.str();
-}
 
 FunctionTemplate4perl("gkz_vector<Scalar,Container>(Matrix<Scalar>, Container)");
 
-FunctionTemplate4perl("chirotope_impl_native<Scalar>(Matrix<QuadraticExtension<Scalar>>)");
-      
 } }
 
 // Local Variables:

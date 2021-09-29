@@ -34,8 +34,23 @@ object Cone {
 
 }
 
+# CREDIT sympol\n\n
 # @category Symmetry
-# wrapper function to store the symmetry group in the parent object
+# Use sympol to compute the linear symmetries of
+# - the RAYS|VERTICES, FACETS, or POINTS of a rational cone or polytope //C// (whatever is available, in this order), or
+# - the VECTORS|POINTS of a rational vector or point configuration //P//.
+# The action of the symmetry group is stored inside the parent object.
+# In the case of cones, sympol might compute only a subset of the linear symmetry group.
+# Sympol, and therefore this function, can only handle rational objects.
+# @param Cone C | VectorConfiguration //P//
+# @return group::Group the linear symmetry group, together with a PERMUTATION_ACTION, VERTICES_ACTION, FACETS_ACTION, or VECTOR_ACTION
+# @example
+# > print linear_symmetries(cube(3))->FACETS_ACTION->GENERATORS;
+# | 1 0 2 3 4 5
+# | 0 1 3 2 4 5
+# | 2 3 0 1 4 5
+# | 0 1 2 3 5 4
+# | 0 1 4 5 2 3
 user_function linear_symmetries($) {
     my $p = shift;
     my $g = linear_symmetries_impl($p);

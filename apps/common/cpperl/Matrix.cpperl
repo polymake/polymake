@@ -353,5 +353,6 @@
   {"args": ["Matrix<Int>", "perl::Canned<const SparseMatrix<Int, NonSymmetric>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/SparseMatrix.h"], "op": "new", "sig": "new.X"},
   {"args": ["Matrix<Int>", "perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::all_selector const&, pm::Series<long, true> const>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
   {"args": ["Matrix<PuiseuxFraction<Max, Rational, Rational>>", "perl::Canned<const Matrix<PuiseuxFraction<Max, Rational, Rational>>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "op": "new", "sig": "new.X"},
+  {"args": ["Matrix<Rational>", "perl::Canned<const pm::DiagMatrix<pm::SameElementVector<pm::Rational const&>, true>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/linalg.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

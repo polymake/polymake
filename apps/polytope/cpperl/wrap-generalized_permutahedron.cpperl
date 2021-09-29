@@ -1,0 +1,11 @@
+{"app": "polytope", "embed": "generalized_permutahedron.cc",
+ "inst": [
+  {"args": ["Rational", "void", "perl::Canned<const Map<Set<Int>, Rational>&>"], "func": "generalized_permutahedron", "include": ["polymake/Map.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "generalized_permutahedron:T1.x.X", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const Vector<Rational>&>"], "func": "SIM_body", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "SIM_body:T1.X", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const Vector<Rational>&>"], "func": "pitman_stanley", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "pitman_stanley:T1.X", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const Map<Set<Int>, Rational>&>"], "func": "building_set_ycoord_2_zcoord", "include": ["polymake/Map.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "building_set_ycoord_2_zcoord:T1.X", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const Vector<Rational>&>", "void"], "func": "gelfand_tsetlin", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "gelfand_tsetlin:T1.X.o", "tp": 1},
+  {"args": ["Rational", "perl::Canned<const Vector<Rational>&>", "void"], "func": "gelfand_tsetlin_counting", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "gelfand_tsetlin_counting:T1.X.o", "tp": 1},
+  {"args": ["Integer", "perl::Canned<const Matrix<Integer>&>"], "func": "gelfand_tsetlin_diagrams", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h"], "sig": "gelfand_tsetlin_diagrams:T1.X", "tp": 1},
+ null ],
+"version": 3}

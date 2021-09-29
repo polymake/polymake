@@ -15,6 +15,8 @@
 --------------------------------------------------------------------------------
 */
 
+#define MY_POLYMAKE_DEBUG 1
+
 #ifndef __FAN__STACKY_FAN_H
 #define __FAN__STACKY_FAN_H
 
@@ -24,27 +26,33 @@
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/topaz/barycentric_subdivision.h"
 #include "polymake/topaz/complex_tools.h"
+#include "polymake/topaz/boundary_tools.h"
 #include "polymake/group/permlib.h"
 #include "polymake/group/induced_action.h"
+#include "polymake/group/orbit.h"
+
+/*
+  Conventions:
+
+- SD_facets and SD_labels come from the first or second barycentric subdivision of the original stacky fan
+  * SD_facets is an Array<Set<Int>> whose integer entries refer to the SD_labels
+  * SD_labels is an Array<Set<Set<Int>>> 
+    - in the case of the first barycentric subdivision, the Set<Set>s are Sets of singletons that refer to the rays of the original fan
+      (they come first in the list of orbits in the orbit fan)
+    - in the case of the second barycentric subdivisions, the singletons are replaced by sets 
+ */
 
 namespace polymake { namespace fan {
 
+typedef std::list<Set<Int>> OrbitCollection;
+typedef std::vector<Int> ContractedRayIndices;
 
-      /*
-void
-validate_braid_arrangement_refines(const SparseMatrix<Rational>& ineqs)
-{
-   for (auto rit = entire(rows(ineqs)); !rit.at_end(); ++rit) {
-      if (rit->size() > 2)
-         throw std::runtime_error("Inequality matrix has more than two entries, so braid arrangement does not refine cone");
-      for (auto eit = entire(*rit); !eit.at_end(); ++eit)
-         if (abs(*eit) != 1)
-            throw std::runtime_error("Inequality matrix contains entries distinct from +-1,0, so braid arrangement does not refine cone");
-   }
-}
-      */
-
-namespace {
+template<typename Scalar>   
+struct SubdivisionData {
+   topaz::FacetsAndLabels fal;
+   Matrix<Scalar> subdiv_rays;
+};
+      
    
 template<typename Container>
 Array<std::string>
@@ -62,162 +70,305 @@ make_strings(const Container& labels)
    return label_strings;
 }
 
-inline   
-void
-check_stacky_fan(BigObject StackyFan)
+      
+template<typename LabelType>      
+struct FacetsLabelsReordering {
+   Array<Set<Int>> facets;
+   Array<Int> reordering;
+   LabelType labels;
+};
+   
+template<typename FacetType, typename LabelType>      
+FacetsLabelsReordering<LabelType>
+squeeze_facets_and_labels(const FacetType& facets,
+                          const LabelType& labels,
+                          const Int verbosity)
 {
-   const Array<Set<Int>> rays_orbits = StackyFan.give("GROUP.RAYS_ACTION.ORBITS");
-   const Int n_generating_rays = StackyFan.give("N_GENERATING_RAYS");
-
-   // check that the representatives of each orbit have indices in { 0, ..., n_generating_rays-1 }
-   Map<Int,Int> image_of_ray;
-   for (const auto& orbit: rays_orbits) {
-      const Int front = orbit.front();
-      if (front >= n_generating_rays)
-         throw std::runtime_error("stacky_second_bsd: Unexpected orbit representative");
-      for (const auto& i: orbit)
-         image_of_ray[i] = front;
+   FacetsLabelsReordering<LabelType> squeezed_flr;
+   IncidenceMatrix<> reordered_facets(facets);
+   const auto& squeezed_pair = topaz::squeeze_faces(reordered_facets);
+   if (verbosity > 2) {
+      cerr << "squeezing vertices to\n";
+      for (auto it = entire<indexed>(squeezed_pair.second); !it.at_end(); ++it)
+         if (*it != it.index())
+            cerr << "(" << *it << "->" << it.index() << ") ";
+      cerr << endl << endl;
    }
-
-#if POLYMAKE_DEBUG   
-   if (get_debug_level())
-      cerr << "n_generating_rays: " << n_generating_rays << endl
-           << "rays_orbits:\n" << rays_orbits << endl
-           << "image_of_ray:\n" << image_of_ray << endl;
-#endif
+   
+   squeezed_flr.facets = squeezed_pair.first;
+   squeezed_flr.reordering = squeezed_pair.second;
+   squeezed_flr.labels = LabelType(squeezed_pair.second.size());
+   
+   auto rl_it = entire(squeezed_flr.labels);
+   for (const Int i: squeezed_pair.second) {
+      *rl_it = labels[i];
+      ++rl_it;
+   }
+   return squeezed_flr;
 }
+            
+                                     
 
-template<typename InnerLabel>   
-Map<InnerLabel, InnerLabel>   
-lex_min_reps_of_inners(const Array<Array<Int>>& rays_perm_generators,
-                       const Array<Set<InnerLabel>>& SD_labels,
-                       bool& is_any_rep_different_from_original)
-{
-   const group::PermlibGroup permlib_group(rays_perm_generators);
-   Map<InnerLabel, InnerLabel> lex_min_rep_of;
-   is_any_rep_different_from_original = false;
-   for (const auto& label: SD_labels)
-      for (const auto& vertex_label: label)
-         if (!lex_min_rep_of.exists(vertex_label)) {
-            const auto& lmr = permlib_group.lex_min_representative(vertex_label);
-            if (!is_any_rep_different_from_original && lmr != vertex_label)
-               is_any_rep_different_from_original = true;
-            lex_min_rep_of[vertex_label] = lmr;
-         }
+template<typename Scalar, bool store_whole_orbit=false>
+class Second_SD_RayOrbitStorer {
+   using Storage = std::vector<std::pair<hash_set<Vector<Scalar>>,
+                                         Set<Int>>>;
+protected:
+   const Array<Array<Int>>& generators_or_group;
+   Storage orbit_and_contained_indices;
+   const bool is_entire_group_stored;
 
-#if POLYMAKE_DEBUG   
-   if (get_debug_level())
-      cerr << "lex_min_rep_of:\n" << lex_min_rep_of << endl
-           << "is_any_rep_different_from_original: " << is_any_rep_different_from_original << endl;
-#endif
-   return lex_min_rep_of;
-}
+public:
+   Second_SD_RayOrbitStorer(const Array<Array<Int>>& gens)
+      : generators_or_group(gens)
+      , orbit_and_contained_indices()
+      , is_entire_group_stored(false)
+   {}
 
-template<typename InnerLabel>   
-void
-identify_and_index_labels(const Array<Set<InnerLabel>>& SD_labels,
-                          const Map<InnerLabel, InnerLabel>& lex_min_rep_of,
-                          const IncidenceMatrix<>& VIF,
-                          const bool check_id_on_bd,
-                          const bool identify_only_on_boundary,
-                          const bool conserve_label_cardinality,
-                          Int& max_label_rep_index,
-                          Map<Set<InnerLabel>, Int>& index_of_label_rep,
-                          Array<Int>& rep_index_of_SD_label,
-                          Map<InnerLabel, Set<InnerLabel>>& duplicate_labels_of)
-{
-   for (Int i=0; i<SD_labels.size(); ++i) {
-      Set<InnerLabel> label_rep;
-      const bool is_on_bd(topaz::on_boundary(SD_labels[i], VIF));
-      if (identify_only_on_boundary && !is_on_bd)
-         label_rep = SD_labels[i];
-      else {
-         for (const auto& vertex_label: SD_labels[i]) {
-            const InnerLabel lmr(lex_min_rep_of[vertex_label]);
-            const bool have_seen_rep = label_rep.collect(lmr);
-            if (conserve_label_cardinality && have_seen_rep) {
-               duplicate_labels_of[lmr] += vertex_label;
-               label_rep += vertex_label;
-            }
+   Second_SD_RayOrbitStorer(const Array<Array<Int>>& gens, bool _is_entire_group_stored)
+      : generators_or_group(gens)
+      , orbit_and_contained_indices()
+      , is_entire_group_stored(_is_entire_group_stored)
+   {}
+
+private:
+   bool is_found(const Vector<Scalar>& v, const Int index) {
+      for (auto& oi: orbit_and_contained_indices) {
+         if (oi.first.contains(v)) {
+            oi.second += index;
+            return true;
          }
       }
-
-      if (check_id_on_bd && !identify_only_on_boundary && !is_on_bd && label_rep != SD_labels[i]) {
-         cerr << "interior label " << SD_labels[i] << " gets id'd to " << label_rep << endl;
-      }
-          
-      if (!index_of_label_rep.exists(label_rep))
-         index_of_label_rep[label_rep] = max_label_rep_index++;
-      rep_index_of_SD_label[i] = index_of_label_rep[label_rep];
+      return false;
    }
 
-#if POLYMAKE_DEBUG   
-   if (get_debug_level())
-      cerr << "index_of_label_rep:\n" << index_of_label_rep << endl
-           << "rep_index_of_SD_label:\n" << rep_index_of_SD_label << endl;
-#endif
+public:
+   
+   template<bool trigger = store_whole_orbit>
+   std::enable_if_t<!trigger>
+   add(const Vector<Scalar>& v,
+       const Int index) {
+      if (is_found(v, index))
+         return;
+      
+      // haven't found it yet, so v spawns a new orbit
+      const auto&& the_orbit = group::unordered_orbit<pm::operations::group::on_container, Array<Int>, Vector<Scalar>>(generators_or_group, v);
+      orbit_and_contained_indices.push_back(std::make_pair(the_orbit, scalar2set(index)));
+   }
+
+   template<bool trigger = store_whole_orbit>
+   std::enable_if_t<trigger>
+   add(const Vector<Scalar>& v,
+       const Int index) {
+      if (is_found(v, index))
+         return;
+   
+      // haven't found it yet, so v spawns a new orbit
+      hash_set<Vector<Scalar>> the_orbit;
+      for (const auto& g: generators_or_group) {
+         const pm::operations::group::action<Vector<Scalar>, pm::operations::group::on_container, Array<Int>> this_action(g);
+         the_orbit += this_action(v);
+      }
+      orbit_and_contained_indices.push_back(std::make_pair(the_orbit, scalar2set(index)));
+   }
+
+   const Storage& get_storage() const { return orbit_and_contained_indices; }
+};
+
+inline
+Set<Int>
+do_identification(const Set<Int>& f,
+                  const Array<Int>& identifies_to)
+{
+   Set<Int> identified_f;
+   for (const Int i: f)
+      identified_f += identifies_to[i];
+   return identified_f;
+}
+      
+inline
+void
+do_label_substitution(Array<Set<Set<Int>>>& SD_labels,
+                      const Array<Set<Set<Int>>>& original_labels)
+{
+   for (auto& label: SD_labels) {
+      assert(label.size() == 1);
+      Set<Set<Int>> subs_label;
+      for (const Int i: label.front()) {
+         assert(original_labels[i].size() == 1);
+         subs_label += original_labels[i].front();
+      }
+      label = subs_label;
+   }
 }
 
-template<typename InnerLabel>   
-void
-identify_facets_and_labels(const Array<Set<Int>>& SD_facets,
-                           const Array<Set<InnerLabel>>& SD_labels,
-                           const bool identify_only_on_boundary,
-                           const bool check_id_on_bd,
-                           const Array<Array<Int>>& rays_perm_generators,
-                           const IncidenceMatrix<>& VIF,
-                           Set<Set<Int>>& identified_facets,
-                           Array<Set<InnerLabel>>& identified_labels,
-                           bool& is_any_rep_different_from_original)
+
+template<typename IncomingOrbit>
+void include_in_collection(OrbitCollection& orbit_collection,
+                           const IncomingOrbit& incoming_orbit,
+                           const Int verbosity)
 {
-   // Each vertex of the second barycentric subdivision is represented as a Set<Set<Int>>
-   // The rays_perm_generators permute the indices of the inner Set<Int>
-   // So we first have to figure out the canonical representatives of those inner Set<Int>s
-   const Map<InnerLabel, InnerLabel> lex_min_rep_of = lex_min_reps_of_inners(rays_perm_generators, SD_labels, is_any_rep_different_from_original);
-   
-   // if the inner vertices are not permuted, we just give back the current subdivision
-   if (!is_any_rep_different_from_original)
-      return;
+   Set<Int> collected_orbit(incoming_orbit);
+   std::vector<Set<Int>> collated_sets;
+   orbit_collection.remove_if([&collected_orbit, &incoming_orbit, &collated_sets, verbosity](const Set<Int>& existing_orbit){
+                                 if ((incoming_orbit * existing_orbit).size()) {
+                                    // there is some overlap, so we have to remove existing_orbit from the list
+                                    // even though it might be the only set with overlap,
+                                    // because we don't know yet how many more existing_orbits with overlap to incoming_orbit there will be
+                                    collected_orbit += existing_orbit;
+                                    if (verbosity > 2)
+                                       collated_sets.push_back(existing_orbit);
+                                    return true;
+                                 }
+                                 return false;
+                              });
+   orbit_collection.push_back(collected_orbit);
+   if (verbosity > 2 && collated_sets.size()) {
+      cerr << "include_in_collection: current size " << orbit_collection.size()
+           << ". incoming orbit " << incoming_orbit << " collated ";
+      for (const auto& s: collated_sets)
+         cerr << s << " ";
+      cerr << " to " << collected_orbit << endl;
+   }
+}
 
-   // else we find the images of the entire labels
-   Int max_label_rep_index(0);
-   Map<Set<InnerLabel>, Int> index_of_label_rep;
-   Array<Int> rep_index_of_SD_label(SD_labels.size());
-   Map<Set<Int>,Set<Set<Int>>> duplicate_labels_of;
-   const bool conserve_label_cardinality(false);
-   identify_and_index_labels(SD_labels, lex_min_rep_of, VIF, check_id_on_bd, identify_only_on_boundary, conserve_label_cardinality, max_label_rep_index, index_of_label_rep, rep_index_of_SD_label, duplicate_labels_of);
-   
-   identified_labels.resize(max_label_rep_index);
-   for (const auto& iolr: index_of_label_rep)
-      identified_labels[iolr.second] = iolr.first;
+template<typename OrbitCollectionType>
+Array<Int>
+convert_to_identification_map(const OrbitCollectionType& orbit_collection,
+                              const Int n,
+                              const Int verbosity)
+{
+   Array<Int> identifies_to(sequence(0,n));
 
-#if POLYMAKE_DEBUG   
-   if (get_debug_level()) {
-      cerr << "identified_labels:\n";
-      for (Int i=0; i<identified_labels.size(); ++i)
-         cerr << i << ": " << identified_labels[i] << endl;
+   for (const auto& orbit: orbit_collection)
+      if (orbit.size() > 1)
+         for (const Int i: orbit)
+            identifies_to[i] = orbit.front();
+   if (verbosity > 2) {
+      cerr << "identifies_to:\n";
+      for (auto it = entire<indexed>(identifies_to); !it.at_end(); ++it)
+         if (*it != it.index())
+            cerr << "(" << it.index() << "->" << *it << ") ";
+      cerr << endl << endl;
+   }
+
+   return identifies_to;
+}
+
+template<typename OrbitCollectionType>
+void
+paranoid_orbit_collection_check(const OrbitCollectionType& orbit_collection)
+{
+   for (auto it1 = entire(orbit_collection); !it1.at_end(); ++it1) {
+      auto it2 = it1;
+      ++it2;
+      while (!it2.at_end()) {
+         if (((*it1)*(*it2)).size()) {
+            cerr << "paranoid_orbit_collection_check: oops. " << *it1 << ", " << *it2 << endl;
+            throw std::runtime_error("stop");
+         }
+         ++it2;
+      }
+   }
+}
+
+template<typename Scalar>      
+Matrix<Scalar>
+subdivision_rays(const Matrix<Scalar>& original_rays,
+                 const Array<Set<Set<Int>>>& labels,
+                 const Int verbosity)
+{
+   const Int n(labels.size());
+   Matrix<Scalar> subdiv_rays(n, original_rays.cols());
+   for (Int i=0; i<n; ++i) 
+      subdiv_rays[i] = accumulate(rows(original_rays.minor(labels[i].front(), All)), operations::add());
+   if (verbosity > 2) {
+      cerr << "rays of bsd:\n";
+      for (Int i=0; i<n; ++i)
+         cerr << i << ": " << subdiv_rays[i] << endl;
       cerr << endl;
    }
-#endif
-   
-   identified_facets.clear();
-   for (const auto& facet: SD_facets) {
-      InnerLabel image;
-      for (const auto& i: facet)
-         image += rep_index_of_SD_label[i];
-      identified_facets += image;
-   }
-
-#if POLYMAKE_DEBUG      
-   if (get_debug_level())
-      cerr << "identified_facets:\n"
-           << identified_facets << endl;
-#endif
+   return subdiv_rays;
 }
 
+template<typename Scalar, typename MapType, typename ContractedEdgesType>
+ContractedRayIndices
+contract_ray_indices(const Matrix<Scalar>& subdiv_rays,
+                     const MapType& coordinate_of_unmarked_edge,
+                     const ContractedEdgesType& contracted_edges)
+{
+   ContractedRayIndices contracted_ray_indices;
+   for (auto rit = entire<indexed>(rows(subdiv_rays)); !rit.at_end(); ++rit) {
+      bool accept_row(true);
+      for (const Int i: contracted_edges) {
+         const auto find_it = coordinate_of_unmarked_edge.find(i);
+         if (find_it == coordinate_of_unmarked_edge.end())
+            throw std::runtime_error("contracted_ray_indices: edge index not found");
+         if (!is_zero((*rit)[find_it->second])) {
+            accept_row = false;
+            break;
+         }
+      }
+      if (accept_row)
+         contracted_ray_indices.push_back(rit.index());
+   }
+   return contracted_ray_indices;
+}
 
-} // end anonymous namespace
+template<typename Scalar>
+void
+include_orbits_in_collection(OrbitCollection& orbit_collection,
+                             Second_SD_RayOrbitStorer<Scalar>& ros,
+                             const ContractedRayIndices& contracted_ray_indices,
+                             const Matrix<Scalar>& subdiv_rays,
+                             const Int verbosity)
+{
+   for (Int i: contracted_ray_indices)
+      ros.add(Vector<Scalar>(subdiv_rays[i]), i);
+   if (verbosity > 3) {
+      cerr << "orbits_on_contracted_face (" << ros.get_storage().size() << "):\n";
+      for (const auto& oi: ros.get_storage())
+         cerr << oi.first << "; " << oi.second << endl;
+      cerr << endl;
+   }
+      
+   for (const auto& orbit_and_indices: ros.get_storage())
+      include_in_collection(orbit_collection, orbit_and_indices.second, verbosity);
+}   
 
+template<typename LabelType>      
+auto
+identify_squeeze_and_substitute(const topaz::FacetsAndLabels& fal,
+                                const LabelType& original_labels,
+                                const Array<Int>& identifies_to,
+                                const Int verbosity)
+{
+   Set<Set<Int>> identified_facets;
+   for (const auto& f: fal.facets) 
+      identified_facets += do_identification(f, identifies_to);
+
+   if (verbosity)
+      cerr << fal.facets.size() << " facets before, " << identified_facets.size() << " after identification" << endl;
+   if (verbosity > 3)
+      cerr << "\nidentified facets (" << identified_facets.size() << "):\n" << identified_facets << endl << endl;
+
+   auto squeezed_fal = squeeze_facets_and_labels(identified_facets, fal.labels, verbosity);
+
+   if (verbosity > 3) 
+      cerr << "squeezed facets (" << squeezed_fal.facets.size() << "):\n"
+           << squeezed_fal.facets
+           << "\n\nlabels before substitution:\n" << squeezed_fal.labels
+           << "\nwill substitute with:\n" << original_labels
+           << endl;
+   
+   do_label_substitution(squeezed_fal.labels, original_labels);
+   if (verbosity > 3) {
+      cerr << "\nsubstituted_labels:\n";
+      for (Int i=0; i<squeezed_fal.labels.size(); ++i)
+         cerr << i << ": " << squeezed_fal.labels[i] << endl;
+   }
+   return squeezed_fal;
+}
 
 }}
 
@@ -229,3 +380,4 @@ identify_facets_and_labels(const Array<Set<Int>>& SD_facets,
 // c-basic-offset:3
 // indent-tabs-mode:nil
 // End:
+    

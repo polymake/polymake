@@ -17,7 +17,28 @@
 
 #include <cstring>
 #include <cstddef> // needed for gcc 4.9, see http://gcc.gnu.org/gcc-4.9/porting_to.html
+
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
 #include <bliss/graph.hh>
+#if BLISS_VERSION_MAJOR > 0 || BLISS_VERSION_MINOR >= 76
+#include <bliss/digraph.hh>
+#endif
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
 #include "polymake/graph/GraphIso.h"
 #include "polymake/permutations.h"
 
@@ -129,7 +150,14 @@ void GraphIso::finalize(bool gather_automorphisms)
    const unsigned int *perm;
    if (gather_automorphisms) {
       n_autom = 0;
+#if BLISS_VERSION_MAJOR > 0 || BLISS_VERSION_MINOR >= 76
+      auto aut_fun = [this](unsigned int nn, const unsigned int* aut) {
+         impl::store_autom(this, nn, aut);
+      };
+      perm = p_impl->src_graph->canonical_form(stats, aut_fun);
+#else
       perm = p_impl->src_graph->canonical_form(stats, &impl::store_autom, this);
+#endif
    } else {
       perm = p_impl->src_graph->canonical_form(stats, nullptr, nullptr);
    }

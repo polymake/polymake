@@ -27,8 +27,8 @@
 namespace polymake { namespace topaz {
 
 using flip_sequence = std::list<Int>;
-using graph::DoublyConnectedEdgeList;
-using HalfEdge = DoublyConnectedEdgeList::HalfEdge;
+using DoublyConnectedEdgeList = graph::dcel::DoublyConnectedEdgeList;
+using HalfEdge = graph::dcel::HalfEdge;
 
 // compute horocycle at w, given the three lengths of a triangle (u,v,w) and the horocycles at u and v
 // the determinant along (u,v) needs to be positive!
@@ -107,15 +107,14 @@ Matrix<Rational> gkz_vectors(BigObject surface, Int depth)
       throw std::runtime_error("gkz_vectors: invalid depth");
    }
 
-   const Array<Array<Int>> dcel_data = surface.give("DCEL_DATA");
    const Vector<Rational> penner_coord = surface.give("PENNER_COORDINATES");
    const Array<flip_sequence> flip_words = surface.give("FLIP_WORDS");
    std::pair<Rational, Rational> first_horo = surface.give("SPECIAL_POINT");
    const Rational& p_inf = first_horo.first;
    const Rational& zero_head = first_horo.second;
 
-   // Set up the surface from dcel_data:
-   DoublyConnectedEdgeList dcel(dcel_data);
+   // Set up the surface from dcel:
+   DoublyConnectedEdgeList dcel = surface.give("DCEL");
    dcel.setMetric(penner_coord);
 
    // Initialize vertex matrix of secondary polyhedron.
@@ -166,7 +165,6 @@ BigObject covering_triangulation(BigObject surface, Int flip_word_id, Int depth)
       throw std::runtime_error("gkz_dome: invalid depth");
    }
 
-   const Array<Array<Int>> dcel_data = surface.give("DCEL_DATA");
    const Vector<Rational> penner_coord = surface.give("PENNER_COORDINATES");
    const Array<flip_sequence> flip_words = surface.give("FLIP_WORDS");
    if (flip_word_id < 0 || flip_word_id >= flip_words.size()) {
@@ -177,8 +175,8 @@ BigObject covering_triangulation(BigObject surface, Int flip_word_id, Int depth)
    const Rational& p_inf = first_horo.first;
    const Rational& zero_head = first_horo.second;
 
-   // Set up the surface from dcel_data:
-   DoublyConnectedEdgeList dcel(dcel_data);
+   // Set up the surface from dcel:
+   DoublyConnectedEdgeList dcel = surface.give("DCEL");
    dcel.setMetric(penner_coord);
 
    // We compute the position of the zeroth half edge (index 0) in the upper half plane.

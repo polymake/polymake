@@ -311,9 +311,9 @@ sub accept_subobject : method {
    $value->is_temporary= $temp || defined($parent_obj->parent) && $parent_obj->is_temporary;
 
    if (defined($value->transaction)) {
-      if ($value->has_cleanup) {
-         Transaction::merge_temporaries($value->transaction->temporaries, delete $Scope->cleanup->{$value});
-         $value->has_cleanup=0;
+      if ($value->cleanup_table) {
+         Transaction::merge_temporaries($value->transaction->temporaries, delete $value->cleanup_table->{$value});
+         $value->cleanup_table=0;
       }
       if (defined($parent_obj->transaction)) {
          $parent_obj->transaction->descend($value, 1) unless ($temp && defined($parent_obj->transaction->rule));
@@ -323,11 +323,11 @@ sub accept_subobject : method {
    } elsif (defined($parent_obj->transaction)) {
       unless ($temp && defined($parent_obj->transaction->rule)) {
          ## FIXME: suspicious logical expression
-         if (not($self->flags & Flags::is_subobject_array) || $value->has_cleanup) {
+         if (not($self->flags & Flags::is_subobject_array) || $value->cleanup_table) {
             $parent_obj->transaction->descend($value, !($self->flags & Flags::is_permutation));
-            if ($value->has_cleanup) {
-               $value->transaction->temporaries = delete $Scope->cleanup->{$value};
-               $value->has_cleanup = 0;
+            if ($value->cleanup_table) {
+               $value->transaction->temporaries = delete $value->cleanup_table->{$value};
+               $value->cleanup_table = 0;
             }
          }
       }

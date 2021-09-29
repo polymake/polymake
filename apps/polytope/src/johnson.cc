@@ -3942,7 +3942,7 @@ UserFunction4perl("# @category Producing regular polytopes and their generalizat
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'pentagonal_orthobirotunda' Pentagonal orthobirotunda with regular facets. Johnson solid J32."
                   "#          The vertices are realized as floating point numbers."
-                  "# @value s 'elongated_triangular_orthbicupola' Elongated triangular orthobicupola with regular facets. Johnson solid J35."
+                  "# @value s 'elongated_triangular_orthobicupola' Elongated triangular orthobicupola with regular facets. Johnson solid J35."
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'elongated_triangular_gyrobicupola' Elongated triangular gyrobicupola with regular facets. Johnson solid J36."
                   "#          The vertices are realized as floating point numbers."

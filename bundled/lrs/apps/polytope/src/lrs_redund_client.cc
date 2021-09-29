@@ -62,7 +62,7 @@ void lrs_get_non_redundant_inequalities(BigObject p, const bool isCone)
       // check whether it is implied, and add it if not.
      Matrix<Rational> F(P.minor(V.first,All));
      Matrix<Rational> tmp(F / unit_vector<Rational>(F.cols(), 0));
-     if(rank(tmp) > rank(F)){
+     if(rank(tmp / L) > rank(F / L)){
        p.take("FACETS") << tmp;
      } else {
        p.take("FACETS") << F;

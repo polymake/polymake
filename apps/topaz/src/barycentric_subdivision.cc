@@ -211,6 +211,7 @@ FunctionTemplate4perl("barycentric_subdivision_impl<Decoration = BasicDecoration
 
 FunctionTemplate4perl("iterated_barycentric_subdivision_impl<Decoration = BasicDecoration, SeqType = Nonsequential, Scalar=Rational>($ $ { relabel => 1, geometric_realization => 0, ignore_top_node=> 1 })");
 
+FunctionTemplate4perl("first_barycentric_subdivision<SeqType>(Lattice<BasicDecoration,SeqType>; $=0)");
 
 } }
 

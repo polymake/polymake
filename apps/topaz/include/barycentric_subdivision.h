@@ -72,8 +72,8 @@ bs_renumber_nodes(Array<Set<Int>>& facets,
    for (auto f_it = entire(facets); !f_it.at_end(); ++f_it) {
       Set<Int> nset;
       for (auto n : (*f_it)) {
-         // if (n<0)
-         //    cerr << "bs_renumber_nodes: weird *f_it: " << *f_it << endl;
+         if (n<0)
+            cerr << "bs_renumber_nodes: weird *f_it: " << *f_it << endl;
          nset += adjusted_index(n, b_index, true, t_index, ignore_top_node);
       }
       *f_it = nset;
@@ -82,6 +82,12 @@ bs_renumber_nodes(Array<Set<Int>>& facets,
 
 } // end anonymous namespace
 
+
+struct FacetsAndLabels {
+   Array<Set<Int>> facets;
+   Array<Set<Set<Int>>> labels;
+};
+      
 
 /*
     Template type of input Hasse diagram:
@@ -98,7 +104,7 @@ bs_renumber_nodes(Array<Set<Int>>& facets,
       in question is the barycenter of those face barycenters.
 */
 template<typename SeqType>   
-std::pair<Array<Set<Int>>, Array<Set<Set<Int>>>>
+FacetsAndLabels
 first_barycentric_subdivision(const Lattice<BasicDecoration, SeqType>& HD0,
                               const bool ignore_top_node = false)
 {
@@ -113,31 +119,31 @@ first_barycentric_subdivision(const Lattice<BasicDecoration, SeqType>& HD0,
 
 #if POLYMAKE_DEBUG   
    if (get_debug_level() > 1)
-      cerr << "HD0_top_index: " << HD0_top_index << "\n"
+      cerr << "ignore_top_node: " << ignore_top_node << "\n"
+           << "HD0_top_index: " << HD0_top_index << "\n"
            << "HD0_bottom_index: " << HD0_bottom_index << "\n"
            << "HD0_top_invalid: " << HD0_top_invalid << "\n"
            << "HD0_bottom_empty: " << HD0_bottom_empty << endl;
 #endif
-   
+
+   FacetsAndLabels facets_and_labels;
    // make the first barycentric subdivision
-   Array<Set<Int>> HD1_facets = maximal_chains(HD0, HD0_bottom_empty, HD0_top_invalid);
-   topaz::bs_renumber_nodes(HD1_facets, HD0, HD0_top_invalid);
+   //   Array<Set<Int>> HD1_facets = maximal_chains(HD0, HD0_bottom_empty, HD0_top_invalid);
+   facets_and_labels.facets = maximal_chains(HD0, HD0_bottom_empty, HD0_top_invalid);
+   topaz::bs_renumber_nodes(facets_and_labels.facets, HD0, HD0_top_invalid);
 
    // make the vertex labels
-   Array<Set<Set<Int>>> HD1_labels_as_set(HD0.nodes() - HD0_top_invalid - HD0_bottom_empty);
-   auto HD1_labels_as_set_it = entire(HD1_labels_as_set);
+   facets_and_labels.labels = Array<Set<Set<Int>>> (HD0.nodes() - HD0_top_invalid - HD0_bottom_empty);
 
    for (auto hd1_it = entire<indexed>(HD0.decoration()); !hd1_it.at_end(); ++hd1_it) {
       if ((HD0_top_index    == hd1_it.index() && HD0_top_invalid) ||
           (HD0_bottom_index == hd1_it.index() && HD0_bottom_empty))
           continue;
 
-      for (const auto node_index: hd1_it->face)
-         *HD1_labels_as_set_it += HD0.decoration()[topaz::reverse_adjusted_index(node_index, HD0_bottom_index, true, HD0_top_index, HD0_top_invalid)].face;
-      ++HD1_labels_as_set_it;
+      facets_and_labels.labels[topaz::adjusted_index(hd1_it.index(), HD0_bottom_index, true, HD0_top_index, HD0_top_invalid)] += hd1_it->face;
    }
    
-   return std::make_pair(HD1_facets, HD1_labels_as_set);
+   return facets_and_labels;
 }   
 
 /*

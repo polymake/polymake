@@ -2,5 +2,6 @@
  "inst": [
   {"class": "pm::Serialized<graph::lattice::InverseRankMap<graph::lattice::Sequential>>", "include": ["polymake/client.h", "polymake/graph/Decoration.h"], "pkg": "Polymake::common::Serialized__InverseRankMap__Sequential"},
   {"class": "pm::Serialized<graph::lattice::InverseRankMap<graph::lattice::Nonsequential>>", "include": ["polymake/client.h", "polymake/graph/Decoration.h"], "pkg": "Polymake::common::Serialized__InverseRankMap__Nonsequential"},
+  {"class": "pm::Serialized<DoublyConnectedEdgeList>", "include": ["polymake/client.h", "polymake/graph/DoublyConnectedEdgeList.h"], "pkg": "Polymake::common::Serialized__DoublyConnectedEdgeList"},
  null ],
 "version": 3}

@@ -150,8 +150,9 @@ protected:
 // Computes the boundary complex (= ridges contained in one facet only)
 // of a PSEUDO_MANIFOLD. The complex is encoded as a Hasse Diagrams.
 
+template<typename SeqType>      
 inline
-auto boundary_of_pseudo_manifold(const Lattice<BasicDecoration>& PM)
+auto boundary_of_pseudo_manifold(const Lattice<BasicDecoration, SeqType>& PM)
 {
    return attach_selector(select(PM.decoration(), PM.nodes_of_rank(PM.rank()-2)), out_degree_checker(1));
 }

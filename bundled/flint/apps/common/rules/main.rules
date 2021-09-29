@@ -1,3 +1,4 @@
+
 #  Copyright (c) 1997-2021
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
@@ -26,6 +27,19 @@
 # | 0 22
 
 user_function smith_normal_form_flint(Matrix) : c++ (include => "polymake/common/FlintSNF.h");
+
+# @category Linear Algebra
+# Computes the rank of a given matrix //M// in GF(p), where //p// is a prime number.
+# @param Matrix M must be of integer type
+# @param Integer p must be a prime, the modulus.
+# @return Integer
+# @example
+# > $M = new Matrix<Integer>([0,1,1],[1,0,1],[1,1,0]);
+# > $RK = rank_mod_p($M, 2);
+# > print $RK;
+# | 2
+
+user_function rank_mod_p(Matrix, Int) :  c++ (include => "polymake/common/finiteFieldLA.h");
 
 # Local Variables:
 # mode: perl

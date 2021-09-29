@@ -1,3 +1,43 @@
+=== polymake 4.5 ===
+
+-- general --
+  * various bugfixes
+
+-- interfaces --
+  * support bliss >=0.76
+  * extend flint interface for computations over ZZ/nZZ
+
+-- common --
+  * QuadraticExtension: components may be accessed using $qe->{a,b,r}
+  * fix bug giving wrong signs of determinant occasionally
+
+-- graph --
+  * new property type DoublyConnectedEdgeList used for Conway notation and hyperbolic surfaces
+
+-- polytope --
+  * generalized_permutahedron: introduce scalar template
+  * SIM_body and pitman_stanley: special constructions of generalized permutahedra
+  * gelfand_tsetlin for producing Gelfand-Tsetlin polytopes
+  * change the function linear_symmetries for matrices to work not only with Rational
+  * refactor the function projective_symmetries to improve speed
+  * CHIROTOPE: enabled generic implementation
+  * conway notation: a way to produce many 3-polytopes combinatorially
+  * mps2poly and poly2mps: add new functions to read and write mps files
+  * new object QuotientSpace obtained from a polytope by gluing faces
+  * fix bug in minkowski_sum_fukuda that prevented termination occasionally
+  * normalized_smooth_volume: Lawrence algorithm for volume of a smooth polytope
+
+-- fan --
+  * replace incorrect fan::stacky_second_bsd() by correct and more efficient tropical::moduli_cell_of_curve()
+  * new function stacky_fundamental_domain() for fundamental domains of group actions that permute coordinates
+
+-- tropical --
+  * new type Curve<Scalar> for abstract tropical curves, with support for vertex and edge weights, marked edges, and inequalities
+  * new functions moduli_cell(Curve) and moduli_space(Curve +) for gluing moduli cells of curves together
+  * new functions polynomial_support(Polynomial, Vector) and polynomial_vanishes(Polynomial, Vector) for checking the vanishing of a tropical polynomial
+  * tropical Voronoi diagrams refactored, added experimental code to produce list of semi-polytropes for a tropical Voronoi diagram
+  * fix dehomogenization issue in set_theoretic_intersection
+
 === polymake 4.4 ===
 
 -- general --
@@ -40,7 +80,7 @@
   * mixed_volume: fix bug that produces an ERROR depending on the order of
                   input polytopes
   * add client for generalized_permutahedra
-  * add the function projective_symmetry_group to compute the group of projective automorphisms of a polytope
+  * add the function projective_symmetries to compute the group of projective automorphisms of a polytope
   * poly2lp supports MixedIntegerLinearProgram as argument
   * GROEBNER_BASIS renamed to TORIC_IDEAL and migrated to a proper ideal::Ideal object
   * visualization:
@@ -50,6 +90,7 @@
 -- tropical --
   * visualization:
     - added pseudovertex decor options in Polytope->VISUAL/VISUAL_SUBDIVISION
+
 
 === polymake 4.3 ===
 

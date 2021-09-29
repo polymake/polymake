@@ -18,5 +18,8 @@
   {"args": ["perl::Canned<const Wary<Matrix<double>>&>"], "func": "det", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "det.X4"},
   {"args": ["perl::Canned<const Wary<Matrix<PuiseuxFraction<Min, Rational, Rational>>>&>"], "func": "det", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h", "polymake/linalg.h"], "sig": "det.X4"},
   {"args": ["perl::Canned<const Wary<Matrix<Int>>&>"], "func": "det", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/linalg.h"], "sig": "det.X4"},
+  {"args": ["perl::Canned<const Wary<SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>>&>"], "func": "det", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "det.X4"},
+  {"args": ["perl::Canned<const Wary<Matrix<QuadraticExtension<Rational>>>&>"], "func": "det", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/linalg.h"], "sig": "det.X4"},
+  {"args": ["perl::Canned<const Wary<SparseMatrix<Rational, NonSymmetric>>&>"], "func": "det", "include": ["polymake/IncidenceMatrix.h", "polymake/Rational.h", "polymake/SparseMatrix.h", "polymake/linalg.h"], "sig": "det.X4"},
  null ],
 "version": 3}

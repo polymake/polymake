@@ -67,5 +67,6 @@
   {"args": ["perl::Canned<const pm::RationalParticle<false, pm::Integer>&>", "perl::Canned<const Rational&>"], "include": ["polymake/Rational.h"], "op": "mul", "sig": "mul:O.X.X16"},
   {"args": ["perl::Canned<const Integer&>", "perl::Canned<const pm::RationalParticle<false, pm::Integer>&>"], "include": ["polymake/Integer.h", "polymake/Rational.h"], "op": "mod", "sig": "mod:O.X.X16"},
   {"args": ["perl::Canned<Integer&>", "perl::Canned<const pm::RationalParticle<false, pm::Integer>&>"], "include": ["polymake/Integer.h", "polymake/Rational.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X1.X16"},
+  {"args": ["perl::Canned<const Integer&>", "perl::Canned<const UniPolynomial<Rational, Int>&>"], "include": ["polymake/Integer.h", "polymake/Rational.h", "polymake/RationalFunction.h"], "op": "mul", "sig": "mul:O.X.X16"},
  null ],
 "version": 3}
