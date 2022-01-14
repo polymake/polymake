@@ -24,7 +24,7 @@ package Polymake::polytope::LPparser;
 # (2) LPparser($filename, $testvec, $prefix)
 #     additionally, whenever a new constraint is read in, it is checked whether $testvec satisfies it.
 #
-#     **Precondition**: The variable names in $filename **MUST** all be of the from $prefix.$i, with $i a number.
+#     **Precondition**: The variable names in $filename **MUST** all be of the form $prefix.$i, with $i a number.
 #
 #     The reason for this is that since the rows are read in on the fly, the total number and ordering
 #     of the variables are not known at the time this test takes place. Therefore, the variable names
@@ -41,6 +41,8 @@ use Polymake::Struct (
    '$ct',                       # counts how many relations have been read in
    '@Ineq',                     # inequalities Ax+B>=0, in the form (B, A)
    '@Eq',                       # equations Px+Q=0,     in the form (Q, P)
+   '@Ineq_labels',              # labels of inequalities
+   '@Eq_labels',                # labels of equations
    '%Obj',                      # objective function Cx -> min
    '@L', '@U',                  # variable bounds  l <= x <= u
    '@X',                        # variable index => name
@@ -63,7 +65,7 @@ sub new {
    push @{$self->U}, undef;
    push @{$self->X}, "inhomog_var";
 
-   open my $LP, $self->LPfile
+   open (my $LP, '<:encoding(UTF-8)', $self->LPfile)
      or die "Can't read ", $self->LPfile, ": $!\n";
    local $/;
    my $lp = <$LP>;
@@ -100,8 +102,10 @@ sub new {
 
       if ($rel=~/[<>]/) {
          push @{$self->Ineq}, $vecref;
+         push @{$self->Ineq_labels}, $label;
       } else {
          push @{$self->Eq}, $vecref;
+         push @{$self->Eq_labels}, $label;
       }
       if (defined $self->testvec) {
          my $unpermuted_vecref = $self->make_vector($line, $rel=~/</ ? "-" : "+", 1, $self->prefix);

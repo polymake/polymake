@@ -3,5 +3,6 @@
   {"args": ["Rational", "void", "void", "void"], "func": "projection_cone_impl", "include": ["polymake/Rational.h"], "sig": "projection_cone_impl:T1.B.x.o", "tp": "1"},
   {"args": ["Rational", "void", "void", "void"], "func": "projection_vectorconfiguration_impl", "include": ["polymake/Rational.h"], "sig": "projection_vectorconfiguration_impl:T1.B.x.o", "tp": "1"},
   {"args": ["Rational", "void"], "func": "projection_preimage_impl", "include": ["polymake/Rational.h"], "sig": "projection_preimage_impl:T1.x", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void", "void"], "func": "projection_cone_impl", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "projection_cone_impl:T1.B.x.o", "tp": 1},
  null ],
 "version": 3}

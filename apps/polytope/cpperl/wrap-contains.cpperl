@@ -7,5 +7,6 @@
   {"args": ["Rational", "void"], "func": "minimal_ball", "include": ["polymake/Rational.h"], "sig": "minimal_ball:T1.B", "tp": 1},
   {"args": ["Rational", "void", "perl::Canned<const Vector<Rational>&>", "Rational(perl::Canned<const Rational&>)"], "func": "polytope_contained_in_ball", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "polytope_contained_in_ball:T1.B.X.C0", "tp": 1},
   {"args": ["Rational", "perl::Canned<const Vector<Rational>&>", "Rational(perl::Canned<const Rational&>)", "void"], "func": "polytope_contains_ball", "include": ["polymake/Rational.h", "polymake/Vector.h"], "sig": "polytope_contains_ball:T1.X.C0.B", "tp": 1},
+  {"args": ["Rational", "void", "void"], "func": "contains_V_V_via_LP", "include": ["polymake/Rational.h"], "sig": "contains_V_V_via_LP:T1.B.B", "tp": 1},
  null ],
 "version": 3}

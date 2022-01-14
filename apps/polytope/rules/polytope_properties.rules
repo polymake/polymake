@@ -651,10 +651,10 @@ property TRIANGULATION {
 
 # @category Combinatorics
 # Minimal non-faces of a [[SIMPLICIAL]] polytope.
-property MINIMAL_NON_FACES : Array<Set>;
+property MINIMAL_NON_FACES : IncidenceMatrix;
 
 rule MINIMAL_NON_FACES : VertexPerm.MINIMAL_NON_FACES, VertexPerm.PERMUTATION {
-   $this->MINIMAL_NON_FACES=permuted_elements($this->VertexPerm->MINIMAL_NON_FACES, $this->VertexPerm->PERMUTATION);
+   $this->MINIMAL_NON_FACES=permuted_cols($this->VertexPerm->MINIMAL_NON_FACES, $this->VertexPerm->PERMUTATION);
 }
 weight 1.20;
 
@@ -843,6 +843,84 @@ user_function affine_float_coords(Polytope) {
       croak("polytope must be bounded");
    }
    dehomogenize(convert_to<Float>($P->VERTICES));
+}
+
+# @category Combinatorics
+# Provide a basic combinatorial description (unless there exists one already).
+# Only the options //extended// and //matchthenet// (for 3-polytopes) can trigger any computation.
+# @param Polytope P source object
+# @return String the description
+# @option Bool extended
+# @option Bool matchthenet
+# @option String language
+# @example
+# > print describe(cube(3));
+# | cube of dimension 3
+# > $P = new Polytope(POINTS=>cube(3)->VERTICES); print describe($P);
+# | polytope with POINTS, CONE_AMBIENT_DIM
+# > $P = new Polytope(POINTS=>cube(3)->VERTICES); print describe($P, extended=>1, language=>"de");
+# | einfaches 3-Polytop im 3-Raum mit f-Vektor 8 12 6
+# > $P = new Polytope(POINTS=>cube(3)->VERTICES); print describe($P, matchthenet=>1);
+# | { "en": "A simple polytope with 8 vertices, 12 edges and 6 facets.", "de": "Ein einfaches Polytop mit 8 Ecken, 12 Kanten und 6 Seiten."}
+user_function describe(Polytope; { extended => 0, matchthenet => 0, language => "en" }) {
+   my ($P, $options) = @_;
+   my ($simplicial, $simple, $cubical, $polytope, $unbounded, $polyhedron, $pointed, $with, $dimensional, $linealityspace, $in, $space, $fvector, $vertices, $edges, $facets, $and)
+     = ("simplicial", "simple", "cubical", "polytope", "unbounded", "polyhedron", "pointed", "with", "dimensional", "lineality space", "in", "space", "f-vector", "vertices", "edges", "facets", "and");
+   if ($options->{language} eq "de") {
+       ($simplicial, $simple, $cubical, $polytope, $unbounded, $polyhedron, $pointed, $with, $dimensional, $linealityspace, $in, $space, $fvector, $vertices, $edges, $facets)
+           = ("simpliziales", "einfaches", "kubisches", "Polytop", "unbeschränktes", "Polyeder", "spitzes", "mit", "dimensionalem", "Linealitätsraum", "im", "Raum", "f-Vektor", "Ecken", "Kanten", "Facetten", "und");
+   }
+   if ($P->description() eq "") {
+      my $desc = "";
+      if ($options->{extended}) {
+         my $ad = $P->AMBIENT_DIM;
+         my $d = $P->DIM;
+         my $fv = $P->F_VECTOR;
+         if ($P->SIMPLICIAL) {
+            $desc = "$simplicial ";
+         } elsif ($P->SIMPLE) {
+            $desc = "$simple ";
+         } elsif ($P->CUBICAL) {
+            $desc = "$cubical ";
+         }
+         if ($P->BOUNDED) {
+            $desc .= "$d-$polytope";
+         } else {
+            $desc .= "$unbounded $d-$polyhedron";
+            my $ld = $P->LINEALITY_DIM;
+            if ($ld==0) {
+               $desc = "$pointed " . $desc;
+            } else {
+               $desc .= ", $with $ld-$dimensional $linealityspace,";
+            }
+         }
+         $desc .= " $in $ad-$space $with $fvector $fv";
+      } elsif ($options->{matchthenet}) {
+         my $desc_en = "";
+         my $desc_de = "";
+         my $ad = $P->AMBIENT_DIM;
+         my $d = $P->DIM;
+         my ($n,$e,$f) = @{ $P->F_VECTOR };
+         if ($P->SIMPLICIAL) {
+            $desc_en = "simplicial ";
+            $desc_de = "simpliziales ";
+         } elsif ($P->SIMPLE) {
+            $desc_en = "simple ";
+            $desc_de = "einfaches ";
+         } elsif ($P->CUBICAL) {
+            $desc_en = "simple ";
+            $desc_de = "kubisches ";
+         }
+         die "option 'matchthenet' only valid for 3-polytopes" unless $ad==3 and $d==3;
+         $desc_en .= "polytope with $n vertices, $e edges and $f facets";
+         $desc_de .= "Polytop mit $n Ecken, $e Kanten und $f Seiten";
+         $desc = "{ \"en\": \"A $desc_en.\", \"de\": \"Ein $desc_de.\"}";
+         } else {
+         $desc = "$polytope $with " . (join ", ", $P->list_properties());
+      }
+      $P->description() = $desc;
+   }
+   return $P->description();
 }
 
 # Local Variables:

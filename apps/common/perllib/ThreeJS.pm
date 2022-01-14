@@ -202,7 +202,7 @@ $title
       $head .= <<"%";
 			<div class=group id='explode_OUTPUTID'>
 				<strong>Explode</strong>
-				<input id='explodeRange_OUTPUTID' type='range' min=0 max=6 step=0.01 value=0>
+				<input id='explodeRange_OUTPUTID' type='range' min='0.00001' max=6 step=0.01 value=0.00001>
 				<div class=indented><input id='explodeCheckbox_OUTPUTID' type='checkbox'>Automatic explosion</div>
 				<div class=suboption>Exploding speed</div>
 				<input id='explodingSpeedRange_OUTPUTID' type='range' min=0 max=0.5 step=0.001 value=0.05>
@@ -572,7 +572,7 @@ sub writePointLabels {
 
 sub writeEdgeMaterial {
    my ($self,$objvar)=@_;
-   my $props = { transparent => "false", depthTest => "true"};
+   my $props = { transparent => "false" };
    my $mtype = "LineBasicMaterial";
    my @type_props = ("EdgeColor", "EdgeThickness");
    my $string = "   <!-- Edge style -->\n";
@@ -745,7 +745,7 @@ sub writeFacetIndices {
 
 sub writeFacetMaterial {
    my ($self,$objvar)=@_;
-   my $props = { side => "THREE.DoubleSide", transparent => "true", depthFunc => "THREE.LessDepth", polygonOffset => "true", polygonOffsetFactor => 1, polygonOffsetUnits => 0.5};
+   my $props = { side => "THREE.DoubleSide", transparent => "true", depthWrite => "false", depthFunc => "THREE.LessDepth", polygonOffset => "true", polygonOffsetFactor => 1, polygonOffsetUnits => 0.5};
    my $mtype = "MeshBasicMaterial";
    my @type_props = ("FacetColor", "FacetTransparency");
    my $text = "   <!-- Facet style -->\n";

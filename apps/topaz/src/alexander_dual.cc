@@ -24,20 +24,21 @@ namespace polymake { namespace topaz {
 
 BigObject alexander_dual(BigObject p_in, OptionSet options)
 {
-   Array<Set<Int>> MNF = p_in.give("MINIMAL_NON_FACES");
+   IncidenceMatrix<> MNF = p_in.give("MINIMAL_NON_FACES");
    const Int n_vert = p_in.give("N_VERTICES");
+   if (MNF.cols() < n_vert)
+      MNF.resize(MNF.rows(),n_vert);
 
-   for (auto nf=entire(MNF); !nf.at_end(); ++nf)
-      *nf = range(0,n_vert-1) - *nf;
-
-   Set<Int> V = accumulate(MNF, operations::add());
-   adj_numbering(MNF,V);
+   MNF = ~MNF;
+   Set<Int> V = accumulate(rows(MNF), operations::add());
+   adj_numbering(rows(MNF),V);
 
    BigObject p_out("SimplicialComplex");
    p_out.set_description() << "Alexander dual of " << p_in.name() << endl;
 
-   if (MNF.empty()) MNF.resize(1);      // add a single empty face
-   p_out.take("FACETS") << MNF;
+   if (MNF.rows() == 0) MNF.resize(1,n_vert);      // add a single empty face
+   p_out.take("FACETS") << Array<Set<Int>>(rows(MNF));
+   p_out.take("VERTEX_INDICES") << V;
 
    if (!options["no_labels"]) {
       const Array<std::string> L = p_in.give("VERTEX_LABELS");

@@ -1026,7 +1026,7 @@ sub push_code {
 sub resolve {
    my ($self, $args)=@_;
    if (defined (my $rulelist=&Overload::Node::resolve)) {
-      (Scheduler::resolve_rules($args->[0], $rulelist) // croak( "could not provide all required input properties" ))->code;
+      (Scheduler::resolve_rules($args->[0], $rulelist) || croak( "could not provide all required input properties" ))->code;
    } else {
       undef
    }

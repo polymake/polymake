@@ -20,20 +20,20 @@
 
 namespace polymake { namespace topaz {
   
-BigObject link_complex(BigObject p_in, const Set<Int>& F, OptionSet options)
+BigObject link_subcomplex(BigObject p_in, const Set<Int>& F, OptionSet options)
 {
    const Array<Set<Int>> C = p_in.give("FACETS");
    const Int n_vert=p_in.give("N_VERTICES");
 
    if (F.front()<0 || F.back()>n_vert-1)
-      throw std::runtime_error("t_link: Specified vertex indices out of range");
+      throw std::runtime_error("link_subcomplex: Specified vertex indices out of range");
    
    std::list<Set<Int>> Link;
    copy_range(entire(link(C,F)), std::back_inserter(Link));
    
    if (Link.empty()) {
       std::ostringstream e;
-      wrap(e) << "t_link: " << F << " does not specify a face.";
+      wrap(e) << "link_subcomplex: " << F << " does not specify a face.";
       throw std::runtime_error(e.str());
    }
    
@@ -41,8 +41,9 @@ BigObject link_complex(BigObject p_in, const Set<Int>& F, OptionSet options)
    adj_numbering(Link,V);
    
    BigObject p_out("SimplicialComplex");
-   p_out.set_description()<<"Link of "<<F<<" in " << p_in.name() << "."<<endl;
+   p_out.set_description() << "Link of " << F << " in " << p_in.name() << "." << endl;
    p_out.take("FACETS") << as_array(Link);
+   p_out.take("VERTEX_INDICES") << V;
    
    if (!options["no_labels"]) {
       const Array<std::string> L=p_in.give("VERTEX_LABELS");
@@ -53,17 +54,25 @@ BigObject link_complex(BigObject p_in, const Set<Int>& F, OptionSet options)
 }
 
 UserFunction4perl("# @category  Producing a new simplicial complex from others"
-                  "#  Produce the __link__ of a //face// of the //complex//"
+                  "# Produce the __link__ of a //face// of the //complex//"
                   "# @param SimplicialComplex complex"
                   "# @param Set<Int> face"
                   "# @option Bool no_labels Do not create [[VERTEX_LABELS]]. default: 0"
                   "# @return SimplicialComplex"
                   "# @example The following returns the 4-cycle obtained as the link of vertex 0 in the suspension over the triangle."
-                  "# > $s = suspension(simplex(2) -> BOUNDARY);"
-                  "# > $t = link_complex($s, [0]);"
-                  "# > print $t -> F_VECTOR;"
-                  "# | 4 4",
-                  &link_complex,"link_complex(SimplicialComplex, $ { no_labels => 0 })");
+                  "# > $s = suspension(simplex(2)->BOUNDARY);"
+                  "# > $t = link_subcomplex($s, [0]);"
+                  "# > print $t->F_VECTOR;"
+                  "# | 4 4"
+                  "# [[VERTEX_INDICES]] keep track of the embedding:"
+                  "# > $K = new SimplicialComplex(FACETS=>[[0,1,2,3],[1,2,3,4]]);"
+                  "# > $lk_12 = link_subcomplex($K,[1,2]);"
+                  "# > print $lk_12->FACETS->[0];"
+                  "# | {0 1}"
+                  "# > $idx = $lk_12->VERTEX_INDICES;"
+                  "# > map { print $idx->[$_], ' ' } @{$lk_12->FACETS->[0]};"
+                  "# | 0 3",
+                  &link_subcomplex, "link_subcomplex(SimplicialComplex, $ { no_labels => 0 })");
 } }
 
 // Local Variables:

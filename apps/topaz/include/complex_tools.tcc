@@ -37,7 +37,7 @@ bool adj_numbering(Complex& C, const Set& V)
          vertex_map[*s_it]=count;
 
       for (auto c_it=entire(C); !c_it.at_end(); ++c_it) {
-         typename Complex::value_type f;
+         typename Complex::value_type::persistent_type f;
          for (auto s_it=entire(*c_it); !s_it.at_end(); ++s_it)
             f += vertex_map[*s_it];
          *c_it = f;

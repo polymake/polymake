@@ -190,7 +190,7 @@ user_function zonotope<Scalar> (Matrix<Scalar>, { rows_are_points => 1, centered
 
 user_function projection<Scalar>(Cone<Scalar>; $=[ ], { revert=>0, nofm=>0 }) {
    my ($P, $indices, $options) = @_;
-   projection_cone_impl($P, $indices, $options);
+   projection_cone_impl<Scalar>($P, $indices, $options);
 }
 
 

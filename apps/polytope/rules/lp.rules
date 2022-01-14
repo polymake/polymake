@@ -154,6 +154,10 @@ user_function lp2poly<Scalar=Rational>(String; Vector, String, {nocheck => false
    if (@{$parser->Int} && $options->{create_lp}) {
       $lp->attach("INTEGER_VARIABLES", new Array<Bool>($parser->Int));
    }
+   
+   $lp->attach("NAMES_OF_INEQUALITIES", new Array<String>($parser->Ineq_labels));
+   $lp->attach("NAMES_OF_EQUATIONS", new Array<String>($parser->Eq_labels));
+   
    $P->commit unless($options->{nocheck});
    if (@{$parser->Int} && !$options->{create_lp}){
       $P->add("MILP", $lp);

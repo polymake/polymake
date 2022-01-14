@@ -1,3 +1,23 @@
+=== polymake 4.6 ===
+
+-- common --
+  * better transparency for threejs visualization
+
+-- polytope --
+  * new function describe() for Polytope
+  * new function secondary_configuration()
+  * secondary_polytope() return type changed from PointConfiguration to Polytope
+  * improve contains function to solve smaller LPs
+  * improve conversion methods lp2poly and poly2lp
+
+-- fan --
+  * make k_skeleton and common_refinement  work properly for PolyhedralComplex
+
+-- topaz --
+  * renamed link_complex->link_subcomplex, star->star_subcomplex
+  * VERTEX_INDICES for subcomplex constructions
+  * MINIMAL_NON_FACES type changed to IncidenceMatrix
+
 === polymake 4.5 ===
 
 -- general --

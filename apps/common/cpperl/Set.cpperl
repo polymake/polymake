@@ -157,5 +157,6 @@
   {"class": "Set<Matrix<Integer>>", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/Set.h"], "pkg": "Polymake::common::Set__Matrix_A_Integer_I_NonSymmetric_Z"},
   {"args": ["Set<Matrix<Integer>>", "perl::Canned<const Array<Matrix<Integer>>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
   {"args": ["perl::Canned<const Set<Matrix<Integer>>&>", "perl::Canned<const Set<Matrix<Integer>>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/Set.h"], "op": "_eq", "sig": "_eq:O.X.X"},
+  {"args": ["Set<Set<Int>>", "perl::Canned<const pm::binary_transform_iterator<pm::iterator_pair<pm::same_value_iterator<pm::IncidenceMatrix_base<pm::NonSymmetric> const&>, pm::iterator_range<pm::sequence_iterator<long, true> >, mlist<pm::FeaturesViaSecondTag<mlist<pm::end_sensitive> > > >, std::pair<pm::incidence_line_factory<true, void>, pm::BuildBinaryIt<pm::operations::dereference2> >, false>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

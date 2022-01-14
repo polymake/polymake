@@ -220,6 +220,8 @@ function init_faces(obj) {
     
     var materials = obj.userData.facetmaterial;
     var geometry = new THREE.BufferGeometry();
+    var frontmaterials = [];
+    var backmaterials = [];
     geometry.setAttribute('position',bufattr);
     if (Array.isArray(materials)) {
         var tricount = 0;
@@ -229,10 +231,30 @@ function init_faces(obj) {
             geometry.addGroup(tricount,(facet.length-2)*3,i);
             tricount += (facet.length-2)*3;
         }
+        for (var j=0; j<materials.length; j++) {
+            var fmat = materials[j].clone()
+            fmat.side = THREE.FrontSide;
+            frontmaterials.push(fmat);
+            var bmat = materials[j].clone()
+            bmat.side = THREE.BackSide;
+            backmaterials.push(bmat);
+            obj.userData.facetmaterial = frontmaterials.concat(backmaterials);
+        }
+    } else if (materials instanceof THREE.Material) {
+        frontmaterials = materials.clone()
+        frontmaterials.side = THREE.FrontSide;
+        backmaterials = materials.clone()
+        backmaterials.side = THREE.BackSide;
+        obj.userData.facetmaterial = [frontmaterials, backmaterials];
     }
-    var mesh = new THREE.Mesh(geometry, materials);
-    mesh.name = "faces";
-    obj.add(mesh); 
+    // duplicating the object with front and back should avoid transparency issues
+    var backmesh = new THREE.Mesh(geometry, backmaterials);
+    // meshname is used to show/hide objects
+    backmesh.name = "backfaces";
+    obj.add(backmesh);
+    var frontmesh = new THREE.Mesh(geometry, frontmaterials);
+    frontmesh.name = "frontfaces";
+    obj.add(frontmesh);
     updateFacesPosition(obj);
 }
 // //INITIALIZING
@@ -241,7 +263,7 @@ function init_faces(obj) {
 function updateFacesPosition(obj) {
     var points = obj.userData.points;
     var indices = obj.userData.triangleindices;
-    var faces = obj.getObjectByName("faces");
+    var faces = obj.getObjectByName("frontfaces");
     var ba = faces.geometry.getAttribute("position");
     for (var i=0; i<indices.length; i++) {
         ba.setXYZ(i, points[indices[i]].vector.x, points[indices[i]].vector.y ,points[indices[i]].vector.z); 
@@ -312,7 +334,7 @@ var labelsShown = true;
 var intervals = [];
 var timeouts = [];
 var explodingSpeed = 0.05;
-var explodeScale = 0;
+var explodeScale = 0.000001;
 var XMLS = new XMLSerializer();
 var svgElement;
 var renderId;
@@ -512,6 +534,7 @@ if (explodableModel) {
     document.getElementById('explodeRange_OUTPUTID').oninput = triggerExplode;
     document.getElementById('explodeCheckbox_OUTPUTID').onchange = triggerAutomaticExplode;
     document.getElementById('explodingSpeedRange_OUTPUTID').oninput = setExplodingSpeed;
+    explode(0.000001);
 }
 
 function computeCentroid(obj) {
@@ -621,7 +644,12 @@ function toggleObjectTypeVisibility(event){
     var name = event.currentTarget.name;
     var checked = event.currentTarget.checked;
     objectTypeVisible[name] = checked;
-    setVisibility(checked,name);
+    if (name == "faces") {
+        setVisibility(checked,"frontfaces");
+        setVisibility(checked,"backfaces");
+    } else {
+        setVisibility(checked,name);
+    }
 }
 
 for (var i=0; i<sortedObjectTypeKeys.length; i++){

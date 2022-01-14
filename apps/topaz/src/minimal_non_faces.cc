@@ -29,7 +29,7 @@ namespace polymake { namespace topaz {
 using graph::Lattice;
 
 template <typename Decoration, typename SeqType>
-Array<Set<Int>> minimal_non_faces(const BigObject HD_obj)
+auto minimal_non_faces(const BigObject HD_obj)
 {
 #if POLYMAKE_DEBUG
    const bool debug_print = get_debug_level() > 1;
@@ -99,7 +99,7 @@ Array<Set<Int>> minimal_non_faces(const BigObject HD_obj)
       }  // end iterate over all faces of this dimension
    }
 
-   return Array<Set<Int>>(min_non_faces);
+   return IncidenceMatrix<>(min_non_faces);
 }
 
 FunctionTemplate4perl("minimal_non_faces<Decoration, SeqType>(Lattice<Decoration, SeqType>)");

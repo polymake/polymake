@@ -47,7 +47,7 @@ rule N_FACETS : F_VECTOR, COMBINATORIAL_DIM {
    if ($this->COMBINATORIAL_DIM>0) {
       $this->N_FACETS=$this->F_VECTOR->[$this->COMBINATORIAL_DIM-1];
    } else {
-      if (COMBINATORIAL_DIM==0) {
+      if ($this->COMBINATORIAL_DIM==0) {
          $this->N_FACETS=1; # a vertex or just a ray
       } else {
          $this->N_FACETS=0; # empty polytope or trivial cone
@@ -618,7 +618,7 @@ rule EXCESS_FACET_DEGREE : N_FACETS, DUAL_GRAPH.N_EDGES, CONE_DIM {
 # @category Geometry
 # returns the dimension of the ambient space of the cone
 # @return Int
-user_method AMBIENT_DIM {
+user_method AMBIENT_DIM() : CONE_AMBIENT_DIM {
   my ($self)=@_;
   return $self->CONE_AMBIENT_DIM;
 }

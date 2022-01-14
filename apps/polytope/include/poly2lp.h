@@ -21,25 +21,50 @@
 #include "polymake/SparseMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/Array.h"
+#include "polymake/Vector.h"
 #include "polymake/Set.h"
 #include <fstream>
+#include "polymake/linalg.h"
 
 namespace polymake { namespace polytope {
 namespace {
 
-template <typename Vector>
+template<typename Scalar, std::enable_if_t<!std::is_same<Rational, Scalar>::value, int> = 42>
+void multiply_by_lcm_denom(SparseVector<Scalar>& v){
+}
+
+template<typename Scalar, std::enable_if_t<std::is_same<Rational, Scalar>::value, int> = 42>
+void multiply_by_lcm_denom(SparseVector<Scalar>& v){
+   Integer s = lcm(denominators(v));
+   if(s > 10000) return; // If the lcm is higher than 10000, it might be better to just stay with the fractions
+   auto e = entire(v.top());
+   while (!e.at_end()){
+      *e = *e*s;
+      e++;
+   }
+}
+
+template <typename VectorType>
 void print_row(std::ostream& os,
                const std::string& tag,
                Int index,
-               const GenericVector<Vector>& v,
+               const GenericVector<VectorType>& v,
                const Array<std::string>& variable_names,
                const char* relop = nullptr)
 {
-   if (v == unit_vector<typename Vector::element_type>(v.dim(),0)) // don't print the line " 0 >= -1 "
+   if (v == unit_vector<typename VectorType::element_type>(v.dim(),0)) // don't print the line " 0 >= -1 "
       return;
-   auto e = entire(v.top());
-   typename Vector::element_type free_term(0);
-   if (!e.at_end() && e.index()==0) {
+      
+   SparseVector<typename VectorType::element_type> tmp(v);
+   // multiply inequality/equation by lcm
+   if (tag=="ie" || tag=="eq") {
+      multiply_by_lcm_denom(tmp);
+   }
+   
+   auto e = entire(tmp.top());
+   typename VectorType::element_type free_term(0);
+
+   if (!e.at_end() && e.index() == 0) {
       free_term=*e;  ++e;
    }
    os << "  " << tag;
@@ -47,8 +72,8 @@ void print_row(std::ostream& os,
    os << ":";
 
    while (!e.at_end()) {
-      os << ' ' << std::setiosflags(std::ios::showpos) << convert_to<double>(*e) << std::resetiosflags(std::ios::showpos)
-         << ' ' << variable_names[e.index()-1];
+         os << ' ' << std::setiosflags(std::ios::showpos) << convert_to<double>(*e) << std::resetiosflags(std::ios::showpos)
+            << ' ' << variable_names[e.index()-1];
       ++e;
    }
    if (relop) {

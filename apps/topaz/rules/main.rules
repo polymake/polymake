@@ -18,7 +18,7 @@
 # @topic application
 # The __TOP__ology __A__pplication __Z__oo deals with abstract simplicial complexes.
 # A complex is given as a list of facets.  You can ask for its global properties ([[SimplicialComplex::MANIFOLD|manifold recognition]],
-# [[SimplicialComplex::HOMOLOGY|homology groups]], etc.),  explore the local vertex environment ([[star|stars]], [[link_complex|links]], etc.),  and make a lot
+# [[SimplicialComplex::HOMOLOGY|homology groups]], etc.),  explore the local vertex environment ([[star_subcomplex|stars]], [[link_subcomplex|links]], etc.),  and make a lot
 # of constructions.
 #
 # The visualization means are constrained, as they are mostly based on the [[GRAPH]] (1-skeleton) of a complex.

@@ -254,7 +254,7 @@ user_method polytope($) : MAXIMAL_POLYTOPES {
 # > $c = new PolyhedralComplex(POINTS=>[[1,0]],INPUT_POLYTOPES=>[[0]]);
 # > print $c->AMBIENT_DIM;
 # | 1
-user_method AMBIENT_DIM {
+user_method AMBIENT_DIM() : FAN_AMBIENT_DIM {
   my ($self)=@_;
   return $self->FAN_AMBIENT_DIM-1;
 }

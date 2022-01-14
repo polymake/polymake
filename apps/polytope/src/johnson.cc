@@ -536,7 +536,7 @@ BigObject elongated_triangular_pyramid()
   Matrix<QE> V( ones_vector<QE>(7) | (same_element_vector(c,3) / unit_matrix<QE>(3) / (unit_matrix<QE>(3) + same_element_matrix(s, 3, 3))));
 
   BigObject p = build_from_vertices(V);
-  p.set_description() << "Johnson solid J7: Elongated triangular bipyramid" << endl;
+  p.set_description() << "Johnson solid J7: Elongated triangular pyramid" << endl;
   return p;
 }
 

@@ -20,7 +20,7 @@
 
 namespace polymake { namespace topaz {
   
-BigObject stars(BigObject p_in, const Set<Int> &F,OptionSet options)
+BigObject star_subcomplex(BigObject p_in, const Set<Int> &F,OptionSet options)
 {
    const bool relabel = !options["no_labels"];
    const Array<Set<Int>> C = p_in.give("FACETS");
@@ -31,14 +31,14 @@ BigObject stars(BigObject p_in, const Set<Int> &F,OptionSet options)
    //  F = transform_label_args(L, labeled_F);
 
    if (F.front()<0 || F.back()>n_vert-1)
-      throw std::runtime_error("t_star: Specified vertex indices out of range");
+      throw std::runtime_error("star_subcomplex: Specified vertex indices out of range");
 
    std::list<Set<Int>> Star;
    copy_range(entire(star(C,F)), std::back_inserter(Star));
 
    if (Star.empty()) {
       std::ostringstream e;
-      wrap(e) << "t_star: " << F << " does not specify a face.";
+      wrap(e) << "star_subcomplex: " << F << " does not specify a face.";
       throw std::runtime_error(e.str());
    }
    
@@ -49,6 +49,7 @@ BigObject stars(BigObject p_in, const Set<Int> &F,OptionSet options)
    p_out.set_description()<<"Star of " << F << " in " << p_in.name()<< "."<<endl;
 
    p_out.take("FACETS") << as_array(Star);
+   p_out.take("VERTEX_INDICES") << V;
    
    if (relabel) {
       const Array<std::string> L = p_in.give("VERTEX_LABELS");
@@ -66,10 +67,10 @@ UserFunction4perl("# @category Producing a new simplicial complex from others\n"
                   "# @return SimplicialComplex"
                   "# @example The following returns the cone over the 4-cycle obtained as the star of vertex 0 in the suspension over the triangle."
                   "# > $s = suspension(simplex(2) -> BOUNDARY);"
-                  "# > $t = star($s, [0]);"
+                  "# > $t = star_subcomplex($s, [0]);"
                   "# > print $t -> F_VECTOR;"
                   "# | 5 8 4",
-                  &stars, "star(SimplicialComplex $ { no_labels => 0 })");
+                  &star_subcomplex, "star_subcomplex(SimplicialComplex $ { no_labels => 0 })");
 
 } }
 

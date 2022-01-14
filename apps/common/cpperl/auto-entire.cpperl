@@ -61,5 +61,6 @@
   {"args": ["perl::AnchorArg<perl::Canned<const SparseVector<PuiseuxFraction<Max, Rational, Rational>>&>>"], "func": "entire", "include": ["polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/SparseVector.h", "polymake/TropicalNumber.h"], "sig": "entire:R_Iterator.X8"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Integer, false, true, (pm::sparse2d::restriction_kind)0>, true, (pm::sparse2d::restriction_kind)0> >&, pm::Symmetric>&>>"], "func": "entire", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h"], "sig": "entire:R_Iterator.X8"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::GF2, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric>&>>"], "func": "entire", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "sig": "entire:R_Iterator.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const pm::Rows<pm::IncidenceMatrix<pm::NonSymmetric> >&>>"], "func": "entire", "include": ["polymake/IncidenceMatrix.h"], "sig": "entire:R_Iterator.X8"},
  null ],
 "version": 3}

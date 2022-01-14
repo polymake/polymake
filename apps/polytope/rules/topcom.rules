@@ -23,11 +23,12 @@ CREDIT topcom
 custom $topcom;
 
 CONFIGURE {
-   if($mptopcom){
-      $topcom = $mptopcom."/points2chiro";
-   } else {
-      $topcom =~ s{(?<=\S)$}{/points2chiro};
-   }
+   eval {
+      if($mptopcom && ! -e "$topcom/points2chiro"){
+         $topcom = $mptopcom;
+      }
+   };
+   $topcom =~ s{(?<=\S)$}{/points2chiro};
    my $path=find_program($topcom, "points2chiro", { prompt => "the `points2chiro' program from the TOPCOM package" }) or return;
    ($topcom) = $path =~ $directory_re;
 }
@@ -86,10 +87,13 @@ sub topcom_chirotope($$) {
     unless (defined($p->lookup("GROUP"))) {
        $cmd .= " --nosymmetries";
     }
-    unless ($DebugLevel) {
-       $cmd .= " 2>/dev/null";
+    my $error = new TempTextFile;
+    my $result = `$cmd < $input 2>$error`;
+    if($?){
+        my $errormsg = `cat $error`;
+        die "Could not run topcom: $errormsg\n";
     }
-    my $result = `$cmd <$input`;
+
     $result =~ s/^.*\n\Z//m;   # TOPCOM appends the symmetry generators as text, which we forget here.
     return $result;
 }
@@ -173,6 +177,26 @@ sub call_topcom_chiro2triangs {
     \@triangs;
 }
 
+sub call_topcom_points2triangs_regular($) {
+   my ($p) = @_;
+   my $input = new TempTextFile;
+   print $input topcom_input_format($p), "\n";
+   my $cmd = "$topcom/points2triangs --regular";
+   unless ($DebugLevel) {
+      $cmd .= " 2>/dev/null";
+   }
+   open my $output, "$cmd <$input |"
+     or die "can't start $topcom/points2triangs: $!\n";
+   local $_;
+   my @triangs;
+   while (<$output>) {
+      s/T.*://; s/\];//; s/^\{//; s/\}$//; s/\},\{/}\n{/g; tr/,/ /;
+      my @e = split /\n/, $_;
+      push @triangs, \@e;
+   }
+   \@triangs;
+}
+
 
 sub call_topcom_chiro2finetriangs($) {
     my ($p) = @_;
@@ -214,6 +238,16 @@ sub call_topcom_chiro2alltriangs($) {
 }
 
 # @category Triangulations, subdivisions and volume
+# Computes all regular triangulations of a point configuration.
+#
+# @param PointConfiguration pc or Polytope p input point configuration or polytope
+# @return Array<Array<Set<Int>>>
+user_function topcom_regular_triangulations($) {
+    my $self = shift;
+    return new Array<Array<Set<Int>>>(call_topcom_points2triangs_regular($self));
+}
+
+# @category Triangulations, subdivisions and volume
 # Computes all triangulations of a point configuration that are connected by bistellar
 # flips to the regular triangulations. The triangulations are computed via the chirotope.
 # If the input point configuration or polytope has a symmetry group, only triangulations up to symmetry will be computed.
@@ -245,29 +279,99 @@ user_function topcom_all_triangulations {
 }
 
 # @category Triangulations, subdivisions and volume
-# Computes the GKZ secondary configuration of a point configuration via its chirotope.
+# Computes the point configuration of GKZ vectors of a point configuration
+# via its chirotope using topcom or mptopcom.
+#
 # @param PointConfiguration pc input point configuration
 # @return PointConfiguration
-user_function secondary_polytope<Scalar>(PointConfiguration<Scalar>) {
+#
+# @example The following [[PointConfiguration]] is called the "mother of all
+# examples (moae)". It has two non-regular triangulations, which can be seen
+# when comparing the number of points of the output configuration with the
+# number of vertices of the convex hull of the output configuration.
+# > $moae = new PointConfiguration(POINTS=>[[1,4,0,0],[1,0,4,0],[1,0,0,4],[1,2,1,1],[1,1,2,1],[1,1,1,2]]);
+# > $moae = project_full($moae);
+# > $SC_moae = secondary_configuration($moae);
+# > print $SC_moae -> N_POINTS;
+# | 18
+# > print $SC_moae -> CONVEX_HULL -> N_VERTICES;
+# | 16
+user_function secondary_configuration<Scalar>(PointConfiguration<Scalar>) {
     my $self=shift;
     my $v = new Matrix<Scalar>( map { gkz_vector<Scalar>($self->POINTS, $_) } @{topcom_all_triangulations($self)} );
     my $vh = ones_vector<Scalar>() | $v;
-    return new PointConfiguration<Scalar>(POINTS=>$vh);
+    return new PointConfiguration<Scalar>(POINTS => $vh);
 }
 
 # @category Triangulations, subdivisions and volume
-# Computes the GKZ secondary configuration of a point configuration via its chirotope.
+# Computes the point configuration of GKZ vectors of a point configuration
+# via its chirotope using topcom or mptopcom.
+#
 # @param Polytope pc input polytope
 # @return PointConfiguration
-user_function secondary_polytope<Scalar>(Polytope<Scalar>) {
+#
+# @example The square only has two triangulations using its vertices.
+# > $square = cube(2,1,0);
+# > $SC_square = secondary_configuration($square);
+# > print $SC_square -> POINTS;
+# | 1 1 2 2 1
+# | 1 2 1 1 2
+user_function secondary_configuration<Scalar>(Polytope<Scalar>) {
     my $self=shift;
     my $v = new Matrix<Scalar>( map { gkz_vector<Scalar>($self->VERTICES, $_) } @{topcom_all_triangulations($self)} );
     my $vh = ones_vector<Scalar>() | $v;
-    return new PointConfiguration<Scalar>(POINTS=>$vh);
+    return new PointConfiguration<Scalar>(POINTS => $vh);
 }
 
 # @category Triangulations, subdivisions and volume
-# Computes the fiber polytope of a projection of point configurations P->Q via the GKZ secondary configuration.
+# Computes the GKZ secondary polytope of a point configuration via its
+# using topcom or mptopcom.
+#
+# @param PointConfiguration pc input point configuration
+# @return Polytope
+#
+# @example The following [[PointConfiguration]] is called the "mother of all
+# examples (moae)". It has two non-regular triangulations, which can be seen
+# when comparing the number of points in the secondary configuration with the
+# number of vertices of the secondary polytope.
+# > $moae = new PointConfiguration(POINTS => [[1,4,0,0],[1,0,4,0],[1,0,0,4],[1,2,1,1],[1,1,2,1],[1,1,1,2]]);
+# > $moae = project_full($moae);
+# > $SC_moae = secondary_configuration($moae);
+# > $SP_moae = secondary_polytope($moae);
+# > print $SC_moae -> N_POINTS;
+# | 18
+# > print $SP_moae -> N_VERTICES;
+# | 16
+user_function secondary_polytope<Scalar>(PointConfiguration<Scalar>) {
+	my $self=shift;
+    my $v = new Matrix<Scalar>( map { gkz_vector<Scalar>($self->POINTS, $_) } @{topcom_regular_triangulations($self)} );
+    my $vh = ones_vector<Scalar>() | $v;
+    return new Polytope<Scalar>(VERTICES => $vh, LINEALITY_SPACE => []);
+}
+
+# @category Triangulations, subdivisions and volume
+# Computes the GKZ secondary polytope of a point configuration via its
+# using topcom or mptopcom.
+#
+# @param Polytope pc input polytope
+# @return Polytope
+#
+# @example The square only has two triangulations using its vertices.
+# > $square = cube(2,1,0);
+# > $SP_square = secondary_polytope($square);
+# > print $SP_square -> VERTICES;
+# | 1 1 2 2 1
+# | 1 2 1 1 2
+user_function secondary_polytope<Scalar>(Polytope<Scalar>) {
+    my $self=shift;
+    my $v = new Matrix<Scalar>( map { gkz_vector<Scalar>($self->VERTICES, $_) } @{topcom_regular_triangulations($self)} );
+    my $vh = ones_vector<Scalar>() | $v;
+    return new Polytope<Scalar>(VERTICES => $vh, LINEALITY_SPACE => []);
+}
+
+# @category Triangulations, subdivisions and volume
+# Computes the fiber polytope of a projection of point configurations P->Q via
+# the GKZ secondary configuration.
 # @param PointConfiguration pc (or Polytope) source point configuration or polytope
 # @param PointConfiguration pc target point configuration
 # @return PointConfiguration

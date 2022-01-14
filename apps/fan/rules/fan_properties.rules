@@ -810,7 +810,7 @@ user_method cones_of_dim($) : HASSE_DIAGRAM {
 # > $f = new PolyhedralFan(INPUT_RAYS=>[[1,0]],INPUT_CONES=>[[0]]);
 # > print $f->AMBIENT_DIM;
 # | 2
-user_method AMBIENT_DIM {
+user_method AMBIENT_DIM() : FAN_AMBIENT_DIM {
   my ($self)=@_;
   return $self->FAN_AMBIENT_DIM;
 }

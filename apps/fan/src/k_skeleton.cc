@@ -17,27 +17,28 @@
 
 #include "polymake/client.h"
 #include "polymake/fan/hasse_diagram.h"
-
-/*
-#include "polymake/PowerSet.h"
-#include "polymake/graph/Closure.h"
-#include "polymake/graph/Lattice.h"
-#include "polymake/graph/BasicLatticeTypes.h"
-#include "polymake/graph/lattice_builder.h"
-*/
+#include "polymake/fan/prune_polyhedral_complex.h"
 
 namespace polymake { namespace fan { 
 
 template <typename Coord>
-BigObject k_skeleton(BigObject fan, const Int k)
+BigObject k_skeleton(BigObject fan, Int k)
 {
-  const bool is_pure = fan.give("PURE");
-  const bool is_complete = fan.give("COMPLETE");
-  Matrix<Coord> rays = fan.give("RAYS");
-  BigObject hasseDiagram = lower_hasse_diagram(fan, k, is_pure, is_complete);
-  return BigObject("PolyhedralFan", mlist<Coord>(),
-                   "RAYS", rays,
-                   "HASSE_DIAGRAM", hasseDiagram);
+   if(fan.isa("PolyhedralComplex")){
+      k++;
+   }
+   const bool is_pure = fan.give("PURE");
+   const bool is_complete = fan.give("COMPLETE");
+   Matrix<Coord> rays = fan.give("RAYS");
+   BigObject hasseDiagram = lower_hasse_diagram(fan, k, is_pure, is_complete);
+   BigObject result("PolyhedralFan", mlist<Coord>(),
+         "RAYS", rays,
+         "HASSE_DIAGRAM", hasseDiagram);
+   if(fan.isa("PolyhedralComplex")){
+      return prune_polyhedral_complex<Coord>(result);
+   } else {
+      return result;
+   }
 }
 
 UserFunctionTemplate4perl("# @category Producing a fan"

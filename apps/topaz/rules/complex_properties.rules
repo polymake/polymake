@@ -16,10 +16,10 @@
 
 # @category Topology
 #
-# A group is encoded as a sequence ( { (t<sub>1</sub> m<sub>1</sub>) ...  (t<sub>n</sub>  m<sub>n</sub>) } f) of non-negative integers,
+# A finitely generated abelian group is encoded as a sequence ( { (t<sub>1</sub> m<sub>1</sub>) ...  (t<sub>n</sub>  m<sub>n</sub>) } f) of non-negative integers,
 # with t<sub>1</sub> > t<sub>2</sub> > ... > t<sub>n</sub> > 1, plus an extra non-negative integer f.
 #
-# The group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> × ... × (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> × Z<sup>f</sup>, 
+# That group is isomorphic to (Z/t<sub>1</sub>)<sup>m<sub>1</sub></sup> × ... × (Z/t<sub>n</sub>)<sup>m<sub>n</sub></sup> × Z<sup>f</sup>, 
 # where Z<sup>0</sup> is the trivial group.
 #
 # @field List<Pair<Scalar, Int>> torsion list of Z-groups
@@ -64,6 +64,7 @@ property INPUT_FACES : Array<Set> {
 
 # @category Combinatorics
 # Indices of the vertices from [[INPUT_FACES]].  That is, the map i \mapsto v_i.
+# Used for embeddings of subcomplexes.
 
 property VERTEX_INDICES : Array<Int>;
 
@@ -151,10 +152,10 @@ property N_FACETS : Int;
 # @category Combinatorics
 # Inclusion minimal non-faces (vertex subsets which are not faces of the simplicial complex).
 
-property MINIMAL_NON_FACES : Array<Set>;
+property MINIMAL_NON_FACES : IncidenceMatrix;
 
 rule MINIMAL_NON_FACES : VertexPerm.MINIMAL_NON_FACES, VertexPerm.PERMUTATION {
-   $this->MINIMAL_NON_FACES=permuted_elements($this->VertexPerm->MINIMAL_NON_FACES, $this->VertexPerm->PERMUTATION);
+   $this->MINIMAL_NON_FACES=permuted_cols($this->VertexPerm->MINIMAL_NON_FACES, $this->VertexPerm->PERMUTATION);
 }
 weight 1.20;
 

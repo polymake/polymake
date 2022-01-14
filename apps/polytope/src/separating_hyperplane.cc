@@ -235,41 +235,6 @@ Vector<Scalar> separating_hyperplane(BigObject p1, BigObject p2, OptionSet optio
    return sol;
 }
 
-template <typename Scalar>
-bool cone_contains_point(BigObject p, const Vector<Scalar> & q, OptionSet options)
-{
-   // the LP constructed here is supposed to find a conical/convex combination of the rays/vertices
-   // of cone/polytope p that equals q. if the in_interior flag is set, all coefficients are
-   // required to be strictly positive.
-   Matrix<Scalar> P = p.give("RAYS | INPUT_RAYS");
-
-   Matrix<Scalar> eqs = -q | T(P) ; //sum z_i p_i = q
-   //(if p_i are given in hom.coords, also sum z_i = 1 for all i whose p_i are not rays)
-
-   //lookup prevents computation of this property in case it is not given.
-   Matrix<Scalar> E = p.lookup("LINEALITY_SPACE | INPUT_LINEALITY");
-   if (E.rows()) {
-      // for polytopes, replace first col of E with 0, so we have sum z_i = 1 only for points
-      if (p.isa("Polytope")) E = zero_vector<Scalar>() | E.minor(All,range(1,E.cols()-1));
-
-      eqs = eqs | T(E) | T(-E);
-   }
-   eqs = eqs | zero_vector<Scalar>();
-
-   Int n = P.rows();
-   Matrix<Scalar> ineqs = zero_vector<Scalar>(n) | unit_matrix<Scalar>(n) | zero_matrix<Scalar>(n, 2*E.rows()) | -ones_vector<Scalar>(n); //z_i >= eps for rays
-
-   Int c = n+2+2*E.rows();
-   ineqs = ineqs / unit_vector<Scalar>(c, c-1) //eps >= 0
-                 / (unit_vector<Scalar>(c, 0) - unit_vector<Scalar>(c, c-1)); // eps <= 1
-
-   const auto S = solve_LP(ineqs, eqs, unit_vector<Scalar>(c, c-1), true);  // maximize eps
-   if (S.status != LP_status::valid)
-      return false;
-
-   bool in = options["in_interior"];
-   return !(in && S.objective_value == 0);  // the only separating plane is a weak one
-}
 
 // check for separability of a point and a set of points
 template <typename Scalar>

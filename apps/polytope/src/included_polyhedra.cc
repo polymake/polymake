@@ -45,8 +45,7 @@ void find_first_violated_constraint(BigObject p1, BigObject p2)
    const Int dim1 = p1.give("CONE_AMBIENT_DIM");
    const Int dim2 = p2.give("CONE_AMBIENT_DIM");
    if (dim1 != dim2) {
-      cout << "Cones/Polytopes do no live in the same ambient space."<<endl;
-      return;
+      throw std::runtime_error("Cones/Polytopes do no live in the same ambient space.");
    }
 
    auto check_equation = [] (const auto& c, const auto& g) { return c*g == 0; };
@@ -79,12 +78,13 @@ UserFunctionTemplate4perl("# @category Comparing"
                           "# @param Polytope P2 the second polytope"
                           "# @option Bool verbose Prints information on the difference between P1 and P2 if none is included in the other."
                           "# @return Bool 'true' if //P1// is included in //P2//, 'false' otherwise"
-                          "# @example"
+                          "# @example [prefer ppl]"
                           "# > print included_polyhedra(simplex(3),cube(3));"
                           "# | true"
                           "# To see in what way the two polytopes differ, try this:"
-                          "# > print included_polyhedra(cube(2),cube(3),verbose=>1);"
-                          "# | Cones/Polytopes do no live in the same ambient space."
+                          "# > $p = new Polytope(VERTICES => [[1,-1,-1],[1,1,-1],[1,-1,1],[1,1,1]]);"
+                          "# > print included_polyhedra($p,simplex(2),verbose => 1);"
+                          "# | Inequality 0 1 0 not satisfied by point 1 -1 -1."
                           "# | false",
                           "included_polyhedra<Coord>(Cone<Coord>, Cone<Coord>; { verbose => 0 })");
 
@@ -100,9 +100,6 @@ InsertEmbeddedRule("# @category Comparing"
                    "# > print equal_polyhedra($p,cube(2));"
                    "# | true"
                    "# To see why two polytopes are unequal, try this:"
-                   "# > print equal_polyhedra($p,cube(3),verbose => 1);"
-                   "# | Cones/Polytopes do no live in the same ambient space."
-                   "# | false"
                    "# > print equal_polyhedra($p,simplex(2),verbose => 1);"
                    "# | Inequality 1 -1 -1 not satisfied by point 1 1 1."
                    "# | false\n"

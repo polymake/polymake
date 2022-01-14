@@ -25,6 +25,8 @@ bool cone_contains(BigObject p_in, BigObject p_out){
 }
 FunctionTemplate4perl("cone_contains<Scalar> (Cone<Scalar>, Cone<Scalar>)");
 
+FunctionTemplate4perl("contains_V_V_via_LP<Scalar> (Cone<Scalar>, Cone<Scalar>)");
+
 
 FunctionTemplate4perl("polytope_contains_ball<Scalar> (Vector<Scalar>, Scalar, Polytope<Scalar>)");
 

@@ -432,13 +432,18 @@ property HASSE_DIAGRAM : Lattice<BasicDecoration, Sequential> {
 
 # @category Combinatorics
 # Output the faces of a given dimension
-# @param Cone c the input cone
+# @param Int d dimension
 # @return Array<Set<Int>>
 user_method faces_of_dim($) {
     my ($this, $d) = @_;
+    # using DIM here works similar to the get_shift in the hasse diagram above
+    # to adjust for the dimension difference between cone and polytope (for the input dimension)
+    if ($d == $this->DIM - $this->LINEALITY_DIM - 1) {
+       return new Array<Set<Int>>(rows($this->RAYS_IN_FACETS));
+    }
     return new Array<Set<Int>>([map { $this->HASSE_DIAGRAM->FACES->[$_] } @{$this->HASSE_DIAGRAM->nodes_of_dim($d)}]);
 }
-                                
+
 
 # @category Combinatorics
 # Number of incident facets for each ray.

@@ -26,19 +26,28 @@ object Polytope {
 # we might have a cone that already *is* a homogenized polytope, 
 # e.g. when we extract one polytope from a polyhedral complex (which is done via the corresponding function for the fan).
 # for this, we just run over the first column of  RAYS and LINEALITY_SPACE and check whether we only have zeros and ones
+# we also need to make sure that the polytope has at least one bounded vertex
 # if true, we make a true copy, otherwise we use FACETS to construct the polytope
 method construct(Cone) {
   my ($proto, $cone)=@_;
   my $already_homogeneous=0;
-  if ( defined(my $verts=$cone->lookup("RAYS") ) ) {
+  my $have_point=0;
+  if (defined(my $verts=$cone->lookup("RAYS"))) {
       $already_homogeneous=1;
-      foreach (@{$verts->col(0)}) { if ( $_!=0 && $_!=1 ) { $already_homogeneous=0; last; } }
+      foreach (@{$verts->col(0)}) {
+         if ($_ == 1) {
+            $have_point = 1;
+         } elsif ($_ != 0) {
+            $already_homogeneous = 0;
+            last;
+         }
+      }
       my $lin_space;
       if ( $already_homogeneous && defined( $lin_space=$cone->lookup("LINEALITY_SPACE") ) && $lin_space->rows ) {
           foreach (@{$lin_space->col(0)}) { if ( $_!=0 && $_!=1 ) { $already_homogeneous=0; last; } }
       }
   }
-  if ( $already_homogeneous ) {
+  if ($already_homogeneous && $have_point) {
       Polymake::Core::BigObject::new_copy($proto, $cone);
   } else {
       Polymake::Core::BigObject::new_filled($proto, $cone->name, CONE_AMBIENT_DIM=>$cone->CONE_AMBIENT_DIM, INEQUALITIES=>$cone->FACETS, EQUATIONS=>$cone->LINEAR_SPAN);
@@ -331,18 +340,19 @@ rule DUAL_GRAPH.DIHEDRAL_ANGLES : FACETS, DUAL_GRAPH.ADJACENCY {
 precondition : FULL_DIM;
 precondition : FAR_FACE { $this->FAR_FACE->size()==0 }
 
-rule BOUNDED : VERTICES | POINTS, POINTED {
-  if (!$this->POINTED) {
-    $this->BOUNDED=0;
-  } else {
-    foreach my $v (@{$this->give("VERTICES | POINTS")}) {
-      if ($v->[0]==0) {
-        $this->BOUNDED=0;
-        return;
+rule BOUNDED : VERTICES | POINTS {
+   my $lin_space;
+   if (defined($lin_space = $this->lookup("LINEALITY_SPACE | INPUT_LINEALITY")) && $lin_space->rows > 0) {
+      $this->BOUNDED = 0;
+   } else {
+      foreach my $v (@{$this->give("VERTICES | POINTS")}) {
+         if ($v->[0]==0) {
+            $this->BOUNDED=0;
+            return;
+         }
       }
-    }
-    $this->BOUNDED=1;
-  }
+      $this->BOUNDED=1;
+   }
 }
 weight 1.10;
 
@@ -401,7 +411,8 @@ rule WEAKLY_CENTERED : FACETS, AFFINE_HULL {
 weight 1.10;
 
 rule WEAKLY_CENTERED : VERTICES | POINTS, LINEALITY_SPACE | INPUT_LINEALITY, CONE_AMBIENT_DIM{
-    $this->WEAKLY_CENTERED = $this->contains(unit_vector($this->CONE_AMBIENT_DIM, 0));
+   my $pt = new Polytope(POINTS=>[unit_vector($this->CONE_AMBIENT_DIM, 0)]);
+    $this->WEAKLY_CENTERED = contains_V_V_via_LP($pt, $this);
 }
 weight 4.10;
 
@@ -593,7 +604,7 @@ weight 0.1;
 # @category Geometry
 # returns the dimension of the ambient space of the polytope
 # @return Int
-user_method AMBIENT_DIM {
+user_method AMBIENT_DIM() : CONE_AMBIENT_DIM {
   my ($self)=@_;
   return ($self->CONE_AMBIENT_DIM-1);
 }

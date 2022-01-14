@@ -60,7 +60,7 @@ rule N_FACETS : FACETS {
 weight 0.1;
 
 rule N_MINIMAL_NON_FACES : MINIMAL_NON_FACES {
-   $this->N_MINIMAL_NON_FACES=$this->MINIMAL_NON_FACES->size();
+   $this->N_MINIMAL_NON_FACES=$this->MINIMAL_NON_FACES->rows();
 }
 weight 0.1;
 

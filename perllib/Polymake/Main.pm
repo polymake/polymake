@@ -27,7 +27,7 @@ sub import {
 
    # these redefinitions must happen before the whole slew of polymake perl code is loaded!
    if ($must_reset_SIGCHLD) {
-      *CORE::GLOBAL::readpipe=sub { local $SIG{CHLD}='DEFAULT'; CORE::readpipe(@_) };
+      *CORE::GLOBAL::readpipe=sub { local $SIG{CHLD}='DEFAULT'; CORE::readpipe($_[0]) };
    }
 
    require DynaLoader;

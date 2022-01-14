@@ -22,6 +22,7 @@
 #include "polymake/hash_map"
 #include "polymake/IncidenceMatrix.h"
 #include "polymake/linalg.h"
+#include "polymake/fan/prune_polyhedral_complex.h"
 
 namespace polymake { namespace fan {
 
@@ -117,12 +118,25 @@ BigObject common_refinement(BigObject f1, BigObject f2)
       }
    }
 
+   BigObject result("PolyhedralFan", mlist<Coord>());
+   result.take("COMPLETE") << complete;
+   result.take("FAN_AMBIENT_DIM") << ambient_dim;
+   result.take("LINEALITY_DIM") << lineality_space.rows();
    if (complete) {
-      return BigObject("PolyhedralFan", "COMPLETE", complete, "FAN_AMBIENT_DIM", ambient_dim, "LINEALITY_DIM", lineality_space.rows(),
-                       "FAN_DIM", d, "RAYS", rays, "MAXIMAL_CONES", new_max_cones, "LINEALITY_SPACE", lineality_space);
+      result.take("FAN_DIM") << d;
+      result.take("RAYS") << rays;
+      result.take("MAXIMAL_CONES") << new_max_cones;
+      result.take("LINEALITY_SPACE") << lineality_space;
    } else {
-      return BigObject("PolyhedralFan", "COMPLETE", complete, "FAN_AMBIENT_DIM", ambient_dim, "LINEALITY_DIM", lineality_space.rows(),
-                       "INPUT_RAYS", rays, "INPUT_CONES", new_max_cones, "INPUT_LINEALITY", lineality_space);
+      result.take("INPUT_RAYS") << rays;
+      result.take("INPUT_CONES") << new_max_cones;
+      result.take("INPUT_LINEALITY") << lineality_space;
+   }
+   
+   if(f1.isa("PolyhedralComplex")){
+      return prune_polyhedral_complex<Coord>(result);
+   } else {
+      return result;
    }
 }
 

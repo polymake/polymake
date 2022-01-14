@@ -21,14 +21,15 @@
 #include "polymake/Vector.h"
 #include "polymake/Polynomial.h"
 #include "polymake/Rational.h"
+#include "polymake/IncidenceMatrix.h"
 
 
 namespace polymake { namespace topaz {
 
 BigObject stanley_reisner(BigObject C)
 {
-  const Array<Set<Int>> non_faces=C.give("MINIMAL_NON_FACES");
-  const Int n_non_faces = non_faces.size();
+  const IncidenceMatrix<> non_faces=C.give("MINIMAL_NON_FACES");
+  const Int n_non_faces = non_faces.rows();
   const Int n_vertices = C.give("N_VERTICES");
 
   Array<Polynomial<Rational, Int>> gens(n_non_faces);
