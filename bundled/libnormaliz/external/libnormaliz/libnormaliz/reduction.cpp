@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -99,12 +99,10 @@ void Candidate<Integer>::compute_values_deg(const Full_Cone<Integer>& C) {
         sort_deg *= 2;
 }
 
-#ifdef ENFNORMALIZ
 template <>
 void Candidate<renf_elem_class>::compute_values_deg(const Full_Cone<renf_elem_class>& C) {
     assert(false);
 }
-#endif
 
 //---------------------------------------------------------------------------
 
@@ -199,21 +197,19 @@ bool CandidateList<Integer>::is_reducible(vector<Integer> v, Candidate<Integer>&
 // Fourth version with parallelization and tables
 template <typename Integer>
 void CandidateList<Integer>::reduce_by(CandidateList<Integer>& Reducers) {
-    size_t cpos, csize = Candidates.size();
-
-    CandidateTable<Integer> ReducerTable(Reducers);
+    size_t csize = Candidates.size();
 
     bool skip_remaining = false;
-    ;
     std::exception_ptr tmp_exception;
 
 // This parallel region cannot throw a NormalizException
-#pragma omp parallel private(cpos) firstprivate(ReducerTable)
+#pragma omp parallel
     {
+        CandidateTable<Integer> ReducerTable(Reducers);
         auto c = Candidates.begin();
-        cpos = 0;
+        size_t cpos = 0;
 
-#pragma omp for schedule(dynamic)
+#pragma omp for  // schedule(dynamic) removed because of clang problems
         for (size_t k = 0; k < csize; ++k) {
             for (; k > cpos; ++cpos, ++c)
                 ;

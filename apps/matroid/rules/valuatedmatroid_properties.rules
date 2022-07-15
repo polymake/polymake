@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,6 +17,14 @@
 object ValuatedMatroid {
 
   ### PROPERTIES ###
+
+  # @category Valuation
+  # Whether the valuated matroid is transversal
+  property TRANSVERSAL_VALUATED_MATROID : Bool;
+
+  # @category Valuation
+  # Whether the valuated matroid is transversal
+  property POSITIVE_VALUATION : Bool;
 
 
   # @category Valuation
@@ -63,6 +71,22 @@ object ValuatedMatroid {
       $this->SUBDIVISION = polytope::regular_subdivision($this->POLYTOPE->VERTICES, $v);
   }
   
+  rule TRANSVERSAL_VALUATED_MATROID, POSITIVE_VALUATION : SUBDIVISION, BASES, N_ELEMENTS {
+	my ($flag_pos,$flag_trans) = (1,1);
+	foreach my $cell  (@{$this->SUBDIVISION}){
+		for my $i (0..$this->SUBDIVISION->size-1){
+			my @bases = map {$this->BASES->[$_]} (@{$this->SUBDIVISION->[$i]});
+			my $mat = new Matroid(BASES=>\@bases,N_ELEMENTS=>$this->N_ELEMENTS);
+			if(!$mat->POSITROID){$flag_pos=0}
+			if(!$mat->TRANSVERSAL){$flag_trans=0}
+			last if(!$flag_pos && !$flag_trans);
+		}
+	}
+	$this->POSITIVE_VALUATION = $flag_pos;
+	$this->TRANSVERSAL_VALUATED_MATROID = $flag_trans;
+  }
+  precondition : POSITROID;
+ 
 }
 
 # Local Variables:

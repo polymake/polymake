@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -16,32 +16,32 @@
 
 object Cone<Float> {
 
-rule cdd.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
+rule cdd.convex_hull.primal, cdd.convex_hull: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
    cdd_ch_primal($this, $verbose_cdd);
 }
 weight 4.10;
 precondition : N_RAYS | N_INPUT_RAYS;
 incurs FacetPerm;
 
-rule cdd.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+rule cdd.convex_hull.dual, cdd.convex_hull: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
    cdd_ch_dual($this, $verbose_cdd);
 }
 weight 4.10;
 incurs VertexPerm;
 
 # cdd redundancy checks
-rule cdd.convex_hull.canon: POINTED, RAYS, LINEALITY_SPACE : INPUT_RAYS {
+rule cdd.convex_hull.canon, cdd.convex_hull: POINTED, RAYS, LINEALITY_SPACE : INPUT_RAYS {
    cdd_get_non_redundant_points($this);
 }
 weight 3.10;
 incurs VertexPerm;
 
-rule cdd.convex_hull.lineality: LINEALITY_SPACE, POINTED : INPUT_RAYS {
+rule cdd.convex_hull.lineality, cdd.convex_hull: LINEALITY_SPACE, POINTED : INPUT_RAYS {
    cdd_get_lineality_space($this);
 }
 weight 3.10;
 
-rule cdd.convex_hull.redund: RAYS, RAY_SEPARATORS, LINEALITY_SPACE : INPUT_RAYS {
+rule cdd.convex_hull.redund, cdd.convex_hull: RAYS, RAY_SEPARATORS, LINEALITY_SPACE : INPUT_RAYS {
    cdd_eliminate_redundant_points($this);
 }
 weight 3.20;
@@ -54,13 +54,13 @@ rule cdd.convex_hull.separators: RAY_SEPARATORS : RAYS {
 weight 3.20;
 incurs VertexPerm;
 
-rule cdd.convex_hull.canon : FACETS, LINEAR_SPAN : INEQUALITIES { 
+rule cdd.convex_hull.canon, cdd.convex_hull: FACETS, LINEAR_SPAN : INEQUALITIES {
   cdd_get_non_redundant_inequalities($this);
 }
 weight 3.20;
 incurs FacetPerm;
 
-rule cdd.convex_hull.linear_span : LINEAR_SPAN : INEQUALITIES {     
+rule cdd.convex_hull.linear_span, cdd.convex_hull: LINEAR_SPAN : INEQUALITIES {
    cdd_get_linear_span($this);
 }
 weight 3.10;

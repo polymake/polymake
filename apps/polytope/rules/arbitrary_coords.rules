@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -44,28 +44,28 @@ weight 1.10;
 # and produces a triangulation of the polytope as a byproduct.
 label beneath_beyond
 
-rule beneath_beyond.convex_hull.primal, default.triangulation.poly: \
+rule beneath_beyond.convex_hull.primal, default.triangulation.poly, beneath_beyond.convex_hull: \
      FACETS, LINEAR_SPAN, RAYS_IN_FACETS, DUAL_GRAPH.ADJACENCY, TRIANGULATION(new).FACETS, ESSENTIALLY_GENERIC : RAYS {
    beneath_beyond_find_facets($this, non_redundant => true);
 }
 weight 4.10;
 incurs FacetPerm;
 
-rule beneath_beyond.convex_hull.primal: \
+rule beneath_beyond.convex_hull.primal, beneath_beyond.convex_hull: \
      FACETS, RAYS, LINEAR_SPAN, LINEALITY_SPACE, RAYS_IN_FACETS, DUAL_GRAPH.ADJACENCY, TRIANGULATION_INT : INPUT_RAYS {
    beneath_beyond_find_facets($this);
 }
 weight 4.10;
 incurs FacetPerm;
 
-rule beneath_beyond.convex_hull.dual: \
+rule beneath_beyond.convex_hull.dual, beneath_beyond.convex_hull: \
      RAYS, LINEALITY_SPACE, RAYS_IN_FACETS, GRAPH.ADJACENCY : FACETS {
    beneath_beyond_find_vertices($this, non_redundant => true);
 }
 weight 4.10;
 incurs VertexPerm;
 
-rule beneath_beyond.convex_hull.dual: \
+rule beneath_beyond.convex_hull.dual, beneath_beyond.convex_hull: \
      FACETS, RAYS, LINEAR_SPAN, LINEALITY_SPACE, RAYS_IN_FACETS, GRAPH.ADJACENCY : INEQUALITIES {
    beneath_beyond_find_vertices($this);
 }
@@ -93,7 +93,7 @@ object Polytope {
 
 label jarvis
 
-rule jarvis.convex_hull.primal : VERTICES : POINTS {
+rule jarvis.convex_hull.primal, jarvis.convex_hull: VERTICES : POINTS {
   $this->VERTICES=jarvis($this->POINTS);
 }
 precondition : BOUNDED, CONE_AMBIENT_DIM { $this->BOUNDED and $this->CONE_AMBIENT_DIM==3 }

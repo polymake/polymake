@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -215,6 +215,7 @@ $title
 			<div class=group id='transparency_OUTPUTID' class='transparency'>
 				<strong>Transparency</strong>
 				<input id='transparencyRange_OUTPUTID' type='range' min=0 max=1 step=0.01 value=0>
+            <div class=indented><input id='depthWriteCheckbox_OUTPUTID' type='checkbox'>depthWrite</div>
 			</div>
 			
 			<div class=group id='rotation_OUTPUTID'>

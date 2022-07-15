@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-@conf_vars=qw( UseBundled CXXFLAGS LDFLAGS LIBS );
+@conf_vars=qw( UseBundled CXXFLAGS LDFLAGS LIBS BundledNoWarnings );
 
 sub allowed_options {
    my ($allowed_options, $allowed_with)=@_;
@@ -41,22 +41,7 @@ sub proceed {
    my $libs = "-lnormaliz";
    $UseBundled=1;
 
-   # check GMP C++ bindings
-   my $build_error=Polymake::Configure::build_test_program(<<'---', LIBS => "-lgmpxx -lgmp");
-#include <cstddef>
-#include <gmpxx.h>
-int main() {
-   mpz_class z(7);
-   mpz_class y(z-z);
-   return y.get_si();
-}
----
-
-   if ($?!=0) {
-      die "Could not compile a test program checking for the GNU Multiprecision Library C++ bindings.\n",
-          "The libnormaliz extension needs gmpxx.h and -lgmpxx installed together with GMP.\n",
-          "The complete error log follows:\n", $build_error;
-   }
+   Polymake::Configure::check_gmpxx();
 
    if (defined ($nmz_path=$options->{libnormaliz}) and $nmz_path ne "bundled") {
       my $nmz_inc="$nmz_path/include";
@@ -167,8 +152,11 @@ int main (int argc, char *argv[])
    if ($UseBundled) {
       die "bundled libnormaliz requested but it cannot be found"
          if (!check_bundled());
+
+      Polymake::Configure::check_gmpxx_ostream();
+
       undef $LIBS;
-      $CXXFLAGS='-I${root}/bundled/libnormaliz/external/libnormaliz -DBUNDLED_LIBNORMALIZ';
+      $CXXFLAGS='-I${root}/bundled/libnormaliz/external/libnormaliz';
       $message = "bundled";
 
       # openmp flags are set in the main configure script
@@ -176,6 +164,17 @@ int main (int argc, char *argv[])
          $CXXFLAGS .= " -DOPENMP=no";
          $message .= " [OpenMP support disabled]";
       }
+
+      foreach (qw(shadow conversion unused-variable)) {
+         $BundledNoWarnings .= " -Wno-$_";
+      }
+      $BundledNoWarnings .= " -Wno-unused-but-set-variable"
+         unless (defined($Polymake::Configure::CLANGversion) &&
+                 Polymake::Configure::v_cmp($Polymake::Configure::CLANGversion, "13.0.0") < 0);
+      $BundledNoWarnings .= " -Wno-zero-as-null-pointer-constant"
+         unless (defined($Polymake::Configure::CLANGversion) &&
+                 Polymake::Configure::v_cmp($Polymake::Configure::CLANGversion, "5.0.0") < 0);
+
    } else {
       $LIBS="$libs";
       $message = "$nmz_version @ ".($nmz_path//"system")

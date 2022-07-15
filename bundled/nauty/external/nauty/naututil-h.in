@@ -1,5 +1,5 @@
 /*****************************************************************************
-* This is the header file for versions 2.6 of naututil.c and dreadnaut.c.    *
+* This is the header file for versions 2.7 of naututil.c and dreadnaut.c.    *
 * @configure_input@
 *****************************************************************************/
 
@@ -20,7 +20,7 @@ used, it is necessary to check they are correct.
 
 /*****************************************************************************
 *                                                                            *
-*   Copyright (1984-2016) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2018) Brendan McKay.  All rights reserved.               *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -110,6 +110,7 @@ used, it is necessary to check they are correct.
 *                 - prototypes for putdegseq(), putdegseq_sg()               *
 *       17-Dec-15 : prototype for readgraph_swg()                            *
 *        6-Apr-16 : prototype for countcells()                               *
+*       27-Aug-16 : added REALTIMEDEFS and NAUTYREALTIME                     *
 *                                                                            *
 * @edit_msg@
 *                                                                            *
@@ -275,8 +276,7 @@ extern void unitptn(int*,int*,int*,int);
 #include <sys/time.h>
 #define INITSEED \
 {struct timeval nauty_tv; \
- struct timezone nauty_tz; \
- gettimeofday(&nauty_tv,&nauty_tz); \
+ gettimeofday(&nauty_tv,NULL); \
  seed = ((nauty_tv.tv_sec<<10) + (nauty_tv.tv_usec>>10)) & 0x7FFFFFFFL;}
 #else
 #if HAVE_TIME
@@ -285,5 +285,27 @@ extern void unitptn(int*,int*,int*,int);
 #endif
 #endif
 #endif /*NAUTY_SEED_DEFINED*/
+
+/*************************************************************************/
+
+#ifndef NAUTY_REALTIME_DEFINED
+#if HAVE_GETTIMEOFDAY
+#include <sys/time.h>
+#define REALTIMEDEFS struct timeval nauty_rtv;
+#define NAUTYREALTIME (gettimeofday(&nauty_rtv,NULL), \
+ (double)(nauty_rtv.tv_sec + 1e-6 * nauty_rtv.tv_usec))
+#else
+#if HAVE_TIME
+#include <time.h>
+#define REALTIMEDEFS
+#define NAUTYREALTIME ((double)time(NULL))
+#endif
+#endif
+
+#ifndef NAUTYREALTIME
+#define NAUTYREALTIME 0.0
+#endif
+
+#endif /*NAUTY_REALTIME_DEFINED*/
 
 /* @edit_msg@ */

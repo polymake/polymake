@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -565,16 +565,25 @@ rule MINIMAL_VERTEX_ANGLE : VERTICES, VERTEX_BARYCENTER {
 rule MINIMAL_NON_FACES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {    
     $this->MINIMAL_NON_FACES=topaz::minimal_non_faces($this->HASSE_DIAGRAM);
 }
-weight 4.10 : CONE_DIM { $this->CONE_DIM <= 12 ? [0,0] : [4,10] }
+weight 4.10;
 precondition : SIMPLICIAL;
+precondition : CONE_DIM { $this->CONE_DIM <= 12; }
+# this is not really a strict precondition for the algorithm
+# it used to be implemented as a dynamic weight but those don't work as expected (#7)
+# and this causes the lawler client to run for some medium sized (5-dim) examples where it
+# is a lot slower than the one via the hasse-diagram
 
 rule MINIMAL_NON_FACES : VERTICES_IN_FACETS, CONE_DIM, N_VERTICES {
     my $f = new Array<Set<Int>>(@{$this->VERTICES_IN_FACETS});
     $this->MINIMAL_NON_FACES=topaz::lawler_minimal_non_faces($f,$this->N_VERTICES);
 }
-weight 4.10 : CONE_DIM { $this->CONE_DIM > 12 ? [0,0] : [4,10] }
+weight 4.10;
 precondition : SIMPLICIAL;
-
+precondition : CONE_DIM { $this->CONE_DIM > 12; }
+# this is not really a strict precondition for the algorithm
+# it used to be implemented as a dynamic weight but those don't work as expected (#7)
+# and this causes the lawler client to run for some medium sized (5-dim) examples where it
+# is a lot slower than the one via the hasse-diagram
 
 
 rule TRIANGULATION(any).VERTEX_LABELS = VERTEX_LABELS;

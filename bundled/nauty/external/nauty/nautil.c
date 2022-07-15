@@ -1,6 +1,6 @@
 /*****************************************************************************
 *                                                                            *
-*  Auxiliary source file for version 2.6 of nauty.                           *
+*  Auxiliary source file for version 2.7 of nauty.                           *
 *                                                                            *
 *   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
@@ -154,11 +154,14 @@ void
 permset(set *set1, set *set2, int m, int *perm)
 {
     setword setw;
-    int pos,w,b;
+    int pos,b;
+#if MAXM!=1
+    int w;
+#endif
 
     EMPTYSET(set2,m);
 
-#if  MAXM==1
+#if MAXM==1
     setw = set1[0];
     while (setw  != 0)
     {

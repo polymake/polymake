@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -41,51 +41,58 @@ extern "C" {
 extern volatile int nauty_kill_request;
 }
 
+#ifdef NMZ_NAUTYNAUTY
 #include <nauty/nauty.h>
+#else
+#include <nauty.h>
+#endif
 
 namespace libnormaliz {
-using namespace std;
 
 void kill_nauty() {
     nauty_kill_request = 1;
 }
 
-vector<vector<long> > CollectedAutoms;
+extern vector<vector<vector<long> > > CollectedAutoms;
 
 void getmyautoms(int count, int* perm, int* orbits, int numorbits, int stabvertex, int n) {
     int i;
+
+    int tn = 0;
+    if (omp_in_parallel())
+        tn = omp_get_ancestor_thread_num(omp_get_level());
     vector<long> this_perm(n);
     for (i = 0; i < n; ++i)
         this_perm[i] = perm[i];
-    CollectedAutoms.push_back(this_perm);
+    CollectedAutoms[tn].push_back(this_perm);
 }
 
 /* The computation of automorphism groups and isomorphism types uses nauty.
  * We start from a matrix that defines our polyhedron up to isomorphism:
  * two such matrices have the same isomorphism type if they differ only by
- * a permutation of the rows followed by a permutation of the colimns. 
- * 
+ * a permutation of the rows followed by a permutation of the colimns.
+ *
  * What matrixis taken, depends on the type of automorphism group (or isomorphism
- * classes) that are computed. 
- * 
+ * classes) that are computed.
+ *
  * The given matrices are transformed as follows: we replace the tru eentries by
  * indices in a vector listing the values of the entries. In this way the pattern
- * of equality is preserved. 
- * 
+ * of equality is preserved.
+ *
  * From this matrix of indices we produce a BinaryMatrix (= layer5s of 0-1-matrices
- * representing the indices vertically) that can be directly transformed into a graph 
+ * representing the indices vertically) that can be directly transformed into a graph
  * whose automorphuism group is then computed by nauty. (For isomorphism types we just
  * need the canonical type.). See the nauty manual for this trick.
- * 
+ *
  * Taking the entries of the matrix themselves instead of their indices in the value vector
- * can create a problem: they can by very large (especially in makeMMFromGensOnly(..)) and this 
- * slows down nauty considerably. By taking the indices we keep the BinaryMatrix as small 
+ * can create a problem: they can by very large (especially in makeMMFromGensOnly(..)) and this
+ * slows down nauty considerably. By taking the indices we keep the BinaryMatrix as small
  * as possible.
- * 
+ *
  * There is one crucial point for isomorphism classes. See the comment in makeMM(...): we must take
  * care that the canonical type does not depend on the order in which the values in our matrix
  * are produced (or procesed).
- * 
+ *
  */
 
 template <typename Integer>
@@ -97,7 +104,7 @@ void makeMM_euclidean(BinaryMatrix<Integer>& MM, const Matrix<Integer>& Generato
 
     long new_val = 0;
     Integer val;
-    map<Integer, long> Values;
+    std::map<Integer, long> Values;
     vector<Integer> VV;
     for (i = 0; i < mm; ++i) {
         vector<Integer> minus = Generators[i];
@@ -126,42 +133,38 @@ void makeMM_euclidean(BinaryMatrix<Integer>& MM, const Matrix<Integer>& Generato
             }
         }
     }
-    
+
     // for the following see the comment in makeMM
-    
-    sort(VV.begin(),VV.end());
+
+    sort(VV.begin(), VV.end());
     vector<long> new_index(VV.size());
-        
-    for(size_t j=0; j< VV.size(); ++j){
-        long old_index=Values[VV[j]];
-        new_index[old_index]=j;
-    }    
 
-
-    for (i = 0; i < mm; ++i) {
-        for (j = 0; j < nn; ++j)
-            MM.insert(MVal[i][j], i, j);
+    for (size_t j = 0; j < VV.size(); ++j) {
+        long old_index = Values[VV[j]];
+        new_index[old_index] = j;
     }
-    
+
     for (i = 0; i < mm; ++i) {
-        for (j = 0; j < nn; ++j){
+        for (j = 0; j < nn; ++j) {
             MM.insert(new_index[MVal[i][j]], i, j);
         }
     }
-    
-     MM.set_values(VV);
+
+    MM.set_values(VV);
 }
 
 template <typename Integer>
-void makeMM(BinaryMatrix<Integer>& MM, const Matrix<Integer>& Generators, const Matrix<Integer>& LinForms, AutomParam::Quality quality) {
-    
+void makeMM(BinaryMatrix<Integer>& MM,
+            const Matrix<Integer>& Generators,
+            const Matrix<Integer>& LinForms,
+            AutomParam::Quality quality) {
     /* The matrix  determining the automorphism group (or isomorphism class)
      * is given by the scalar products of the generators and the linear forms.
-     * 
-     * For the combinatorial automorph group we replace the non-zero values of the scalar products by 1. This gives 
-     * thwe 0-1 complement of the inciodence matrix -- does not matter. 
+     *
+     * For the combinatorial automorph group we replace the non-zero values of the scalar products by 1. This gives
+     * thwe 0-1 complement of the inciodence matrix -- does not matter.
      */
-    
+
     key_t i, j;
     size_t mm = Generators.nr_of_rows();
     size_t nn = LinForms.nr_of_rows();
@@ -173,9 +176,9 @@ void makeMM(BinaryMatrix<Integer>& MM, const Matrix<Integer>& Generators, const 
 
     long new_val = 0;
     Integer val;
-    map<Integer, long> Values;    
-    vector<Integer> VV;    
-    
+    std::map<Integer, long> Values;
+    vector<Integer> VV;
+
     for (i = 0; i < mm; ++i) {
         INTERRUPT_COMPUTATION_BY_EXCEPTION
 
@@ -196,30 +199,30 @@ void makeMM(BinaryMatrix<Integer>& MM, const Matrix<Integer>& Generators, const 
             }
         }
     }
-    
+
     // At this point the order of the values stored in VV depends on the order in
     // which they are computed. This is no problem in the computatio of automorphism groups,
     // but for isomorphism types we must make sure that two matrices Val that differ
     // only by row and column transformations produce binary matrices MVal that again differ only
     // by such permutations. Therefore we must order the values and replace the entries of MVal
     // accordingly: the smallest entry of Val is represented by 0 in MVal etc.
-    
-    sort(VV.begin(),VV.end());
+
+    sort(VV.begin(), VV.end());
     vector<long> new_index(VV.size());
-        
-    for(size_t j=0; j< VV.size(); ++j){
-        long old_index=Values[VV[j]];
-        new_index[old_index]=j;
-    }    
+
+    for (size_t j = 0; j < VV.size(); ++j) {
+        long old_index = Values[VV[j]];
+        new_index[old_index] = j;
+    }
 
     for (i = 0; i < mm; ++i) {
-        for (j = 0; j < nn; ++j){
+        for (j = 0; j < nn; ++j) {
             MM.insert(new_index[MVal[i][j]], i, j);
             // cout << "MM " << i << " " << j << " " << MVal[i][j] << endl;
         }
     }
-    
-     MM.set_values(VV);
+
+    MM.set_values(VV);
 }
 
 template <typename Integer>
@@ -227,18 +230,17 @@ void makeMMFromGensOnly_inner(BinaryMatrix<Integer>& MM,
                               const Matrix<Integer>& Generators,
                               const Matrix<Integer>& SpecialLinForms,
                               AutomParam::Quality quality) {
-    
-    /* Here we use only generators, following 
-     * 
+    /* Here we use only generators, following
+     *
      * D. Bremner , M. D. Sikiri\'c , D. V. Pasechnik, Th. Rehn and A. Schürmann,
           \emph{Computing symmetry groups of polyhedra.}
         LMS J. Comp. Math. 17 (2014), 565--581.
-     * 
-     * In the euclidean case (branched off makeMMFromGensOnly(...)) , we must preserve the norms of the difference vectors 
+     *
+     * In the euclidean case (branched off makeMMFromGensOnly(...)) , we must preserve the norms of the difference vectors
      * of the vertices of the polytope.
-     * 
+     *
      */
-    
+
     if (quality == AutomParam::euclidean) {
         makeMM_euclidean(MM, Generators, SpecialLinForms);
         return;
@@ -275,16 +277,15 @@ void makeMMFromGensOnly(BinaryMatrix<Integer>& MM,
         return;
     }
 
-    Matrix<mpz_class> Generators_mpz;      // we go through mpz_class since taking inverse matrices
-    convert(Generators_mpz, Generators);   // is extremely critical, and we don't want to risk
-    Matrix<mpz_class> SpecialLinForms_mpz; // an overflow exception at this point
+    Matrix<mpz_class> Generators_mpz;       // we go through mpz_class since taking inverse matrices
+    convert(Generators_mpz, Generators);    // is extremely critical, and we don't want to risk
+    Matrix<mpz_class> SpecialLinForms_mpz;  // an overflow exception at this point
     convert(SpecialLinForms_mpz, SpecialLinForms);
-    BinaryMatrix<mpz_class> MM_mpz(MM.get_nr_rows(),MM.get_nr_columns());
+    BinaryMatrix<mpz_class> MM_mpz(MM.get_nr_rows(), MM.get_nr_columns());
     makeMMFromGensOnly_inner(MM_mpz, Generators_mpz, SpecialLinForms_mpz, quality);
     MM.get_data_mpz(MM_mpz);
 }
 
-#ifdef ENFNORMALIZ
 template <>
 void makeMMFromGensOnly(BinaryMatrix<renf_elem_class>& MM,
                         const Matrix<renf_elem_class>& Generators,
@@ -292,15 +293,26 @@ void makeMMFromGensOnly(BinaryMatrix<renf_elem_class>& MM,
                         AutomParam::Quality quality) {
     makeMMFromGensOnly_inner(MM, Generators, SpecialLinForms, quality);
 }
-#endif
 
+// This routine starts from generators x and linear forms f. They define a rectangular
+// matrix with entries f(x), with x corresponding to a row and f to a column
+// This rectangular matrix is then interpreted as the weight pattern on a complete
+// bipartite graph.
+// Via a binary matrix the weights are tranlated into a grpah with "layers"
+// where each layer corresponds to a place in the binary expansion of the entries.
+//
+// But the function can be used also for 0-1-matrices where the entries
+// of the rectangular matrix are somplified to 0 or 1.
 template <typename Integer>
 nauty_result<Integer> compute_automs_by_nauty_Gens_LF(const Matrix<Integer>& Generators,
-                                             size_t nr_special_gens,
-                                             const Matrix<Integer>& LinForms,
-                                             const size_t nr_special_linforms,
-                                             AutomParam::Quality quality) {
-    CollectedAutoms.clear();
+                                                      size_t nr_special_gens,
+                                                      const Matrix<Integer>& LinForms,
+                                                      const size_t nr_special_linforms,
+                                                      AutomParam::Quality quality) {
+    int tn = 0;
+    if (omp_in_parallel())
+        tn = omp_get_ancestor_thread_num(omp_get_level());
+    CollectedAutoms[tn].clear();
 
     static DEFAULTOPTIONS_GRAPH(options);
     statsblk stats;
@@ -372,23 +384,23 @@ nauty_result<Integer> compute_automs_by_nauty_Gens_LF(const Matrix<Integer>& Gen
         INTERRUPT_COMPUTATION_BY_EXCEPTION
     }
 
-    // vector<vector<long> > AutomsAndOrbits(2*CollectedAutoms.size());
-    // AutomsAndOrbits.reserve(2*CollectedAutoms.size()+3);
+    // vector<vector<long> > AutomsAndOrbits(2*CollectedAutoms[tn].size());
+    // AutomsAndOrbits.reserve(2*CollectedAutoms[tn].size()+3);
 
     nauty_result<Integer> result;
 
-    for (k = 0; k < CollectedAutoms.size(); ++k) {
+    for (k = 0; k < CollectedAutoms[tn].size(); ++k) {
         vector<key_t> GenPerm(mm_pure);
         for (i = 0; i < mm_pure; ++i)
-            GenPerm[i] = CollectedAutoms[k][i];
+            GenPerm[i] = CollectedAutoms[tn][k][i];
         result.GenPerms.push_back(GenPerm);
         vector<key_t> LFPerm(nn_pure);  // we remove the special linear forms here
         for (i = mm; i < mm + nn_pure; ++i)
-            LFPerm[i - mm] = CollectedAutoms[k][i] - mm;
+            LFPerm[i - mm] = CollectedAutoms[tn][k][i] - mm;
         result.LinFormPerms.push_back(LFPerm);
     }
 
-    vector<key_t> GenOrbits(mm);
+    vector<key_t> GenOrbits(mm_pure);
     for (i = 0; i < mm_pure; ++i)
         GenOrbits[i] = orbits[i];
     result.GenOrbits = GenOrbits;
@@ -399,15 +411,15 @@ nauty_result<Integer> compute_automs_by_nauty_Gens_LF(const Matrix<Integer>& Gen
     result.LinFormOrbits = LFOrbits;
 
     result.order = mpz_class(stats.grpsize1);
-    
-    if(stats.grpsize2 != 0){
-        mpz_class power_mpz =  mpz_class(stats.grpsize2);
-        long power = convertTo<long>(power_mpz);
-        for(long i = 0; i< power; ++i)
+
+    if (stats.grpsize2 != 0) {
+        mpz_class power_mpz = mpz_class(stats.grpsize2);
+        long power = convertToLong(power_mpz);
+        for (long i = 0; i < power; ++i)
             result.order *= 10;
     }
 
-    vector<key_t> row_order(mm), col_order(nn);  // the spßecial gens and linforms go into
+    vector<key_t> row_order(mm), col_order(nn);  // the special gens and linforms go into
     for (key_t i = 0; i < mm; ++i)               // these data
         row_order[i] = lab[i];
     for (key_t i = 0; i < nn; ++i)
@@ -424,19 +436,37 @@ nauty_result<Integer> compute_automs_by_nauty_Gens_LF(const Matrix<Integer>& Gen
 
 //====================================================================
 
+// The following routine uses only "generators" x and special linear forms f
+// Together they correspond to the vertices of a graph.
+// The weights on the graph come from a SYMMETRIC matrix of "values" form
+// where each entry corresponds to val(x,y) = val(y,x).
+// The numbers f(x) are attached as an extra column.
+// It would be possible to apply the precerding function to this situation,
+// but the graph is more compact here.
+// The layers of the binary matrix have the same meaning as above.
 template <typename Integer>
 nauty_result<Integer> compute_automs_by_nauty_FromGensOnly(const Matrix<Integer>& Generators,
-                                                  size_t nr_special_gens,
-                                                  const Matrix<Integer>& SpecialLinForms,
-                                                  AutomParam::Quality quality) {
+                                                           size_t nr_special_gens,
+                                                           const Matrix<Integer>& SpecialLinForms,
+                                                           AutomParam::Quality quality) {
     size_t mm = Generators.nr_of_rows();
     size_t mm_pure = mm - nr_special_gens;
 
     size_t nr_special_linforms = SpecialLinForms.nr_of_rows();
 
+    /*cout << "--------------------" << endl;
+    Generators.pretty_print(cout);
+    cout << "--------------------" << endl;
+    SpecialLinForms.pretty_print(cout);
+    cout << "--------------------" << endl;*/
+
     // LinForms.append(SpecialLinForms);
 
-    CollectedAutoms.clear();
+    int tn = 0;
+    if (omp_in_parallel())
+        tn = omp_get_ancestor_thread_num(omp_get_level());
+
+    CollectedAutoms[tn].clear();
 
     static DEFAULTOPTIONS_GRAPH(options);
     statsblk stats;
@@ -478,7 +508,7 @@ nauty_result<Integer> compute_automs_by_nauty_FromGensOnly(const Matrix<Integer>
     }
 
     for (i = 0; i < mm; ++i) {      // make horizontal edges layer by layer
-        for (j = 0; j <= i; ++j) {  // take lower triangularr matrix inclcudung diagonal
+        for (j = 0; j <= i; ++j) {  // take lower triangular matrix inclcudung diagonal
             for (k = 0; k < ll; ++k) {
                 if (MM.test(i, j, k))  // k is the number of layers below the current one
                     ADDONEEDGE(g.data(), k * layer_size + i, k * layer_size + j, m);
@@ -510,6 +540,10 @@ nauty_result<Integer> compute_automs_by_nauty_FromGensOnly(const Matrix<Integer>
             ptn[(k + 1) * layer_size - 1 - s] = 0;
     }
 
+    /*cout << "+++++++++++++" << endl;
+    cout << ptn;
+    cout << "+++++++++++++" << endl;*/
+
     INTERRUPT_COMPUTATION_BY_EXCEPTION
 
     densenauty(g.data(), lab.data(), ptn.data(), orbits.data(), &options, &stats, m, n, cg.data());
@@ -519,35 +553,60 @@ nauty_result<Integer> compute_automs_by_nauty_FromGensOnly(const Matrix<Integer>
 
     nauty_result<Integer> result;
 
-    for (k = 0; k < CollectedAutoms.size(); ++k) {
-        vector<key_t> GenPerm(mm);
+    for (k = 0; k < CollectedAutoms[tn].size(); ++k) {
+        vector<key_t> GenPerm(mm_pure);
         for (i = 0; i < mm_pure; ++i)  // remove special gens and lion forms
-            GenPerm[i] = CollectedAutoms[k][i];
+            GenPerm[i] = CollectedAutoms[tn][k][i];
         result.GenPerms.push_back(GenPerm);
     }
 
-    vector<key_t> GenOrbits(mm);
+    vector<key_t> GenOrbits(mm_pure);
     for (i = 0; i < mm_pure; ++i)
-        GenOrbits[i] = orbits[i];  // remove special lin forms
+        GenOrbits[i] = orbits[i];
     result.GenOrbits = GenOrbits;
 
     result.order = mpz_class(stats.grpsize1);
-    if(stats.grpsize2 != 0){
-        mpz_class power_mpz =  mpz_class(stats.grpsize2);
-        long power = convertTo<long>(power_mpz);
-        for(long i = 0; i< power; ++i)
+    if (stats.grpsize2 != 0) {
+        mpz_class power_mpz = mpz_class(stats.grpsize2);
+        long power = convertToLong(power_mpz);
+        for (long i = 0; i < power; ++i)
             result.order *= 10;
     }
 
-    vector<key_t> row_order(mm);
-    for (key_t i = 0; i < mm; ++i)
-        row_order[i] = lab[i];
+    nauty_freedyn();
+
+    // cout << "::::::::::::::" << endl;
+    // cout << lab;
+    // cout << "::::::::::::::" << endl;
+
+    vector<key_t> row_order;  //
+    for (key_t i = 0; i < layer_size; ++i)
+        if (lab[i] < (int)mm)  // we suppoess the clumn of the special linear form
+            row_order.push_back(lab[i]);
+
+    /*vector<key_t> col_order(layer_size); // this includes the column of the special linear form
+    for(size_t i=0; i< col_order.size();++i)
+        col_order[i] = lab[i+mm] - mm; */
+
+    vector<key_t> col_order = row_order;
+    col_order.resize(layer_size);  // this includes the column of the special linear form
+    for (size_t i = mm; i < col_order.size(); ++i)
+        col_order[i] = i;
 
     result.CanLabellingGens = row_order;
 
-    nauty_freedyn();
+    /*cout << "********" << endl;
+    cout << row_order;
+    cout << endl;
+    cout << col_order;
+    cout << "=======" << endl;*/
 
-    // CanType=MM.reordered(row_order,col_order);
+    // MM.pretty_print(cout);
+    // cout << "--------" << endl;
+
+    result.CanType = MM.reordered(row_order, col_order);
+
+    // result.CanType.pretty_print(cout);
 
     // cout << "ORDER " << result.order << endl;
 
@@ -556,48 +615,48 @@ nauty_result<Integer> compute_automs_by_nauty_FromGensOnly(const Matrix<Integer>
 
 #ifndef NMZ_MIC_OFFLOAD  // offload with long is not supported
 template nauty_result<long> compute_automs_by_nauty_Gens_LF(const Matrix<long>& Generators,
-                                                      size_t nr_special_gens,
-                                                      const Matrix<long>& LinForms,
-                                                      const size_t nr_special_linforms,
-                                                      AutomParam::Quality quality);
+                                                            size_t nr_special_gens,
+                                                            const Matrix<long>& LinForms,
+                                                            const size_t nr_special_linforms,
+                                                            AutomParam::Quality quality);
 
 template nauty_result<long> compute_automs_by_nauty_FromGensOnly(const Matrix<long>& Generators,
-                                                           size_t nr_special_gens,
-                                                           const Matrix<long>& SpecialLinForms,
-                                                           AutomParam::Quality quality);
+                                                                 size_t nr_special_gens,
+                                                                 const Matrix<long>& SpecialLinForms,
+                                                                 AutomParam::Quality quality);
 #endif  // NMZ_MIC_OFFLOAD
 template nauty_result<long long> compute_automs_by_nauty_Gens_LF(const Matrix<long long>& Generators,
-                                                      size_t nr_special_gens,
-                                                      const Matrix<long long>& LinForms,
-                                                      const size_t nr_special_linforms,
-                                                      AutomParam::Quality quality);
+                                                                 size_t nr_special_gens,
+                                                                 const Matrix<long long>& LinForms,
+                                                                 const size_t nr_special_linforms,
+                                                                 AutomParam::Quality quality);
 
 template nauty_result<long long> compute_automs_by_nauty_FromGensOnly(const Matrix<long long>& Generators,
-                                                           size_t nr_special_gens,
-                                                           const Matrix<long long>& SpecialLinForms,
-                                                           AutomParam::Quality quality);
+                                                                      size_t nr_special_gens,
+                                                                      const Matrix<long long>& SpecialLinForms,
+                                                                      AutomParam::Quality quality);
 
 template nauty_result<mpz_class> compute_automs_by_nauty_Gens_LF(const Matrix<mpz_class>& Generators,
-                                                      size_t nr_special_gens,
-                                                      const Matrix<mpz_class>& LinForms,
-                                                      const size_t nr_special_linforms,
-                                                      AutomParam::Quality quality);
+                                                                 size_t nr_special_gens,
+                                                                 const Matrix<mpz_class>& LinForms,
+                                                                 const size_t nr_special_linforms,
+                                                                 AutomParam::Quality quality);
 
 template nauty_result<mpz_class> compute_automs_by_nauty_FromGensOnly(const Matrix<mpz_class>& Generators,
-                                                           size_t nr_special_gens,
-                                                           const Matrix<mpz_class>& SpecialLinForms,
-                                                           AutomParam::Quality quality);
+                                                                      size_t nr_special_gens,
+                                                                      const Matrix<mpz_class>& SpecialLinForms,
+                                                                      AutomParam::Quality quality);
 #ifdef ENFNORMALIZ
 template nauty_result<renf_elem_class> compute_automs_by_nauty_Gens_LF(const Matrix<renf_elem_class>& Generators,
-                                                      size_t nr_special_gens,
-                                                      const Matrix<renf_elem_class>& LinForms,
-                                                      const size_t nr_special_linforms,
-                                                      AutomParam::Quality quality);
+                                                                       size_t nr_special_gens,
+                                                                       const Matrix<renf_elem_class>& LinForms,
+                                                                       const size_t nr_special_linforms,
+                                                                       AutomParam::Quality quality);
 
 template nauty_result<renf_elem_class> compute_automs_by_nauty_FromGensOnly(const Matrix<renf_elem_class>& Generators,
-                                                           size_t nr_special_gens,
-                                                           const Matrix<renf_elem_class>& SpecialLinForms,
-                                                           AutomParam::Quality quality);
+                                                                            size_t nr_special_gens,
+                                                                            const Matrix<renf_elem_class>& SpecialLinForms,
+                                                                            AutomParam::Quality quality);
 #endif
 
 }  // namespace libnormaliz

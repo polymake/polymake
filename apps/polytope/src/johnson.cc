@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -1273,7 +1273,7 @@ BigObject pentagonal_orthobirotunda()
 {
    BigObject p = pentagonal_rotunda();
    Vector<double> normal{ 0., 0., (1+sqrt(5))/2, 1. };
-   p = gyrotunda(p, Set<Int>{7,9,10,12,13,15,16,17,18,19});
+   p = rotunda(p, Set<Int>{7,9,10,12,13,15,16,17,18,19});
 
 /*   IncidenceMatrix<> VIF{
                        };
@@ -3940,7 +3940,7 @@ UserFunction4perl("# @category Producing regular polytopes and their generalizat
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'pentagonal_gyrocupolarotunda' Pentagonal gyrocupolarotunda with regular facets. Johnson solid J33."
                   "#          The vertices are realized as floating point numbers."
-                  "# @value s 'pentagonal_orthobirotunda' Pentagonal orthobirotunda with regular facets. Johnson solid J32."
+                  "# @value s 'pentagonal_orthobirotunda' Pentagonal orthobirotunda with regular facets. Johnson solid J34."
                   "#          The vertices are realized as floating point numbers."
                   "# @value s 'elongated_triangular_orthobicupola' Elongated triangular orthobicupola with regular facets. Johnson solid J35."
                   "#          The vertices are realized as floating point numbers."

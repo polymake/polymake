@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -53,19 +53,19 @@ inline int omp_get_max_threads() {
     return 1;
 }
 
-inline int omp_get_ancestor_thread_num(int level) {
+inline int omp_get_ancestor_thread_num(int) {
     return 0;
 }
 
-inline int omp_set_nested(int on_off) {
+inline int omp_set_nested(int) {
     return 0;
 }
 
-inline int omp_set_max_active_levels(int n) {
+inline int omp_set_max_active_levels(int) {
     return 0;
 }
 
-inline int omp_set_num_threads(int max_threads) {
+inline int omp_set_num_threads(int) {
     return 0;
 }
 

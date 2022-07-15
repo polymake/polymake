@@ -1,7 +1,7 @@
 # input for generate_ninja_targets.pl
 
 if ($ConfigFlags{'bundled.sympol.UseBundled'}) {
-  my $no_warnings="";
+  my $no_warnings="-Wno-deprecated-declarations";
   foreach (qw(shadow conversion zero-as-null-pointer-constant)) {
      if ($ConfigFlags{CXXFLAGS} =~ /-W$_\b/) {
 	$no_warnings .= " -Wno-$_";

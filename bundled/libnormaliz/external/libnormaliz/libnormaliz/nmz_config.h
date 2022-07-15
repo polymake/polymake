@@ -3,10 +3,11 @@
 
 /* Defines the preprocessor variables that control optional packages */
 #undef ENFNORMALIZ
+#undef NMZ_HASHLIBRARY
 #undef NMZ_NAUTY
+#undef NMZ_NAUTYNAUTY
+#undef NMZ_NAUTY_TLS
 #undef NMZ_FLINT
 #undef NMZ_COCOA
-
-
 
 #define NORMALIZ_USE_DLL

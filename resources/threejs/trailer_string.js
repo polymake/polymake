@@ -385,6 +385,22 @@ function changeTransparency() {
     }
 }
 
+function toggleDepthWrite(event) {
+    depthwrite = event.currentTarget.checked;
+    for (var i=0; i<scene.children.length; i++) {
+        child = scene.children[i];
+        if ( child.userData.hasOwnProperty("facetmaterial") ) {
+            if (Array.isArray(child.userData.facetmaterial)) {
+                for (var j=0; j<child.userData.facetmaterial.length; j++) {
+                    child.userData.facetmaterial[j].depthWrite = depthwrite;
+                }
+            } else {
+                child.userData.facetmaterial.depthWrite = depthWrite;
+            }    
+        }
+    }
+}
+
 function changeRotationX(event){
     xRotationEnabled = event.currentTarget.checked;
 }	
@@ -734,6 +750,7 @@ function download(filename, text) {
 
 
 document.getElementById('transparencyRange_OUTPUTID').oninput = changeTransparency;
+document.getElementById('depthWriteCheckbox_OUTPUTID').onchange = toggleDepthWrite;
 document.getElementById('changeRotationX_OUTPUTID').onchange = changeRotationX;
 document.getElementById('changeRotationY_OUTPUTID').onchange = changeRotationY;
 document.getElementById('changeRotationZ_OUTPUTID').onchange = changeRotationZ;

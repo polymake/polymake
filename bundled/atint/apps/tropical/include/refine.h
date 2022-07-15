@@ -18,7 +18,7 @@
  Copyright (C) 2011 - 2015, Simon Hampe <simon.hampe@googlemail.com>
 
  ---
- Copyright (c) 2016-2021
+ Copyright (c) 2016-2022
  Ewgenij Gawrilow, Michael Joswig, and the polymake team
  Technische Universität Berlin, Germany
  https://polymake.org

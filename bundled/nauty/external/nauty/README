@@ -1,4 +1,4 @@
-README file for nauty 2.6 
+README file for nauty 2.7 
 
 Brendan McKay, bdm@cs.anu.edu.au
 Adolfo Piperno, piperno@di.uniroma1.it
@@ -8,7 +8,7 @@ Adolfo Piperno, piperno@di.uniroma1.it
 The most recent distribution of nauty and Traces can be found at
 http://cs.anu.edu.au/~bdm/nauty and http://pallini.di.uniroma1.it .
 
-The manual nug26.pdf is available at that site and is also included
+The manual nug27.pdf is available at that site and is also included
 in the distribution package.
 
 Note that nauty and Traces are copyright but free to use for most
@@ -114,5 +114,5 @@ they are called ia32-libs and libc6-dev-i386.
 
 RECENT CHANGES.
 
-See the file changes24-26.txt for a longer list.
+See the file changes24-27.txt for a longer list.
 See the file README_24 for a list of older changes.

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -94,7 +94,11 @@ SCIP_RETCODE setupProblem(
       xy[0] = -SCIPrandomGetReal(randnumgen, 1.0, 10.0);
       xy[1] = -SCIPrandomGetReal(randnumgen, 1.0, 10.0);
       (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "point%d", i);
+#if SCIP_VERSION_MAJOR >= 8
+      SCIP_CALL( SCIPcreateConsBasicSOCNonlinear(scip, &cons, name, 2, ab, NULL, xy, 0.0, r, 1.0, 0.0) );
+#else
       SCIP_CALL( SCIPcreateConsBasicSOC(scip, &cons, name, 2, ab, NULL, xy, 0.0, r, 1.0, 0.0) );
+#endif
       SCIP_CALL( SCIPaddCons(scip, cons) );
       SCIP_CALL( SCIPreleaseCons(scip, &cons) );
    }
@@ -144,8 +148,8 @@ RETRY:
          }
 
          ($version) = $output =~ /SCIP version ([\d.]+)/;
-         if (Polymake::Configure::v_cmp($version, "2.2.0") < 0) {
-            die "SCIP version is $version. Minimal required version is 2.2.0\n",
+         if (Polymake::Configure::v_cmp($version, "6.0.0") < 0) {
+            die "SCIP version is $version. Minimal required version is 6.0.0\n",
                 "Full version string:\n$output\n\n";
          }
       }

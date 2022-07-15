@@ -1,6 +1,5 @@
 /* cddlp.c:  dual simplex method c-code
    written by Komei Fukuda, fukuda@math.ethz.ch
-   Version 0.94h, April 30, 2015
 */
 
 /* cddlp.c : C-Implementation of the dual simplex method for
@@ -11,8 +10,9 @@
    the manual cddlibman.tex for detail.
 */
 
-#include "setoper.h"  /* set operation library header (Ver. May 18, 2000 or later) */
+#include "setoper.h"
 #include "cdd.h"
+#include "splitmix64.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -22,8 +22,6 @@
 #if defined GMPRATIONAL
 #include "cdd_f.h"
 #endif
-
-#define dd_CDDLPVERSION  "Version 0.94b (August 25, 2005)"
 
 #define dd_FALSE 0
 #define dd_TRUE 1
@@ -1227,7 +1225,7 @@ void dd_FindDualFeasibleBasis(dd_rowrange m_size,dd_colrange d_size,
           dd_sub(A[local_m_size-1][j-1],A[local_m_size-1][j-1],svalue); 
           /* To make the auxiliary row (0,-11,-12,...,-d-10).
              It is likely to be better than  (0, -1, -1, ..., -1)
-             to avoid a degenerate LP.  Version 093c. */
+             to avoid a degenerate LP. */
         }
       }
     }
@@ -1752,12 +1750,12 @@ the LP.
 void dd_RandomPermutation2(dd_rowindex OV,long t,unsigned int seed)
 {
   long k,j,ovj;
-  double u,xk,r,rand_max=(double) RAND_MAX;
+  double u,xk,r,rand_max=(double) UINT64_MAX;
   int localdebug=dd_FALSE;
 
-  srand(seed);
+  srand_splitmix64(seed);
   for (j=t; j>1 ; j--) {
-    r=rand();
+    r=rand_splitmix64();
     u=r/rand_max;
     xk=(double)(j*u +1);
     k=(long)xk;
@@ -2535,6 +2533,7 @@ dd_rowset *redset,dd_ErrorType *error)
     goto _L999;
   } else {
     set_copy(*redset,lp->redset_extra);
+    set_diff(*redset, *redset, M->linset);  /* linearity set is not tested for redundancy */
     set_delelem(*redset, itest);  
     /* itest row might be redundant in the lp but this has nothing to do with its redundancy
     in the original system M.   Thus we must delete it.  */
@@ -2570,7 +2569,7 @@ dd_rowset dd_RedundantRows(dd_MatrixPtr M, dd_ErrorType *error)  /* 092 */
   dd_rowset redset;
   dd_MatrixPtr Mcopy;
   dd_Arow cvec; /* certificate */  
-  dd_boolean localdebug=dd_TRUE;
+  dd_boolean localdebug=dd_FALSE;
 
   m=M->rowsize;
   if (M->representation==dd_Generator){
@@ -2874,7 +2873,7 @@ dd_rowset dd_RedundantRowsViaShooting(dd_MatrixPtr M, dd_ErrorType *error)  /* 0
   dd_LPSolutionPtr lps; 
   dd_ErrorType err;
   dd_LPSolverType solver=dd_DualSimplex; 
-  dd_boolean localdebug=dd_TRUE;
+  dd_boolean localdebug=dd_FALSE;
 
   m=M->rowsize;
   d=M->colsize;
@@ -2943,6 +2942,7 @@ dd_rowset dd_RedundantRowsViaShooting(dd_MatrixPtr M, dd_ErrorType *error)  /* 0
           if (localdebug) fprintf(stderr, "The %ld th inequality is redundant for the subsystem and thus for the whole.\n", i);
           rowflag[i]=-1;
           set_addelem(redset, i);
+          irow--;  M1->rowsize=irow;
           i++;
         }
       } else {

@@ -1,5 +1,6 @@
 {"app": "polytope", "embed": "wythoff.cc",
  "inst": [
   {"args": ["QuadraticExtension<Rational>"], "func": "tetrahedron", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "tetrahedron:T1", "tp": "1"},
+  {"args": ["Rational"], "func": "tetrahedron", "include": ["polymake/Rational.h"], "sig": "tetrahedron:T1", "tp": 1},
  null ],
 "version": 3}

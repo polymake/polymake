@@ -1,3 +1,46 @@
+=== polymake 4.7 ===
+
+-- distribution --
+  * support for llvm+clang 14 and gcc 12
+  * support for perl 5.36
+
+-- interfaces --
+  * cdd: updated bundled version to 0.94m
+  * nauty: updated bundled version to 2.7r3
+  * normaliz: updated bundled version to 3.9.3
+  * scip: support version 8.0.0
+  * soplex: support version 6.0
+
+-- common --
+  * add disable_rules command
+  * threejs:
+    - update version
+    - depthWrite improvements
+
+-- matroid--
+  * ehrhart polynomial for matroid polytopes
+  * positroid: new rule
+  * split compatibility: bug fix
+  * ternary: bug fix in representation check
+
+-- polytope --
+  * convex_hull:
+    - adjust labels to improve prefer behavior
+    - increase weights for count rules
+  * conway: add CG construction
+  * johnson solids: fix J34 construction
+  * SlackIdeal: type migrated to application ideal
+
+-- topaz --
+  * minimal_non_faces:
+    - bug fix for column number
+    - adjust preconditions for better algorithm choice
+  * NON_REALIZABLE and GRASS_PLUCKER_CERTIFICATE for spheres (with holes)
+  * new client poincare_sphere
+
+-- tropical --
+  * voronoi_diagram: improve performance
+
 === polymake 4.6 ===
 
 -- common --

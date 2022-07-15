@@ -1,5 +1,6 @@
 {"app": "polytope", "embed": "included_polyhedra.cc",
  "inst": [
   {"args": ["Rational", "void", "void", "void"], "func": "included_polyhedra", "include": ["polymake/Rational.h"], "sig": "included_polyhedra:T1.B.B.o", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void", "void"], "func": "included_polyhedra", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "included_polyhedra:T1.B.B.o", "tp": 1},
  null ],
 "version": 3}

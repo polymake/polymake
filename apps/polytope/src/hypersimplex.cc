@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -16,7 +16,7 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/polytope/hypersimplex.h"
+#include "polymake/polytope/matroid_polytopes.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"
@@ -24,6 +24,7 @@
 #include "polymake/internal/PlainParser.h"
 #include "polymake/SparseMatrix.h"
 #include "polymake/IncidenceMatrix.h"
+#include "polymake/Polynomial.h"
 
 namespace polymake { namespace polytope {
 
@@ -115,6 +116,9 @@ BigObject hypersimplex(Int k, Int d, OptionSet options)
       p.take("FACETS") << F;
       p.take("AFFINE_HULL") << A;
    }
+   
+   if(!nof_flag || !nov_flag)
+	   p.take("EHRHART_POLYNOMIAL") << ehrhart_polynomial_hypersimplex(k,d);
 
    // generate the combinatorial symmetry group on the vertices
    if (group_flag) {
@@ -136,7 +140,7 @@ BigObject hypersimplex(Int k, Int d, OptionSet options)
       p.take("GROUP") << g;
       p.take("GROUP.COORDINATE_ACTION") << a;
    }
-
+   
    return p;
 }
 
@@ -162,7 +166,6 @@ Set<Int> matroid_indices_of_hypersimplex_vertices(BigObject m)
    }
    return set;
 }
-
 
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce the hypersimplex $ Δ(k,d) $, that is the the convex hull of all 0/1-vector in $ R^d $"

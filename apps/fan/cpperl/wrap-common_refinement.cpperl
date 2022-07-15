@@ -1,5 +1,6 @@
 {"app": "fan", "embed": "common_refinement.cc",
  "inst": [
   {"args": ["Rational", "void", "void"], "func": "common_refinement", "include": ["polymake/Rational.h"], "sig": "common_refinement:T1.B.B", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "common_refinement", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "common_refinement:T1.B.B", "tp": 1},
  null ],
 "version": 3}

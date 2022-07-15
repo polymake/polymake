@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["Rational", "void", "void", "void", "void", "void", "void"], "func": "normal_cone_impl", "include": ["polymake/Rational.h"], "sig": "normal_cone_impl:T1.x.x.x.x.x.x", "tp": "1"},
   {"args": ["Rational", "void", "void", "void"], "func": "inner_cone_impl", "include": ["polymake/Rational.h"], "sig": "inner_cone_impl:T1.x.x.x", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void", "void", "void", "void", "void"], "func": "normal_cone_impl", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "normal_cone_impl:T1.x.x.x.x.x.x", "tp": 1},
  null ],
 "version": 3}

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -41,6 +41,8 @@ using DoublyConnectedEdgeList = dcel::DoublyConnectedEdgeList;
 DoublyConnectedEdgeList conway_ambo_impl(const DoublyConnectedEdgeList& old);
 DoublyConnectedEdgeList conway_kis_impl(const DoublyConnectedEdgeList& old);
 DoublyConnectedEdgeList conway_snub_impl(const DoublyConnectedEdgeList& old);
+DoublyConnectedEdgeList conway_CG_fundtri2(DoublyConnectedEdgeList& old);
+DoublyConnectedEdgeList conway_CG_fundtri3(DoublyConnectedEdgeList& old);
 namespace dcel {
 template<typename Container> class HalfEdgeTemplate;
 template<typename Container> class VertexTemplate;
@@ -310,6 +312,9 @@ public:
          }
       }
    }
+   friend DoublyConnectedEdgeList polymake::graph::conway_CG_fundtri2(DoublyConnectedEdgeList& old);
+   
+   friend DoublyConnectedEdgeList polymake::graph::conway_CG_fundtri3(DoublyConnectedEdgeList& old);
 
    friend DoublyConnectedEdgeList polymake::graph::conway_ambo_impl(const DoublyConnectedEdgeList& old);
 

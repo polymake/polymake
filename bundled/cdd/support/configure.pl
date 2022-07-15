@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -33,7 +33,7 @@ sub usage {
 }
 
 sub check_bundled {
-   -e "bundled/cdd/external/cdd/lib-src-gmp/cdd.h"
+   -e "bundled/cdd/external/cdd/lib-src/cdd.h"
 }
 
 sub proceed {
@@ -156,9 +156,9 @@ int main() {
 
    if ($UseBundled) {
       die "bundled cdd requested but it cannot be found" 
-         unless (-e "bundled/cdd/external/cdd/lib-src-gmp/cdd.h");
+         unless check_bundled();
       undef $LIBS;
-      $CFLAGS='-I${root}/bundled/cdd/external/cdd/lib-src-gmp';
+      $CFLAGS='-I${buildroot}/staticlib/cdd';
    } else {
       $LIBS="-lcddgmp";
    }

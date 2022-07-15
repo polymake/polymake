@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -49,7 +49,7 @@ require JSON;
 # Global variables
 #
 
-declare $Version = "4.6";
+declare $Version = "4.7";
 declare $VersionNumber = eval "v$Version";    # for string comparisons with vM.N literals
 
 declare ($Scope,                # Scope object for the current cycle
@@ -142,7 +142,7 @@ sub greeting {
 
    my @messages = ("polymake version $full_version", <<'.' . $mainURL . "\n", <<'.');
 
-Copyright (c) 1997-2021
+Copyright (c) 1997-2022
 Ewgenij Gawrilow, Michael Joswig, and the polymake team
 Technische Universität Berlin, Germany
 .

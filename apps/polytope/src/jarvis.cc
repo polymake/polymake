@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org

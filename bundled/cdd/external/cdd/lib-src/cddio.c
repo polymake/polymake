@@ -1,6 +1,5 @@
 /* cddio.c:  Basic Input and Output Procedures for cddlib
    written by Komei Fukuda, fukuda@math.ethz.ch
-   Version 0.94h, April 30, 2015
 */
 
 /* cddlib : C-library of the double description method for
@@ -10,7 +9,7 @@
    the manual cddlibman.tex for detail.
 */
 
-#include "setoper.h"  /* set operation library header (Ver. June 1, 2000 or later) */
+#include "setoper.h"
 #include "cdd.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -293,6 +292,8 @@ dd_MatrixPtr dd_MatrixAppend(dd_MatrixPtr M1, dd_MatrixPtr M2)
        if (set_member(i+1,M2->linset)) set_addelem(M->linset,m1+i+1);
     }
     M->numbtype=M1->numbtype;
+    M->representation=M1->representation;
+    M->objective=M1->objective;
   }
   return M;
 }
@@ -495,6 +496,8 @@ int dd_MatrixAppendTo(dd_MatrixPtr *M1, dd_MatrixPtr M2)
        if (set_member(i+1,M2->linset)) set_addelem(M->linset,m1+i+1);
     }
     M->numbtype=(*M1)->numbtype;
+    M->representation=(*M1)->representation;
+    M->objective=(*M1)->objective;
     dd_FreeMatrix(*M1);
     *M1=M;
     success=1;

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -24,7 +24,7 @@ label porta
 
 
 
-rule porta.convex_hull.primal: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM, VERTICES | POINTS {
+rule porta.convex_hull.primal, porta.convex_hull: FACETS, AFFINE_HULL : CONE_AMBIENT_DIM, CONE_DIM, VERTICES | POINTS {
    my ($f, $a) = porta_primal($this);
    $this->FACETS = $f;
    $this->AFFINE_HULL = $a;
@@ -35,7 +35,7 @@ precondition : POINTED;
 incurs FacetPerm;
 
 
-rule porta.convex_hull.dual: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACETS | INEQUALITIES, VALID_POINT {
+rule porta.convex_hull.dual, porta.convex_hull: VERTICES, LINEALITY_SPACE : CONE_AMBIENT_DIM, FACETS | INEQUALITIES, VALID_POINT {
    my ($v, $l) = porta_dual($this);
    $this->VERTICES = $v;
    $this->LINEALITY_SPACE = $l;

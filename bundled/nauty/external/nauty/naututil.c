@@ -1,9 +1,9 @@
 /*****************************************************************************
 *                                                                            *
-* miscellaneous utilities for use with nauty 2.6.                            *
+* miscellaneous utilities for use with nauty 2.7.                            *
 * None of these procedures are needed by nauty, but all are by dreadnaut.    *
 *                                                                            *
-*   Copyright (1984-2016) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2017) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -103,7 +103,7 @@ typedef struct echunk {struct echunk *next; int edge[ECHUNKSIZE];} echunk;
 static TLS_ATTR echunk first_echunk = {NULL,{0}};
 typedef struct echunkw {struct echunkw *next; \
  struct {int v1,v2; sg_weight wt;} edge[ECHUNKSIZE];} echunkw;
-static TLS_ATTR echunkw first_echunkw = {NULL,{0,0,0}};
+static TLS_ATTR echunkw first_echunkw = {NULL,{{0,0,0}}};
 
 #ifdef  NLMAP
 #define GETNW(c,f) do c = getc(f); while (c==' '||c=='\t')
@@ -1954,7 +1954,8 @@ fixit(int *lab, int *ptn, int *numcells, int fixedvertex, int n)
 *  sethash(s,n,seed,key) is a function whose value depends only on the       *
 *  set s, a long seed, and an integer key.  It is intended to be independent *
 *  of the word size provided long ints have at least 32 bits, and also       *
-*  independent of m.  n is the underlying universal set size.                *
+*  independent of m.  n is the underlying universal set size, NOT the        *
+*  number of setwords in the set.                                            *
 *  31 bits of seed and 15 bits of key are significant.                       *
 *  The result is in 0..2^31-1.                                               *
 *                                                                            *

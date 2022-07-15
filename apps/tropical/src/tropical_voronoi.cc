@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -21,6 +21,7 @@
 #include "polymake/Array.h"
 #include "polymake/list"
 #include "polymake/ListMatrix.h"
+#include "polymake/polytope/solve_LP.h"
 #include <vector>
 #include <list>
 #include <algorithm>
@@ -222,12 +223,14 @@ ListReturn visualizable_cells(const Matrix<Rational>& sites, Int d, const Array<
                 eq(0, i2+1) -= 1;
                 eq(0, j2+1) += 1;
 
-                BigObject P("polytope::Polytope<Rational>",
-                            "INEQUALITIES", ineq.minor(All, range(0, d)),
-                            "EQUATIONS", eq.minor(All, range(0, d)));
-
-                const bool feasible = P.give("FEASIBLE");
-                if (feasible) results << P;
+                auto I = ineq.minor(All, range(0, d));
+                auto E = eq.minor(All, range(0, d));
+                const bool feasible = polytope::H_input_feasible(I, E);
+                if (feasible)
+                   results << BigObject("polytope::Polytope<Rational>",
+                                        "INEQUALITIES", I,
+                                        "EQUATIONS", E,
+                                        "FEASIBLE", true);
               }
         }
   }

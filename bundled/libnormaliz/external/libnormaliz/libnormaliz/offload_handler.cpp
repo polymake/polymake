@@ -5,7 +5,7 @@
 #include <offload.h>  // offload system header
 #include "libnormaliz/matrix.h"
 #include "libnormaliz/full_cone.h"
-#include "libnormaliz/list_operations.h"
+#include "libnormaliz/list_and_map_operations.h"
 #include "libnormaliz/vector_operations.h"
 #include "libnormaliz/my_omp.h"
 #include "libnormaliz/HilbertSeries.h"
@@ -513,7 +513,7 @@ void OffloadHandler<Integer>::collect_candidates() {
             offload_fc_ptr->OldCandidates.Candidates.clear();
 
             // using the same methods as for pyramids
-            // handling list of vectors of possible different lenghts
+            // handling list of vectors of possible different lengths
             size = offload_fc_ptr->Hilbert_Basis.size() * (offload_fc_ptr->dim + 1);
         }
         if (size > 0) {
@@ -548,7 +548,7 @@ void OffloadHandler<Integer>::collect_candidates() {
 #pragma offload target(mic : mic_nr) out(size)
         {
             // using the same methods as for pyramids
-            // handling list of vectors of possible different lenghts
+            // handling list of vectors of possible different lengths
             size = offload_fc_ptr->Deg1_Elements.size() * (offload_fc_ptr->dim + 1);
         }
         if (size > 0) {

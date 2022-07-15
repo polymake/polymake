@@ -62,5 +62,8 @@
   {"args": ["perl::AnchorArg<perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::Integer, false, true, (pm::sparse2d::restriction_kind)0>, true, (pm::sparse2d::restriction_kind)0> >&, pm::Symmetric>&>>"], "func": "entire", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/SparseMatrix.h"], "sig": "entire:R_Iterator.X8"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<pm::GF2, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> > const&, pm::NonSymmetric>&>>"], "func": "entire", "include": ["polymake/GF2.h", "polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h"], "sig": "entire:R_Iterator.X8"},
   {"args": ["perl::AnchorArg<perl::Canned<const pm::Rows<pm::IncidenceMatrix<pm::NonSymmetric> >&>>"], "func": "entire", "include": ["polymake/IncidenceMatrix.h"], "sig": "entire:R_Iterator.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const NodeMap<Undirected, Array<Set<Int>>>&>>"], "func": "entire", "include": ["polymake/Array.h", "polymake/Graph.h", "polymake/Set.h"], "sig": "entire:R_Iterator.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const EdgeMap<Undirected, Array<Array<Int>>>&>>"], "func": "entire", "include": ["polymake/Array.h", "polymake/Graph.h"], "sig": "entire:R_Iterator.X8"},
+  {"args": ["perl::AnchorArg<perl::Canned<const EdgeMap<Undirected, std::string>&>>"], "func": "entire", "include": ["polymake/Graph.h"], "sig": "entire:R_Iterator.X8"},
  null ],
 "version": 3}

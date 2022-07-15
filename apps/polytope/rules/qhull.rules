@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -64,7 +64,7 @@ sub run_qhull_primal {
    ($n, $FACETS, \@VIF);
 }
 
-rule qhull.convex_hull.primal: FACETS, N_FACETS, VERTICES_IN_FACETS : VERTICES {
+rule qhull.convex_hull.primal, qhull.convex_hull: FACETS, N_FACETS, VERTICES_IN_FACETS : VERTICES {
    my ($n, $FACETS, $VIF)=run_qhull_primal($this->VERTICES);
    $this->FACETS=$FACETS;
    $this->N_FACETS=$n;
@@ -76,8 +76,8 @@ weight 4.10;
 incurs FacetPerm;
 
 # @notest
-rule qhull.convex_hull.primal: FACETS, N_FACETS, POINTS_IN_FACETS : POINTS {
-   my ($n, $FACETS, $VIF) = run_qhull_dual($this->POINTS);
+rule qhull.convex_hull.primal, qhull.convex_hull: FACETS, N_FACETS, POINTS_IN_FACETS : POINTS {
+   my ($n, $FACETS, $VIF) = run_qhull_primal($this->POINTS);
    $this->FACETS = $FACETS;
    $this->N_FACETS = $n;
    $this->POINTS_IN_FACETS = $VIF;
@@ -126,7 +126,7 @@ sub run_qhull_dual {
    ($n, $vertices, \@vertices_in_ineqs);
 }
 
-rule qhull.convex_hull.dual: VERTICES, N_VERTICES, VERTICES_IN_FACETS : FACETS, REL_INT_POINT {
+rule qhull.convex_hull.dual, qhull.convex_hull: VERTICES, N_VERTICES, VERTICES_IN_FACETS : FACETS, REL_INT_POINT {
    my ($n, $vertices, $vif) = run_qhull_dual($this->REL_INT_POINT,$this->FACETS);
    $this->VERTICES = $vertices;
    $this->N_VERTICES = $n;
@@ -138,7 +138,7 @@ weight 4.10;
 incurs VertexPerm;
 
 # @notest
-rule qhull.convex_hull.dual: VERTICES, N_VERTICES, VERTICES_IN_INEQUALITIES : INEQUALITIES, REL_INT_POINT {
+rule qhull.convex_hull.dual, qhull.convex_hull: VERTICES, N_VERTICES, VERTICES_IN_INEQUALITIES : INEQUALITIES, REL_INT_POINT {
    my ($n, $vertices, $vii) = run_qhull_dual($this->REL_INT_POINT,$this->INEQUALITIES);
    $this->VERTICES = $vertices;
    $this->N_VERTICES = $n;

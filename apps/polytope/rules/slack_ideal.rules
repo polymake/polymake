@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -13,14 +13,6 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
-
-declare object SlackIdeal : ideal::Ideal {
-
-   property NON_SATURATED : ideal::Ideal;
-
-   rule N_VARIABLES = NON_SATURATED.N_VARIABLES;
-
-}
 
 object Polytope {
 
@@ -56,6 +48,6 @@ object Polytope {
 # | x_0*x_3*x_5*x_6 - x_1*x_2*x_4*x_7
 # | 
 # @depends singular
-property SLACK_IDEAL : SlackIdeal;
+property SLACK_IDEAL : ideal::SlackIdeal;
 
 }

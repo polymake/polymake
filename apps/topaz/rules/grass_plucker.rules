@@ -1,0 +1,170 @@
+#  Copyright (c) 1997-2021
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Geometry
+# This object encodes a decorated graph that certifies that a given
+# simplicial complex is not realizable as the boundary of a convex
+# polytope.
+#
+# The simplicial complex itself should either be a simplicial sphere,
+# or an oriented simplicial complex with boundary. In the latter case,
+# each component of the boundary will be coned over by a new point,
+# and the resulting complex should then be a simplicial sphere.  (This
+# is important when handling Criado & Santos's topological
+# prismatoids, for example.)
+#
+# The nodes of the graph are decorated with Grassmann-Plücker
+# polynomials, and the edges with "undetermined solids", ie, solids
+# whose orientation can vary according to the realization.
+#
+# The point of the certificate is that no matter how these
+# undetermined solids are oriented, there will always be some
+# Grassmann-Plücker polynomial in the tree all of whose terms are
+# positive.
+#
+# But this contradicts realizability, because the matrix of
+# homogeneous coordinates of any putative convex realization of a
+# d-sphere on n vertices determines a point in the Grassmann manifold
+# G(d,n), which means that all GP-polynomials should vanish -- but
+# the special one can't, because all its terms are positive.
+declare object GrassPluckerCertificate : Graph<Undirected> {
+
+    # @category Geometry
+    # This property encodes the Grassmann-Plücker relations of a
+    # simplicial complex of dimension d on n vertices that participate
+    # in the nonrealizability certificate.
+    #
+    # Each relation is of the form
+    #    Gamma(I|J) = sum_{j in J} sign(j,I,J) [I cup j] [J minus j],
+    # where I in ([n] choose d) and J in ([n] choose d+2), 
+    # and where sign(j,I,J) in {-1,+1} is determined by j, I and J.
+    # Compare Thm 14.6 in Miller & Sturmfels, Combinatorial Commutative Algebra.
+    # 
+    # The Array<Set<Int>> has length 3, and consists of
+    # a singleton set with entry +-1 for the sign, followed by I and J.
+    property PLUCKER_RELATIONS : NodeMap<Undirected, Array<Set<Int>>> : construct(ADJACENCY);
+
+    # @category Geometry
+    # For each edge, store the undetermined solids across that edge.
+    # There can be more than one in the case of dummy edges connecting
+    # a cube node to a cube vertex node.
+    # The sign of each undetermined solid is incorporated into the
+    # inner Array as a possible leading "-1".
+    property UNDETERMINED_SOLIDS : EdgeMap<Undirected, Array<Array<Int>>> : construct(ADJACENCY);
+
+    # @category Geometry
+    # A string representation of the UNDETERMINED_SOLIDS
+    # It indexes the participating solids using the ordering given in SOLIDS
+    property EDGE_LABELS : EdgeMap<Undirected, String> : construct(ADJACENCY);
+    
+    # @category Geometry
+    # The ordering of the solids used in NODE_LABELS and EDGE_LABELS
+    property SOLIDS : Array<Array<Int>>;
+};
+
+object SimplicialComplex {
+
+    # @category Geometry
+    # A Grassmann-Plücker certificate for non-realizability,
+    # as described in J. Pfeifle, Positive Plücker tree certificates for non-realizability, Experimental Math. 2022 https://doi.org/10.1080/10586458.2021.1994487
+    # and J. Pfeifle, A polymake implementation of Positive Plücker tree certificates for non-realizability, MEGA 2022
+    # @example
+    # > $s = new SimplicialComplex(FACETS=>[[0,1,2,3],[0,1,2,4],[0,1,3,5],[0,1,4,6],[0,1,5,7],[0,1,6,7],[0,2,3,4],[0,3,4,5],[0,4,5,6],[0,5,6,7],[1,2,3,7],[1,2,4,6],[1,2,6,7],[1,3,5,7],[2,3,4,7],[2,4,5,6],[2,4,5,7],[2,5,6,7],[3,4,5,7]]);
+    # > print $s->NON_REALIZABLE;
+    # | true
+    #
+    # > $s->GRASS_PLUCKER_CERTIFICATE->properties();
+    # | type: GrassPluckerCertificate
+    # | 
+    # | ADJACENCY
+    # | {1}
+    # | {0}
+    # | 
+    # | 
+    # | EDGE_LABELS
+    # | [5?]
+    # | 
+    # | NODE_LABELS
+    # | +[0][6]+[7][8]+[5?][9]+[3][10] +[0][1]+[2][3]-[4][5?]
+    # | 
+    # | PLUCKER_RELATIONS
+    # | <{1}
+    # | {0 1 2 5}
+    # | {2 3 4 5 6 7}
+    # | >
+    # | <{1}
+    # | {0 1 2 3}
+    # | {0 1 2 5 6 7}
+    # | >
+    # | 
+    # | 
+    # | SOLIDS
+    # | 0 1 3 5 2
+    # | 1 2 7 6 0
+    # | 0 1 2 3 6
+    # | 0 1 5 7 2
+    # | 1 2 3 7 0
+    # | 0 1 2 5 6
+    # | 2 5 7 6 4
+    # | 0 1 4 2 5
+    # | 2 5 7 6 3
+    # | 3 4 5 7 2
+    # | 2 4 5 6 3
+    # | 
+    # | 
+    # | UNDETERMINED_SOLIDS
+    # | <0 1 2 5 6
+    # | >
+    property GRASS_PLUCKER_CERTIFICATE : GrassPluckerCertificate;
+
+    rule GRASS_PLUCKER_CERTIFICATE : FACETS, ORIENTATION {
+        $this->GRASS_PLUCKER_CERTIFICATE = grass_plucker($this);
+    }
+    weight 4.10;
+    
+    # @category Geometry
+    # True if a certificate for convex non-realizability has been found
+    # False means that no such certificate has been found
+    # @example For some simplicial complexes, polymake can certify that they are not realizable in a convex way.
+    # Currently, the only available proofs of non-realizability are Grassmann-Plücker certificates.
+    # > $s = new SimplicialComplex(FACETS=>[[0,1,2,3],[0,1,2,4],[0,1,3,5],[0,1,4,6],[0,1,5,7],[0,1,6,7],[0,2,3,4],[0,3,4,5],[0,4,5,6],[0,5,6,7],[1,2,3,7],[1,2,4,6],[1,2,6,7],[1,3,5,7],[2,3,4,7],[2,4,5,6],[2,4,5,7],[2,5,6,7],[3,4,5,7]]);
+    # > print $s->NON_REALIZABLE;
+    # | true
+    # @example
+    # > print jockusch_3_sphere(4)->NON_REALIZABLE
+    # | false
+    # @example
+    # > print jockusch_3_sphere(5)->NON_REALIZABLE
+    # | true
+    property NON_REALIZABLE : Bool;
+
+    rule NON_REALIZABLE : GRASS_PLUCKER_CERTIFICATE {
+        my $s = $this->GRASS_PLUCKER_CERTIFICATE->lookup("SOLIDS");
+        if (defined($s)) {
+            $this->NON_REALIZABLE = 1;
+        } else {
+            $this->NON_REALIZABLE = 0;
+        }
+    }
+    weight 0.1;
+}
+
+                                  
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

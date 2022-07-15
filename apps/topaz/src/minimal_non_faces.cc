@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -99,7 +99,7 @@ auto minimal_non_faces(const BigObject HD_obj)
       }  // end iterate over all faces of this dimension
    }
 
-   return IncidenceMatrix<>(min_non_faces);
+   return IncidenceMatrix<>(min_non_faces, n_vertices);
 }
 
 FunctionTemplate4perl("minimal_non_faces<Decoration, SeqType>(Lattice<Decoration, SeqType>)");

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -18,14 +18,25 @@
 #include "polymake/polytope/soplex_interface.h"
 #include "polymake/Rational.h"
 
+// we keep this for the whole file because of various =0 default arguments...
 #if defined(__clang__)
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wconversion"
 #pragma clang diagnostic ignored "-Wzero-as-null-pointer-constant"
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wconversion"
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
+
+// this is only for the include below
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#if __GNUC__ >= 12
+#pragma GCC diagnostic ignored "-Wuse-after-free"
+#endif
 #endif
 
 #define SOPLEX_WITH_GMP
@@ -114,26 +125,21 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
    delete [] lower;
    delete [] obj;
 
-   // reserve space for rows
-   mpq_t* rowValues = new mpq_t [n];
-   int* rowIndices = new int [n];
-
-   for (int j = 0; j < n; ++j)
-      mpq_init(rowValues[j]);
-
    mpq_t lhs;
    mpq_t rhs;
+   mpq_t tmp;
    mpq_init(rhs);
    mpq_init(lhs);
+   mpq_init(tmp);
 
    // create rows - inequalities
    for (int i = 0; i < Inequalities.rows(); ++i) {
-      int cnt = 0;
+      soplex::DSVectorRational row(0);
       for (int j = 0; j < n; ++j) {
-         Rational val = Inequalities(i, j+1);
+         const Rational& val = Inequalities(i, j+1);
          if (!is_zero(val)) {
-            mpq_set(rowValues[cnt], val.get_rep());
-            rowIndices[cnt++] = j;
+            mpq_set(tmp, val.get_rep());
+            row.add(j, tmp);
          }
       }
 
@@ -141,17 +147,17 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
       mpq_set(rhs, plusinfinity.get_rep());
       mpq_set(lhs, val.get_rep());
 
-      soplex.addRowRational(&lhs, rowValues, rowIndices, cnt, &rhs);
+      soplex.addRowRational(soplex::LPRowRational(lhs, row, rhs));
    }
 
    // create rows - equations
    for (int i = 0; i < Equations.rows(); ++i) {
-      int cnt = 0;
+      soplex::DSVectorRational row(0);
       for (int j = 0; j < n; ++j) {
          Rational val = Equations(i, j+1);
          if (!is_zero(val)) {
-            mpq_set(rowValues[cnt], val.get_rep());
-            rowIndices[cnt++] = j;
+            mpq_set(tmp, val.get_rep());
+            row.add(j, tmp);
          }
       }
 
@@ -159,16 +165,11 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
       mpq_set(lhs, val.get_rep());
       mpq_set(rhs, val.get_rep());
 
-      soplex.addRowRational(&lhs, rowValues, rowIndices, cnt, &rhs);
+      soplex.addRowRational(soplex::LPRowRational(lhs, row, rhs));
    }
    mpq_clear(lhs);
    mpq_clear(rhs);
-
-   for (int j = 0; j < n; ++j)
-      mpq_clear(rowValues[j]);
-
-   delete [] rowValues;
-   delete [] rowIndices;
+   mpq_clear(tmp);
 
 #if POLYMAKE_DEBUG
    if (debug_print) {
@@ -246,7 +247,11 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
 
       // convert to polymake rationals;
       // add constant term from objective function
+#if SOPLEX_VERSION_MAJOR >= 6
+      result.objective_value = Rational(std::move(soplex.objValueRational().backend().data())) + Objective[0];
+#else
       result.objective_value = Rational(std::move(soplex.objValueRational().getMpqRef())) + Objective[0];
+#endif
       result.solution = Vector<Rational>(n+1, enforce_movable_values(&soplexsol[0]));
       break;
    }
@@ -271,6 +276,13 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
 }
 
 } } }
+
+// -Wno-zero-as-null-pointer-constant
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 // Local Variables:
 // mode:C++

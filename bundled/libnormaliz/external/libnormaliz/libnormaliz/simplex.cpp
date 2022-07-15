@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -30,21 +30,224 @@
 #include <deque>
 #include <csignal>
 
-#include <time.h>
+#include <ctime>
 
 #include "libnormaliz/integer.h"
 #include "libnormaliz/vector_operations.h"
 #include "libnormaliz/matrix.h"
 #include "libnormaliz/simplex.h"
-#include "libnormaliz/list_operations.h"
+#include "libnormaliz/list_and_map_operations.h"
 #include "libnormaliz/HilbertSeries.h"
 #include "libnormaliz/cone.h"
-#include "libnormaliz/bottom.h"
+// #include "libnormaliz/bottom.h"
 
 //---------------------------------------------------------------------------
 
 namespace libnormaliz {
 using namespace std;
+
+//---------------------------------------------------------------------------
+// Subdivision of large simplices
+//---------------------------------------------------------------------------
+
+long SubDivBound = 1000000;
+
+template <typename Integer>
+bool bottom_points_inner(Matrix<Integer>& gens,
+                         list<vector<Integer> >& local_new_points,
+                         vector<Matrix<Integer> >& local_q_gens,
+                         size_t& stellar_det_sum);
+
+template <typename Integer>
+void bottom_points(list<vector<Integer> >& new_points, const Matrix<Integer>& given_gens, Integer VolumeBound) {
+    /* gens.pretty_print(cout);
+    cout << "=======================" << endl;
+
+    gens.transpose().pretty_print(cout);
+    cout << "=======================" << endl;*/
+
+    Matrix<Integer> gens, Trans, Trans_inv;
+    // given_gens.LLL_transform_transpose(gens,Trans,Trans_inv);  // now in optimal_subdivision_point()
+    gens = given_gens;
+
+    Integer volume;
+    // int dim = gens[0].size();
+    Matrix<Integer> Support_Hyperplanes = gens.invert(volume);
+
+    vector<Integer> grading;  // = grading_;
+    if (grading.empty())
+        grading = gens.find_linear_form();
+    // cout << grading;
+
+    list<vector<Integer> > bottom_candidates;
+    bottom_candidates.splice(bottom_candidates.begin(), new_points);
+    // Matrix<Integer>(bottom_candidates).pretty_print(cout);
+
+    if (verbose) {
+        verboseOutput() << "Computing bbottom points using projection " << endl;
+    }
+
+    if (verbose) {
+        verboseOutput() << "simplex volume " << volume << endl;
+    }
+
+    //---------------------------- begin stellar subdivision -------------------
+
+    size_t stellar_det_sum = 0;
+    vector<Matrix<Integer> > q_gens;  // for successive stellar subdivision
+    q_gens.push_back(gens);
+    int level = 0;  // level of subdivision
+
+    std::exception_ptr tmp_exception;
+    bool skip_remaining = false;
+#pragma omp parallel  // reduction(+:stellar_det_sum)
+    {
+        try {
+            vector<Matrix<Integer> > local_q_gens;
+            list<vector<Integer> > local_new_points;
+
+            while (!q_gens.empty()) {
+                if (skip_remaining)
+                    break;
+                if (verbose) {
+#pragma omp single
+                    verboseOutput() << q_gens.size() << " simplices on level " << level++ << endl;
+                }
+
+#pragma omp for schedule(static)
+                for (size_t i = 0; i < q_gens.size(); ++i) {
+                    if (skip_remaining)
+                        continue;
+
+                    try {
+                        bottom_points_inner(q_gens[i], local_new_points, local_q_gens, stellar_det_sum);
+                    } catch (const std::exception&) {
+                        tmp_exception = std::current_exception();
+                        skip_remaining = true;
+#pragma omp flush(skip_remaining)
+                    }
+                }
+
+#pragma omp single
+                { q_gens.clear(); }
+#pragma omp critical(LOCALQGENS)
+                { q_gens.insert(q_gens.end(), local_q_gens.begin(), local_q_gens.end()); }
+                local_q_gens.clear();
+#pragma omp barrier
+            }
+
+#pragma omp critical(LOCALNEWPOINTS)
+            { new_points.splice(new_points.end(), local_new_points, local_new_points.begin(), local_new_points.end()); }
+
+        } catch (const std::exception&) {
+            tmp_exception = std::current_exception();
+            skip_remaining = true;
+#pragma omp flush(skip_remaining)
+        }
+
+    }  // end parallel
+
+    //---------------------------- end stellar subdivision -----------------------
+
+    if (!(tmp_exception == 0))
+        std::rethrow_exception(tmp_exception);
+
+    // cout  << new_points.size() << " new points accumulated" << endl;
+    new_points.sort();
+    new_points.unique();
+    if (verbose) {
+        verboseOutput() << new_points.size() << " bottom points accumulated in total." << endl;
+        verboseOutput() << "The sum of determinants of the stellar subdivision is " << stellar_det_sum << endl;
+    }
+
+    /* for(auto& it : new_points)
+        it=Trans_inv.VxM(it); */
+}
+
+//-----------------------------------------------------------------------------------------
+
+template <typename Integer>
+bool bottom_points_inner(Matrix<Integer>& gens,
+                         list<vector<Integer> >& local_new_points,
+                         vector<Matrix<Integer> >& local_q_gens,
+                         size_t& stellar_det_sum) {
+    INTERRUPT_COMPUTATION_BY_EXCEPTION
+
+    vector<Integer> grading = gens.find_linear_form();
+    Integer volume;
+    int dim = gens[0].size();
+    Matrix<Integer> Support_Hyperplanes = gens.invert(volume);
+
+    if (volume < SubDivBound) {
+#pragma omp atomic
+        stellar_det_sum += convertToLongLong(volume);
+        return false;  // not subdivided
+    }
+
+    // try st4ellar subdivision
+    Support_Hyperplanes = Support_Hyperplanes.transpose();
+    Support_Hyperplanes.make_prime();
+    vector<Integer> new_point;
+
+    if (new_point.empty()) {
+        // list<vector<Integer> > Dummy;
+        new_point = gens.optimal_subdivision_point();  // projection method
+    }
+
+    if (!new_point.empty()) {
+        // if (find(local_new_points.begin(), local_new_points.end(),new_point) == local_new_points.end())
+        local_new_points.emplace_back(new_point);
+        Matrix<Integer> stellar_gens(gens);
+
+        int nr_hyps = 0;
+        for (int i = 0; i < dim; ++i) {
+            if (v_scalar_product(Support_Hyperplanes[i], new_point) != 0) {
+                stellar_gens[i] = new_point;
+                local_q_gens.emplace_back(stellar_gens);
+
+                stellar_gens[i] = gens[i];
+            }
+            else
+                nr_hyps++;
+        }
+        //#pragma omp critical(VERBOSE)
+        // cout << new_point << " liegt in " << nr_hyps <<" hyperebenen" << endl;
+        return true;  // subdivided
+    }
+    else {  // could not subdivided
+#pragma omp atomic
+        stellar_det_sum += convertToLongLong(volume);
+        return false;
+    }
+}
+
+// returns -1 if maximum is negative
+template <typename Integer>
+double max_in_col(const Matrix<Integer>& M, size_t j) {
+    Integer max = -1;
+    for (size_t i = 0; i < M.nr_of_rows(); ++i) {
+        if (M[i][j] > max)
+            max = M[i][j];
+    }
+    return convert_to_double(max);
+}
+
+// returns 1 if minimum is positive
+template <typename Integer>
+double min_in_col(const Matrix<Integer>& M, size_t j) {
+    Integer min = 1;
+    for (size_t i = 0; i < M.nr_of_rows(); ++i) {
+        if (M[i][j] < min)
+            min = M[i][j];
+    }
+    return convert_to_double(min);
+}
+
+#ifndef NMZ_MIC_OFFLOAD  // offload with long is not supported
+template void bottom_points(list<vector<long> >& new_points, const Matrix<long>& gens, long VolumeBound);
+#endif  // NMZ_MIC_OFFLOAD
+template void bottom_points(list<vector<long long> >& new_points, const Matrix<long long>& gens, long long VolumeBound);
+template void bottom_points(list<vector<mpz_class> >& new_points, const Matrix<mpz_class>& gens, mpz_class VolumeBound);
 
 //---------------------------------------------------------------------------
 // SimplexEvaluator
@@ -205,10 +408,10 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
 
     if (C.inhomogeneous) {
         for (i = 0; i < dim; i++) {
-            // gen_levels[i] = convertTo<long>(C.gen_levels[key[i]]);
+            // gen_levels[i] = convertToLong(C.gen_levels[key[i]]);
             gen_levels[i] = C.gen_levels[key[i]];
             if (C.do_h_vector)
-                gen_levels_long[i] = convertTo<long>(C.gen_levels[key[i]]);
+                gen_levels_long[i] = convertToLong(C.gen_levels[key[i]]);
             if (gen_levels[i] == 0) {
                 nr_level0_gens++;
                 if (C.do_h_vector)
@@ -360,9 +563,9 @@ Integer SimplexEvaluator<Integer>::start_evaluation(SHORTSIMPLEX<Integer>& s, Co
     // if (C.do_Hilbert_basis && C.descent_level > 0 && C.isComputed(ConeProperty::Grading)) {
     //    HB_bound = volume * C.God_Father->HB_bound;
     //    HB_bound_computed = true;
-        /* cout << "GF " << C.God_Father->HB_bound << " " << " VOL " << volume << " HB_bound " << HB_bound << endl;
-        cout << gen_degrees;
-        exit(0);*/
+    /* cout << "GF " << C.God_Father->HB_bound << " " << " VOL " << volume << " HB_bound " << HB_bound << endl;
+    cout << gen_degrees;
+    exit(0);*/
     // }
 
     /*  if(Ind0_key.size()>0){
@@ -436,16 +639,16 @@ void SimplexEvaluator<Integer>::take_care_of_0vector(Collector<Integer>& Coll) {
     if (C_ptr->do_Stanley_dec) {       // prepare space for Stanley dec
         STANLEYDATA_int SimplStanley;  // key + matrix of offsets
         SimplStanley.key = key;
-        Matrix<Integer> offsets(convertTo<long>(volume), dim);  // volume rows, dim columns
+        Matrix<Integer> offsets(convertToLong(volume), dim);  // volume rows, dim columns
         convert(SimplStanley.offsets, offsets);
 #pragma omp critical(STANLEY)
         {
-            C_ptr->StanleyDec.push_back(SimplStanley);       // extend the Stanley dec by a new matrix
+            C_ptr->StanleyDec.emplace_back(SimplStanley);    // extend the Stanley dec by a new matrix
             StanleyMat = &C_ptr->StanleyDec.back().offsets;  // and use this matrix for storage
         }
         for (i = 0; i < dim; ++i)  // the first vector is 0+offset
             if (Excluded[i])
-                (*StanleyMat)[0][i] = convertTo<long>(volume);
+                (*StanleyMat)[0][i] = convertToLong(volume);
     }
 
     StanIndex = 1;  // counts the number of components in the Stanley dec. Vector at 0 already filled if necessary
@@ -513,7 +716,7 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element,
     if (C.inhomogeneous) {
         for (i = 0; i < dim; i++)
             level_Int += element[i] * gen_levels[i];
-        level = convertTo<long>(level_Int / volume);  // have to divide by volume; see above
+        level = convertToLong(level_Int / volume);  // have to divide by volume; see above
         // cout << level << " ++ " << volume << " -- " << element;
 
         if (level > 1)
@@ -532,7 +735,7 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element,
 
     size_t Deg = 0;
     if (C.do_h_vector) {
-        Deg = convertTo<long>(normG / volume);
+        Deg = convertToLong(normG / volume);
         for (i = 0; i < dim; i++) {  // take care of excluded facets and increase degree when necessary
             if (element[i] == 0 && Excluded[i]) {
                 Deg += gen_degrees_long[i];
@@ -553,7 +756,7 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element,
         convert((*StanleyMat)[StanIndex], element);
         for (i = 0; i < dim; i++)
             if (Excluded[i] && element[i] == 0)
-                (*StanleyMat)[StanIndex][i] += convertTo<long>(volume);
+                (*StanleyMat)[StanIndex][i] += convertToLong(volume);
         StanIndex++;
     }
 
@@ -565,7 +768,7 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element,
         }
         vector<Integer> candi = v_merge(element, norm);
         if (C_ptr->do_module_gens_intcl || !is_reducible(candi, Hilbert_Basis)) {
-            Coll.Candidates.push_back(candi);
+            Coll.Candidates.emplace_back(std::move(candi));
             Coll.candidates_size++;
             if (Coll.candidates_size >= 1000 && sequential_evaluation) {
                 local_reduction(Coll);
@@ -579,7 +782,7 @@ void SimplexEvaluator<Integer>::evaluate_element(const vector<Integer>& element,
         if (C.is_global_approximation && !C.subcone_contains(help)) {
             return;
         }
-        Coll.Deg1_Elements.push_back(help);
+        Coll.Deg1_Elements.emplace_back(std::move(help));
         Coll.collected_elements_size++;
     }
 }
@@ -614,17 +817,17 @@ void SimplexEvaluator<Integer>::reduce_against_global(Collector<Integer>& Coll) 
 
             // reduce against global reducers in C.OldCandidates and insert into HB_Elements
             if (C.is_simplicial) {  // no global reduction necessary at this point
-                Coll.HB_Elements.Candidates.push_back(Candidate<Integer>(*jj, C));
+                Coll.HB_Elements.Candidates.emplace_back(Candidate<Integer>(*jj, C));
                 inserted = true;
             }
             else
                 inserted = Coll.HB_Elements.reduce_by_and_insert(*jj, C, C.OldCandidates);
             // cout << "iiiii " << inserted << " -- " << *jj << endl;
-            
-            if(inserted && C.do_integrally_closed){ // we must safeduard against original generators
+
+            if (inserted && C.do_integrally_closed) {  // we must safeduard against original generators
                 auto gen = C.Generator_Set.find(*jj);  // that appear in the Hilbert basis of
-                if(gen != C.Generator_Set.end())       // this simplicial cone
-                    inserted = false;                
+                if (gen != C.Generator_Set.end())      // this simplicial cone
+                    inserted = false;
             }
 
             if (inserted) {
@@ -635,13 +838,13 @@ void SimplexEvaluator<Integer>::reduce_against_global(Collector<Integer>& Coll) 
                         C.do_Hilbert_basis = false;
                         C.Witness = *jj;
                         C.is_Computed.set(ConeProperty::WitnessNotIntegrallyClosed);
-                    } // critical
+                    }  // critical
                     if (!C.do_triangulation) {
                         throw NotIntegrallyClosedException();
                     }
                 }
-                
-                /* 
+
+                /*
                 if (C.God_Father->do_integrally_closed && C.is_simplicial) {
                     bool GF_inserted = Coll.HB_Elements.reduce_by_and_insert(*jj, *(C.God_Father), C.God_Father->OldCandidates);
                     if (GF_inserted) {
@@ -720,9 +923,9 @@ void SimplexEvaluator<Integer>::conclude_evaluation(Collector<Integer>& Coll) {
 //---------------------------------------------------------------------------
 
 long SimplexParallelEvaluationBound = 100000000;  // simplices larger than this bound/10
-                                                        // are evaluated by parallel threads
-                                                        // simplices larger than this bound  || (this bound/10 && Hilbert basis)
-                                                        // are tried for subdivision
+                                                  // are evaluated by parallel threads
+                                                  // simplices larger than this bound  || (this bound/10 && Hilbert basis)
+                                                  // are tried for subdivision
 
 //---------------------------------------------------------------------------
 
@@ -746,7 +949,7 @@ bool SimplexEvaluator<Integer>::evaluate(SHORTSIMPLEX<Integer>& s) {
         return true;
     take_care_of_0vector(C_ptr->Results[tn]);
     if (volume != 1)
-        evaluate_block(1, convertTo<long>(volume) - 1, C_ptr->Results[tn]);
+        evaluate_block(1, convertToLong(volume) - 1, C_ptr->Results[tn]);
     conclude_evaluation(C_ptr->Results[tn]);
 
     return true;
@@ -772,7 +975,7 @@ const size_t SuperBlockLength = 1000000;   // number of blocks in a super block
 template <typename Integer>
 void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
     size_t block_length = ParallelBlockLength;
-    size_t nr_elements = convertTo<long>(volume) - 1;  // 0-vector already taken care of
+    size_t nr_elements = convertToLong(volume) - 1;  // 0-vector already taken care of
     size_t nr_blocks = nr_elements / ParallelBlockLength;
     if (nr_elements % ParallelBlockLength != 0)
         ++nr_blocks;
@@ -857,7 +1060,7 @@ void SimplexEvaluator<Integer>::evaluation_loop_parallel() {
 }
 
 //---------------------------------------------------------------------------
-// runs the evaluation over all vectors in the basic parallelotope that are 
+// runs the evaluation over all vectors in the basic parallelotope that are
 // produced from block_start to block_end.
 template <typename Integer>
 void SimplexEvaluator<Integer>::evaluate_block(long block_start, long block_end, Collector<Integer>& Coll) {
@@ -872,8 +1075,8 @@ void SimplexEvaluator<Integer>::evaluate_block(long block_start, long block_end,
 
     if (one_back > 0) {  // define the last point processed before if it isn't 0
         for (size_t i = 1; i <= dim; ++i) {
-            point[dim - i] = one_back % GDiag[dim - i];
-            one_back /= convertTo<long>(GDiag[dim - i]);
+            point[dim - i] = static_cast<unsigned long>(one_back) % GDiag[dim - i];
+            one_back /= convertToLong(GDiag[dim - i]);
         }
 
         for (size_t i = 0; i < dim; ++i) {  // put elements into the state at the end of the previous block
@@ -919,6 +1122,11 @@ void SimplexEvaluator<Integer>::evaluate_block(long block_start, long block_end,
 
         evaluate_element(elements[last], Coll);
     }
+}
+
+template <>
+void SimplexEvaluator<renf_elem_class>::evaluate_block(long block_start, long block_end, Collector<renf_elem_class>& Coll) {
+    assert(false);
 }
 
 //---------------------------------------------------------------------------
@@ -1046,7 +1254,7 @@ void SimplexEvaluator<Integer>::Simplex_parallel_evaluation() {
                     if (v_scalar_product(polytope_gens[j], bottom_polytope.Support_Hyperplanes[i]) == 0)
                         bottom_key.push_back(subcone_key[j]);
                 }
-                C.Pyramids[0].push_back(bottom_key);
+                C.Pyramids[0].emplace_back(std::move(bottom_key));
                 C.nrPyramids[0]++;
             }
 
@@ -1302,7 +1510,7 @@ Collector<Integer>::Collector(Full_Cone<Integer>& fc)
     size_t hv_max = 0;
     if (C_ptr->do_h_vector) {
         // we need the generators to be sorted by degree
-        long max_degree = convertTo<long>(C_ptr->gen_degrees[C_ptr->nr_gen - 1]);
+        long max_degree = convertToLong(C_ptr->gen_degrees[C_ptr->nr_gen - 1]);
         hv_max = max_degree * C_ptr->dim;
         if (hv_max > 1000000) {
             throw BadInputException("Generator degrees are too huge, h-vector would contain more than 10^6 entires.");
@@ -1316,7 +1524,6 @@ Collector<Integer>::Collector(Full_Cone<Integer>& fc)
     Hilbert_Series.setVerbose(fc.verbose);
 }
 
-#ifdef ENFNORMALIZ
 template <>
 Collector<renf_elem_class>::Collector(Full_Cone<renf_elem_class>& fc)
     : C_ptr(&fc),
@@ -1328,8 +1535,6 @@ Collector<renf_elem_class>::Collector(Full_Cone<renf_elem_class>& fc)
       InEx_hvector(C_ptr->InExCollect.size()),
       elements(dim, dim) {
 }
-#endif
-
 template <typename Integer>
 Integer Collector<Integer>::getDetSum() const {
     return det_sum;
@@ -1369,5 +1574,25 @@ template <typename Integer>
 size_t Collector<Integer>::get_collected_elements_size() {
     return collected_elements_size;
 }
+
+#ifndef NMZ_MIC_OFFLOAD  // offload with long is not supported
+template class SimplexEvaluator<long>;
+#endif
+template class SimplexEvaluator<long long>;
+template class SimplexEvaluator<mpz_class>;
+
+#ifdef ENFNORMALIZ
+template class SimplexEvaluator<renf_elem_class>;
+#endif
+
+#ifndef NMZ_MIC_OFFLOAD  // offload with long is not supported
+template class Collector<long>;
+#endif
+template class Collector<long long>;
+template class Collector<mpz_class>;
+
+#ifdef ENFNORMALIZ
+template class Collector<renf_elem_class>;
+#endif
 
 }  // namespace libnormaliz

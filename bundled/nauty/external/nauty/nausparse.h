@@ -1,11 +1,11 @@
-/* nausparse.h : header file for sparse digraphs, nauty 2.6 */
+/* nausparse.h : header file for sparse digraphs, nauty 2.7 */
 /* This version allows only simple graphs with loops but
  * contains the data structures for weights on the edges
  * even though they aren't implemented yet. */
 
 /*****************************************************************************
 *                                                                            *
-*   Copyright (1984-2016) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2018) Brendan McKay.  All rights reserved.               *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -118,6 +118,8 @@ extern void sparsenauty(sparsegraph*g,int*,int*,int*,
 
 extern void
    adjacencies_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
+extern void
+   distances_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 extern void
    distances_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 

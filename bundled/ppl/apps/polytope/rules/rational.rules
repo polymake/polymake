@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -16,14 +16,14 @@
 
 object Cone<Rational> {
 
-rule ppl.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
+rule ppl.convex_hull.primal, ppl.convex_hull: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
    ppl_ch_primal($this);
 }
 weight 4.10;
 precondition : N_RAYS | N_INPUT_RAYS;
 incurs FacetPerm;
 
-rule ppl.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+rule ppl.convex_hull.dual, ppl.convex_hull: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
    ppl_ch_dual($this);
 }
 weight 4.10;

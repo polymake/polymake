@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,29 +17,29 @@
 # A rational cone in Q^d.
 object Cone<Rational> {
 
-rule lrs.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
+rule lrs.convex_hull.primal, lrs.convex_hull: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS {
    lrs_ch_primal($this, $verbose_lrs);
 }
 weight 4.10;
 precondition : N_RAYS | N_INPUT_RAYS;
 incurs FacetPerm;
 
-rule lrs.convex_hull.dual: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+rule lrs.convex_hull.dual, lrs.convex_hull: RAYS, LINEALITY_SPACE, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
    lrs_ch_dual($this, $verbose_lrs);
 }
 weight 4.10;
 incurs VertexPerm;
 
-rule lrs.convex_hull.cone.count: N_RAYS, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+rule lrs.convex_hull.cone.count, lrs.convex_hull: N_RAYS, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
    lrs_count_vertices($this, false, $verbose_lrs);
 }
-weight 4.50;
+weight 6.50;
 
 
 # lrs redundancy checks
 # lrs cannot detect generators of the lineality space in INPUT_RAYS
 # hence LINEALITY_SPACE must be known in advance
-rule lrs.convex_hull.redund: POINTED, RAYS, LINEAR_SPAN : INPUT_RAYS, LINEALITY_SPACE  {
+rule lrs.convex_hull.redund, lrs.convex_hull: POINTED, RAYS, LINEAR_SPAN : INPUT_RAYS, LINEALITY_SPACE  {
    lrs_get_non_redundant_points($this);
 }
 weight 3.20;
@@ -47,7 +47,7 @@ incurs VertexPerm;
 
 # lrs cannot detect implicit equalities among INEQUALITIES
 # hence LINEAR_SPAN must be known in advance
-rule lrs.convex_hull.redund: FACETS, LINEALITY_SPACE : INEQUALITIES, LINEAR_SPAN {
+rule lrs.convex_hull.redund, lrs.convex_hull: FACETS, LINEALITY_SPACE : INEQUALITIES, LINEAR_SPAN {
    lrs_get_non_redundant_inequalities($this);
 }
 weight 3.20;
@@ -57,10 +57,10 @@ incurs FacetPerm;
 # FIXME does this rule work for unbounded polyhedra?
 # facet count is the same for cones and polytopes
 # corresponding polytope rule below
-rule lrs.convex_hull.cone.count: N_FACETS : RAYS | INPUT_RAYS {
+rule lrs.convex_hull.cone.count, lrs.convex_hull: N_FACETS : RAYS | INPUT_RAYS {
    lrs_count_facets($this, $verbose_lrs);
 }
-weight 4.5;
+weight 6.5;
 
 }
 
@@ -70,25 +70,25 @@ object Polytope<Rational> {
 
 # the precondition BOUNDED is necessary as the corresponding clients
 # requires bounded polyhedra, see comment in lrs_interface.cc
-rule lrs.convex_hull.count: N_FACETS : RAYS | INPUT_RAYS {
+rule lrs.convex_hull.count, lrs.convex_hull: N_FACETS : RAYS | INPUT_RAYS {
    lrs_count_facets($this, $verbose_lrs);
 }
 precondition : BOUNDED;
-weight 4.5;
+weight 6.5;
 override : SUPER::lrs.convex_hull.cone.count;
 
-rule lrs.convex_hull.count: N_VERTICES, N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+rule lrs.convex_hull.count, lrs.convex_hull: N_VERTICES, N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
    lrs_count_vertices($this, false, $verbose_lrs);
 }
 precondition : FEASIBLE;
-weight 4.5;
+weight 6.5;
 override : SUPER::lrs.convex_hull.cone.count;
 
-rule lrs.convex_hull.count: N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
+rule lrs.convex_hull.count, lrs.convex_hull: N_BOUNDED_VERTICES, POINTED, LINEALITY_DIM : FACETS | INEQUALITIES {
    lrs_count_vertices($this, true, $verbose_lrs);
 }
 precondition : FEASIBLE;
-weight 4.3;
+weight 6.3;
 
 rule lrs.valid_point: VALID_POINT : FACETS | INEQUALITIES {
   lrs_valid_point($this);

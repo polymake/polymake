@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -398,12 +398,11 @@ void Sublattice_Representation<Integer>::compose_dual(const Sublattice_Represent
 // If Sub is nonempty, we asume that Perp must be computed.
 // Suib and Perp are given/computed in the coordinates of the ambient space
 //
-// If Sub is 
+// If Sub is
 template <typename Integer>
 void Sublattice_Representation<Integer>::compose_with_passage_to_quotient(Matrix<Integer>& Sub, Matrix<Integer>& Perp) {
-    
-    assert(Sub.nr_of_rows()==0 || Perp.nr_of_rows()==0);
-    
+    assert(Sub.nr_of_rows() == 0 || Perp.nr_of_rows() == 0);
+
     // go to L
     Matrix<Integer> Sub_L;
     Sub_L = to_sublattice(Sub);
@@ -411,26 +410,25 @@ void Sublattice_Representation<Integer>::compose_with_passage_to_quotient(Matrix
     Perp_L = to_sublattice_dual(Perp);
 
     // compute the "other"
-    bool useLLL=false;
-    if(!using_renf<Integer>())
-        useLLL=true;
-    if(Sub_L.nr_of_rows()==0)
-        Sub_L=Perp_L.kernel(useLLL);
+    bool useLLL = false;
+    if (!using_renf<Integer>())
+        useLLL = true;
+    if (Sub_L.nr_of_rows() == 0)
+        Sub_L = Perp_L.kernel(useLLL);
     else
-        Perp_L=Sub_L.kernel(useLLL);
+        Perp_L = Sub_L.kernel(useLLL);
 
     // back to ambient space
     Sub = from_sublattice(Sub_L);
     Perp = from_sublattice_dual(Perp_L);
-    
+
     Sub.standardize_basis();
     Perp.standardize_basis();
- 
+
     Sublattice_Representation<Integer> QuotentDual(Perp_L, true);
-    
+
     compose_dual(QuotentDual);
 }
-
 
 //---------------------------------------------------------------------------
 //                       Transformations
@@ -556,7 +554,7 @@ void Sublattice_Representation<Integer>::convert_from_sublattice(Matrix<Integer>
     if (!(tmp_exception == 0))
         std::rethrow_exception(tmp_exception);
 }
-  
+
 template <typename Integer>
 template <typename FromType>
 void Sublattice_Representation<Integer>::convert_from_sublattice_dual(Matrix<Integer>& ret, const Matrix<FromType>& val) const {
@@ -589,7 +587,6 @@ void Sublattice_Representation<Integer>::convert_from_sublattice_dual(Matrix<Int
         }
     }  // parallel
 }
-
 
 template <typename Integer>
 Matrix<Integer> Sublattice_Representation<Integer>::to_sublattice_dual(const Matrix<Integer>& M) const {
@@ -828,18 +825,24 @@ void Sublattice_Representation<renf_elem_class>::make_congruences() const {
 
 #ifndef NMZ_MIC_OFFLOAD  // offload with long is not supported
 template class Sublattice_Representation<long>;
-template void Sublattice_Representation<long>::convert_from_sublattice_dual<long long>(Matrix<long>& ret, const Matrix<long long>& val) const;
-template void Sublattice_Representation<long>::convert_from_sublattice<long long>(Matrix<long>& ret, const Matrix<long long>& val) const;
+template void Sublattice_Representation<long>::convert_from_sublattice_dual<long long>(Matrix<long>& ret,
+                                                                                       const Matrix<long long>& val) const;
+template void Sublattice_Representation<long>::convert_from_sublattice<long long>(Matrix<long>& ret,
+                                                                                  const Matrix<long long>& val) const;
 
 #endif
 template class Sublattice_Representation<long long>;
 template class Sublattice_Representation<mpz_class>;
-template void Sublattice_Representation<mpz_class>::convert_from_sublattice_dual<long long>(Matrix<mpz_class>& ret, const Matrix<long long>& val) const;
-template void Sublattice_Representation<mpz_class>::convert_from_sublattice<long long>(Matrix<mpz_class>& ret, const Matrix<long long>& val) const;
+template void Sublattice_Representation<mpz_class>::convert_from_sublattice_dual<long long>(Matrix<mpz_class>& ret,
+                                                                                            const Matrix<long long>& val) const;
+template void Sublattice_Representation<mpz_class>::convert_from_sublattice<long long>(Matrix<mpz_class>& ret,
+                                                                                       const Matrix<long long>& val) const;
 #ifdef ENFNORMALIZ
 template class Sublattice_Representation<renf_elem_class>;
-template void Sublattice_Representation<renf_elem_class>::convert_from_sublattice_dual<long long>(Matrix<renf_elem_class>& ret, const Matrix<long long>& val) const;
-template void Sublattice_Representation<renf_elem_class>::convert_from_sublattice<long long>(Matrix<renf_elem_class>& ret, const Matrix<long long>& val) const; 
+template void Sublattice_Representation<renf_elem_class>::convert_from_sublattice_dual<long long>(
+    Matrix<renf_elem_class>& ret, const Matrix<long long>& val) const;
+template void Sublattice_Representation<renf_elem_class>::convert_from_sublattice<long long>(Matrix<renf_elem_class>& ret,
+                                                                                             const Matrix<long long>& val) const;
 #endif
 
 }  // namespace libnormaliz

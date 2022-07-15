@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -1700,14 +1700,12 @@ sub get_schedule {
 }
 ####################################################################################
 sub disable_rules {
-   my $self=shift;
-   my @rules=$self->type->find_rules_by_pattern(@_)
+   my $self = shift;
+   my @rules = $self->type->find_rules_by_pattern(@_)
      or die "no matching rules found\n";
-   foreach my $rule (@rules) {
-      foreach my $prod ($rule, $rule->with_permutation ? ($rule->with_permutation, @{$rule->with_permutation->actions}) : ()) {
-         local with($Scope->locals) {
-            local $self->failed_rules->{$prod}=1;
-         }
+   foreach my $rule (map { $_->all_to_disable } @rules) {
+      local with($Scope->locals) {
+         local $self->failed_rules->{$rule} = 1;
       }
    }
 }

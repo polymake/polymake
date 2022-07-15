@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -624,7 +624,7 @@ void ProjectAndLift<IntegerPL, IntegerRet>::lift_points_to_this_dim(list<vector<
                     IntegerRet add_nr_Int = 0;
                     if (MaxInterval >= MinInterval)
                         add_nr_Int = 1 + MaxInterval - MinInterval;
-                    long long add_nr = convertTo<long long>(add_nr_Int);
+                    long long add_nr = convertToLongLong(add_nr_Int);
                     if (dim == EmbDim && count_only && add_nr >= 1 && Congs.nr_of_rows() == 0 && Grading.size() == 0) {
 #pragma omp atomic
                         TotalNrLP += add_nr;
@@ -648,7 +648,7 @@ void ProjectAndLift<IntegerPL, IntegerRet>::lift_points_to_this_dim(list<vector<
                                     Deg1Thread[tn].push_back(NewPoint);
 
                                 if (Grading.size() > 0) {
-                                    long deg = convertTo<long>(v_scalar_product(Grading, NewPoint));
+                                    long deg = convertToLong(v_scalar_product(Grading, NewPoint));
                                     if (deg >= 0) {
                                         if (deg >= (long)h_vec_pos_thread[tn].size())
                                             h_vec_pos_thread[tn].resize(deg + 1);
@@ -906,10 +906,10 @@ void ProjectAndLift<IntegerPL, IntegerRet>::compute(bool all_points, bool liftin
     // a grading denominator 1=1 can be accomodated.
     // We need only the support hyperplanes Supps and the facet-vertex incidence matrix Ind.
     // Its rows correspond to facets.
-    
+
 #ifdef NMZ_EXTENDED_TESTS
-    if(!using_GMP<IntegerRet>() && !using_renf<IntegerRet>() && test_arith_overflow_proj_and_lift)
-        throw ArithmeticException(0);    
+    if (!using_GMP<IntegerRet>() && !using_renf<IntegerRet>() && test_arith_overflow_proj_and_lift)
+        throw ArithmeticException(0);
 #endif
 
     assert(all_points || !lifting_float);  // only all points allowed with float

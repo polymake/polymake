@@ -1,8 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Main source file for version 2.6 of nauty.                                *
+*  Main source file for version 2.7 of nauty.                                *
 *                                                                            *
-*   Copyright (1984-2016) Brendan McKay.  All rights reserved.  Permission   *
+*   Copyright (1984-2018) Brendan McKay.  All rights reserved.  Permission   *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -65,6 +65,7 @@
 *       15-Jan-12 : added TLS_ATTR to static declarations                    *
 *       18-Jan-13 : added signal aborting                                    *
 *       19-Jan-13 : added usercanonproc()                                    *
+*       14-Oct-17 : corrected code for n=0                                   *
 *                                                                            *
 *****************************************************************************/
 
@@ -118,7 +119,7 @@ static TLS_ATTR void (*userautomproc)(int,int*,int*,int,int,int);
 static TLS_ATTR void (*userlevelproc)
           (int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
 static TLS_ATTR int (*usercanonproc)
-          (graph*,int*,graph*,int,int,int,int);
+          (graph*,int*,graph*,unsigned long,int,int,int);
 static TLS_ATTR void (*invarproc)
           (graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 static TLS_ATTR FILE *outfile;
@@ -173,7 +174,7 @@ DYNALLSTAT(set,active,active_sz);
    needs one set (tcell) to represent the target cell.  This is 
    implemented by using a linked list of tcnode anchored at the root
    of the search tree.  Each node points to its child (if any) and to
-   the dynamically allocated tcell.  Apart from the the first node of
+   the dynamically allocated tcell.  Apart from the first node of
    the list, each node always has a tcell good for m up to alloc_m.
    tcnodes and tcells are kept between calls to nauty, except that
    they are freed and reallocated if m gets bigger than alloc_m.  */
@@ -329,6 +330,17 @@ nauty(graph *g_arg, int *lab, int *ptn, set *active_arg,
         stats_arg->invapplics = 0;
         stats_arg->invsuccesses = 0;
         stats_arg->invarsuclevel = 0;
+
+        g = canong = NULL;
+        initstatus = 0;
+        OPTCALL(dispatch.init)(g_arg,&g,canong_arg,&canong,
+                lab,ptn,active,options,&initstatus,m,n);
+        if (initstatus) stats->errstatus = initstatus;
+
+        if (g == NULL) g = g_arg;
+        if (canong == NULL) canong = canong_arg;
+        OPTCALL(dispatch.cleanup)(g_arg,&g,canong_arg,&canong,
+                                      lab,ptn,options,stats_arg,m,n);
         return;
     }
 
@@ -621,6 +633,12 @@ firstpathnode(int *lab, int *ptn, int level, int numcells)
 	}
         return level-1;
     }
+
+#ifdef NAUTY_IN_MAGMA
+    if (main_seen_interrupt) return NAUTY_KILLED;
+#else
+    if (nauty_kill_request) return NAUTY_KILLED;
+#endif
 
     if (noncheaplevel >= level
                          && !(*dispatch.cheapautom)(ptn,level,digraph,n))
@@ -1161,7 +1179,7 @@ nauty_check(int wordsize, int m, int n, int version)
 
 /*****************************************************************************
 *                                                                            *
-*  extra_autom(p,n)  - add an extra automophism, hard to do correctly        *
+*  extra_autom(p,n)  - add an extra automorphism, hard to do correctly       *
 *                                                                            *
 *****************************************************************************/
 

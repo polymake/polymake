@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -414,9 +414,10 @@ my %completers = (
       sub {
          my ($text, $ctx) = @_;
          my @proposals;
-         if ($text =~ /^ (?: $hier_id_re (?:\.)? )? $/xo) {
+         if ($text =~ /^ (?: (?:!)? (?'label' $hier_id_re (?:\.)?) )? $/xo) {
             # maybe a label
-            @proposals = grep { /^\Q$text\E/ } map { $_->full_name } map { @{$_->labels} } try_rules($ctx->obj);
+            my $label = $+{label};
+            @proposals = grep { /^\Q$label\E/ } map { $_->full_name } map { @{$_->labels} } try_rules($ctx->obj);
          }
          Rule::prepare_header_search_pattern($text);
          push @proposals, grep { /^$text/ } map { $_->header } try_rules($ctx->obj);
@@ -424,7 +425,7 @@ my %completers = (
       },
       help => sub {
          my ($text, $ctx) = @_;
-         if ($text =~ /($id_re) (?: \. $id_re)* \.? \s* $/xo) {
+         if ($text =~ /(?:!)? ($id_re) (?: \. $id_re)* \.? \s* $/xo) {
             my $label_name = $1;
             (defined($ctx->obj) ? $ctx->obj->type->application : $User::application)->help->find('preferences', $label_name)
          } else {

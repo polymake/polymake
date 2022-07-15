@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -32,9 +32,9 @@
 
 #include <gmpxx.h>
 
-#include "libnormaliz/libnormaliz.h"
-#include "libnormaliz/cone.h"
-#include "libnormaliz/HilbertSeries.h"
+#include <libnormaliz/libnormaliz.h>
+#include <libnormaliz/cone.h>
+#include <libnormaliz/HilbertSeries.h>
 
 #if defined(__clang__)
 #pragma clang diagnostic pop
@@ -248,31 +248,12 @@ ListReturn normaliz_compute(BigObject c, OptionSet options)
 
   const bool with_grading = c.exists("MONOID_GRADING");
 
-#ifdef BUNDLED_LIBNORMALIZ
-  if (!options["skip_long"]) {
-    try {
-      // try with long first
-      return normaliz_compute_with<long>(c, options, todo, with_grading);
-    }
-    catch(const pm::GMP::error& ex) {
-      if (libnormaliz::verbose)
-        cerr << "libnormaliz: error converting coordinates to long, retrying with arbitrary precision" << endl;
-    }
-    catch(const libnormaliz::ArithmeticException& ex) {
-      if (libnormaliz::verbose)
-        cerr << "libnormaliz: arithmetic error detected, retrying with arbitrary precision" << endl;
-    }
-  }
-  return normaliz_compute_with<Integer>(c, options, todo, with_grading);
-#else
   /*
-     * non-bundled installation of libnormaliz doesnt support using our own type
+     * libnormaliz doesnt support using our own type anymore
      * for mpz_class cones libnormaliz will first try to compute with long long,
        thus we do not need do it separately
   */
   return normaliz_compute_with<mpz_class>(c, options, todo, with_grading);
-#endif
-
 }
 
 
@@ -283,30 +264,12 @@ Matrix<Integer> normaliz_compute_lattice(const Matrix<Integer> & V, int threads 
    if (threads)
       libnormaliz::set_thread_limit(threads);
 
-#ifdef BUNDLED_LIBNORMALIZ
-   try {
-      // try with long first
-      return normaliz_compute_lattice_with<long>(V);
-   }
-   catch(const pm::GMP::error& ex) {
-      if (libnormaliz::verbose)
-         cerr << "libnormaliz: error converting coordinates to long, retrying with arbitrary precision" << endl;
-      return normaliz_compute_lattice_with<Integer>(V);
-   }
-   catch(const libnormaliz::ArithmeticException& ex) {
-      if (libnormaliz::verbose)
-         cerr << "libnormaliz: arithmetic error detected, retrying with arbitrary precision" << endl;
-      return normaliz_compute_lattice_with<Integer>(V);
-   }
-#else
    /*
-    * non-bundled installation of libnormaliz doesnt support using our own type
+    * libnormaliz doesnt really support using our own type anymore
     * for mpz_class cones libnormaliz will first try to compute with long long,
-    thus we do not need do it separately
+    * thus we do not need do it separately
     */
    return normaliz_compute_lattice_with<mpz_class>(V);
-#endif
-
 }
 
 

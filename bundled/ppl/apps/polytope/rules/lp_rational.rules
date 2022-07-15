@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -17,15 +17,17 @@
 object Polytope<Rational> {
 
 
-rule ppl.simplex: LP.MAXIMAL_VALUE, LP.MAXIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   ppl_lp_client($this, $this->LP, true);
-}
-weight 3.10;
-
-rule ppl.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
-   ppl_lp_client($this, $this->LP, false);
-}
-weight 3.10;
+# see #1172 and ppl_lp_client.cc
+#
+#rule ppl.simplex: LP.MAXIMAL_VALUE, LP.MAXIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
+#   ppl_lp_client($this, $this->LP, true);
+#}
+#weight 3.10;
+#
+#rule ppl.simplex: LP.MINIMAL_VALUE, LP.MINIMAL_VERTEX, FEASIBLE : LP.LINEAR_OBJECTIVE, FACETS | INEQUALITIES {
+#   ppl_lp_client($this, $this->LP, false);
+#}
+#weight 3.10;
 
 }
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -72,6 +72,51 @@ BigObject conway_core(BigObject P, const std::string operations, const std::stri
       }
    }
    return dcel2polytope(DCEL_out, out_name);
+}
+
+BigObject conway_CG(BigObject p_in, Int k, Int l) {
+   const Int d = p_in.give("COMBINATORIAL_DIM");
+   BigObject p_out=p_in;
+   // The construction only works for the graphs of the 3-valent 3 dimensional polytopes for now, can be extended to 4-valent case.
+   if (!p_in.give("SIMPLICIAL") || d!= 3 ){
+      throw std::runtime_error("conway_CG: only defined for simplicial 3-polytopes");
+   }
+   const  Array<Array<Int>> VIF_CN = p_in.give("VIF_CYCLIC_NORMAL");
+   DoublyConnectedEdgeList DCEL_in(VIF_CN);
+   //Case k = l
+   if (k == l) {
+      for (Int i = 0; i < k; i++){
+         p_out = conway_core(p_out, "n", "Needle of " + std::string(p_in.description()), "needle");
+      }
+      return p_out;
+   }
+   else {
+      //Case l=0
+      if (l==0) {
+         //Case l=0 and k = 3
+         if(k==3){
+            return dcel2polytope(polymake::graph::conway_CG_fundtri3(DCEL_in), "Fundamental Triangulation");
+         }
+         //Case l=0 and k = 2
+         if(k==2){
+            return dcel2polytope(polymake::graph::conway_CG_fundtri2(DCEL_in), "Fundamental Triangulation");}
+         //Case l=0 and k is divisible by 2
+         if(2*(k/2) == k){
+            p_out = conway_CG(p_out,k/2,0);
+            const  Array<Array<Int>> VIF_temp = p_out.give("VIF_CYCLIC_NORMAL");
+            DoublyConnectedEdgeList DCEL_temp(VIF_temp);
+            return dcel2polytope(polymake::graph::conway_CG_fundtri2(DCEL_temp), "Fundamental Triangulation");
+         }
+         //Case l=0 and k is divisible by 3
+         if(3*(k/3) == k){
+            p_out = conway_CG(p_out,k/3,0);
+            const  Array<Array<Int>> VIF_temp = p_out.give("VIF_CYCLIC_NORMAL");
+            DoublyConnectedEdgeList DCEL_temp(VIF_temp);
+            return dcel2polytope(polymake::graph::conway_CG_fundtri3(DCEL_temp), "Fundamental Triangulation");
+         }
+      }
+      throw std::runtime_error("conway_CG: This case is not implemented yet. Please provide the parameters k and l with either k = l, or k = 2^n*3^m and l = 0 for some natural numbers n and m.");
+   }
 }
 
 
@@ -275,6 +320,34 @@ UserFunction4perl("# @category Producing a polytope from polytopes"
                   "# > print $mjzkab_s->F_VECTOR;"
                   "# | 5184 7776 2594",
                   &conway, "conway");
+
+
+UserFunction4perl("# @category Producing a polytope from polytopes"
+                  "# Perform the Coxeter-Goldberg (CG) construction with the given simplicial 3-polytope //P// and the nonnegative integer parameters k,l where k>l."
+                  "# "
+                  "# If //P// is an icosahedron, then this construction yields a dual Goldberg polyhedron. The Goldberg polyhedra and their duals are used by Kaspar and Klug "
+                  "# to give the first classification of viral capsids. "
+                  "# "
+                  "# For more on CG constrution, see Chapter 6 of"
+                  "# Deza, M. and Sikiric, M. and Shtogrin, M. (2015) “Geometric Structure of Chemistry-Relevant Graphs,”"
+                  "# In Forum for Interdisciplinary Mathematics, Vol 1, Springer, "
+                  "# https://doi.org/10.1007/978-81-322-2449-5"
+                  "# "
+                  "# For more on viral capsids, see"
+                  "# Caspar, D.L. and Klug, A. (1962) “Physical principles in the construction of regular viruses”"
+                  "# In Cold Spring Harbor symposia on quantitative biology, vol. 27, pp. 1-24,"
+                  "# https://doi.org/10.1101/sqb.1962.027.001.005"
+                  "# "
+                  "# @param Polytope P"
+                  "# @param Int k"
+                  "# @param Int l"
+                  "# @return Polytope"
+                  "# @example"
+                  "# > $chamfered_ico = conway_CG(icosahedron,2,0);"
+                  "# > print $chamfered_ico->N_VERTICES;"
+                  "# | 42",
+                  &conway_CG, "conway_CG");
+
 } }
 
 // Local Variables:

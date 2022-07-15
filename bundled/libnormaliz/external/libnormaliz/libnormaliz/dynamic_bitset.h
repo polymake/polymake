@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -324,8 +324,13 @@ class dynamic_bitset {
         return !(*this == x);
     }
     bool operator<(const dynamic_bitset& x) const {  // for use in std::set, std::map
-        if (_total_bits == x._total_bits)
-            return _limbs < x._limbs;
+        if (_total_bits == x._total_bits) {
+            for (size_t i = 1; i <= _limbs.size(); ++i) {
+                if (_limbs[_limbs.size() - i] != x._limbs[_limbs.size() - i])
+                    return (_limbs[_limbs.size() - i] < x._limbs[_limbs.size() - i]);
+            }
+            return false;
+        }
         return _total_bits < x._total_bits;
     }
 

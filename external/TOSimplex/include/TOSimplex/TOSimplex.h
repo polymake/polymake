@@ -2145,6 +2145,7 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 	bool dualUnbounded = false;
 	bool infeasibleDueToBound = false;
 
+#ifndef TO_DISABLE_OUTPUT
 	clock_t time1;
 	clock_t time2 = clock();
 
@@ -2155,6 +2156,7 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 	clock_t time_ratio = 0;
 	clock_t time_ftran = 0;
 	clock_t time_update = 0;
+#endif
 
 	T Z( 0 );
 
@@ -2214,9 +2216,11 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 		}
 
 
+#ifndef TO_DISABLE_OUTPUT
 		// Obiges nicht mitmessen
 		time1 = time2;
 		time2 = clock();
+#endif
 
 
 		// Step 2: Pricing
@@ -2282,10 +2286,12 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 		}
 
 
+#ifndef TO_DISABLE_OUTPUT
 		time1 = time2;
 		time2 = clock();
 
 		time_pricing += time2-time1;
+#endif
 
 		// Step 3: BTran
 //		std::cout << "BTran" << std::endl;
@@ -2295,10 +2301,12 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 
 		this->BTran( rhor.data() );
 
+#ifndef TO_DISABLE_OUTPUT
 		time1 = time2;
 		time2 = clock();
 
 		time_btran += time2-time1;
+#endif
 
 		TInt q = 0;
 		TInt s = 0;
@@ -2322,10 +2330,12 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 				}
 
 
+#ifndef TO_DISABLE_OUTPUT
 				time1 = time2;
 				time2 = clock();
 
 				time_dse += time2-time1;
+#endif
 
 
 
@@ -2336,10 +2346,12 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 
 				this->mulANT( alphar.data(), rhor.data() );
 
+#ifndef TO_DISABLE_OUTPUT
 				time1 = time2;
 				time2 = clock();
 
 				time_pivot += time2-time1;
+#endif
 
 
 
@@ -2473,10 +2485,12 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 
 				if( !dualUnbounded ){
 
+#ifndef TO_DISABLE_OUTPUT
 					time1 = time2;
 					time2 = clock();
 
 					time_ratio += time2-time1;
+#endif
 
 
 					// TODO in extra Thread auslagern?
@@ -2496,10 +2510,12 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 					this->FTran( alphaq.data(), permSpike.data(), permSpikeInd.data(), &permSpikeLen );
 
 
+#ifndef TO_DISABLE_OUTPUT
 					time1 = time2;
 					time2 = clock();
 
 					time_ftran += time2-time1;
+#endif
 
 
 
@@ -2538,16 +2554,20 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 						T betar = this->DSE[r];
 						this->DSE[r] = betar / ( alphaq[r] * alphaq[r]);
 
+#ifndef TO_DISABLE_OUTPUT
 						time1 = time2;
 						time2 = clock();
 						time_update += time2-time1;
+#endif
 
 						// Auf DSE-FTran warten
 						#pragma omp taskwait
 
+#ifndef TO_DISABLE_OUTPUT
 						time1 = time2;
 						time2 = clock();
 						time_dse += time2-time1;
+#endif
 
 
 						T mult;
@@ -2633,10 +2653,12 @@ TInt TOSolver<T, TInt>::opt( bool P1 ){
 		}
 
 
+#ifndef TO_DISABLE_OUTPUT
 		time1 = time2;
 		time2 = clock();
 
 		time_update += time2-time1;
+#endif
 		
 	}
 	

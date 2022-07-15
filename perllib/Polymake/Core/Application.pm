@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -631,27 +631,19 @@ sub reset_preference {
    }
 }
 #################################################################################
-sub disable_rules {
-   my ($self, $pattern)=@_;
-   if ($pattern =~ /^ $hier_id_re $/xo) {
-      # specified by label
-      my $label=$self->prefs->find_label($pattern)
-        or die "unknown label \"$pattern\"\n";
-      my @rules=$label->list_all_rules
-        or die "no matching rules found\n";
-      Scheduler::temp_disable_rules(@rules);
-
-   } elsif ($pattern =~ /:/) {
-      # specified by header:
-      Rule::header_search_pattern($pattern);
-      my @rules=grep { $_->header =~ $pattern } @{$self->rules}
-        or die "no matching rules found\n";
-      Scheduler::temp_disable_rules(@rules);
-
-   } else {
-      die "usage: disable_rules(\"label\" || \"OUTPUT : INPUT\")\n";
-   }
+sub find_rule_label {
+   my ($self, $pattern) = @_;
+   $self->prefs->find_label($pattern)
 }
+
+sub all_production_rules {
+   my ($self) = @_;
+   grep { $_->flags & Rule::Flags::is_production } @{$self->rules}
+}
+
+*find_rules_by_pattern = \&Rule::find_by_pattern;
+*disable_rules = \&BigObjectType::disable_rules;
+
 #################################################################################
 # This is a placeholder with minimal functionality required for RuleFilter to load
 # scripts and data upgrade rules in an early stage, when no real application

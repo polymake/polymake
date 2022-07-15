@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -39,6 +39,13 @@ bool check_flat_axiom(const Array<Set<Int>>& matroid_flats, OptionSet options)
    return check_flat_axiom_impl(matroid_flats, verbose);
 }
 
+bool check_circuits_axiom(const Array<Set<Int>>& bases, OptionSet options)
+{
+   const bool verbose = options["verbose"];
+   return check_circuits_axiom_impl(bases, verbose);
+}
+
+
 UserFunction4perl("# @category Other"
                   "# Check if a given list of sets satisfies the axioms to be the bases of a matroid."
                   "# @param Array<Set> B a list of would-be bases of a matroid"
@@ -63,6 +70,13 @@ UserFunction4perl("# @category Other"
                   &check_flat_axiom,
                   "check_flat_axiom(Array<Set> { verbose => 0 })");
 
+UserFunction4perl("# @category Other"
+                  "# Check if a given list of sets satisfies the axioms to be the circuits of a matroid."
+                  "# @param Array<Set> C a list of would-be circuits of a matroid"
+                  "# @option Bool verbose print a proof if the given sets do not form the set of circuits of a matroid"
+                  "# @return Bool are the given sets the circuits of a matroid?",
+                  &check_circuits_axiom,
+                  "check_circuits_axiom(Array<Set> { verbose => 0 })");
 
 } }
 

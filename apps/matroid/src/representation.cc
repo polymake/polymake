@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -132,6 +132,12 @@ void ternary_representation(BigObject matroid)
       matroid.take("TERNARY_VECTORS") << Matrix<Int>(n, 1);
       return;
    }
+   
+   if (r == n) {
+      matroid.take("TERNARY") << true;
+      matroid.take("TERNARY_VECTORS") << unit_matrix<Int>(n);
+      return;
+   }
 
    // First we compute the support of the matrix representation.
    std::pair<Matrix<Int>, Set<Int>> tpoint_prototype = produce_binary_matrix(n, r, bases);
@@ -143,7 +149,6 @@ void ternary_representation(BigObject matroid)
    for (auto li = entire(sequence(0, n)); !li.at_end(); ++li) {
       label_identity[*li] = *li;
    }
-
    // Compute bases of restrictions to unit_basis + remaining_elements[0],...,unit_basis + (all remaining_elements)
    Map<Int, Set<Set<Int>>> restriction_bases;
    Map<Int, Set<Int>> restricted_ground_sets;

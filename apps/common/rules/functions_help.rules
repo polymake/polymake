@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -149,8 +149,8 @@
 # @category Basic
 #
 # Same as [[prefer]], but does not store the changes persistently.  The lifespan of the
-# new preference order lasts up to the end of the current user cycle
-# (that is, end of user script or interpretation of the current input line in interactive mode).
+# new preference order lasts up to the end of the current user cycle,
+# that is, end of user script or complete execution of the current shell input.
 # @param [complete Core::Preference] String label_expression
 
 
@@ -204,22 +204,34 @@
 # @topic core/functions/disable_rules
 # @category Basic
 #
-# Temporarily disable production rules matching given pattern.
-# Rules are re-enabled after the complete execution of the current script
-# or input expression in interactive mode.
-#
-# This ban applies to all production rules defined in the current application.
+# Temporarily disable production rules matching a given pattern.
+# All rules defined in the current application are affected.
 # For a more fine-granular control on object type level or even for individual
-# objects, there are methods of the same name:
+# objects, please refer to the corresponding methods of the same name:
 #  ''$obj->type->disable_rules(...)''
 #  ''$obj->disable_rules(...)''
 #
+# Rules are re-enabled after the completion of the current user cycle,
+# that is, end of user script or complete execution of the current shell input.
+# or input expression in interactive mode.
+#
 # @param [complete Core::Rule] String pattern either a label (see [[prefer]]) or a rule header.
-#  The rule header must exactly match the definition in the rulefile,
+#  If it's a label, selected rules are those having this label or any of its sublabels.
+#  If the label is preceded with an explamation mark '!', not the selected rules are disabled
+#  but all others competing with them.
+#  If it's a rule header, it must exactly match the definition in the rulefile,
 #  up to white spaces around property names.
-#  If the given pattern matches headers of several rules, or the given label
-#  is associated with several rules, they all will be disabled regardless
-#  their precoditions, weights, or other attributes.
+#
+# @example [notest] disable all rules labelled with 'lrs.convex_hull.primal', 'lrs.convex_hull.dual',
+#  'lrs.simplex', etc.
+# > disable_rules('lrs');
+# @example [notest] disable all rules labelled with 'lrs.convex_hull.primal' and 'lrs.convex_hull.dual'
+# > disable_rules('lrs.convex_hull');
+# @example [notest] disable all rules labelled with 'cdd.convex_hull.primal', 'cdd.convex_hull.dual',
+#  'ppl.convex_hull.primal', 'ppl.convex_hull.dual', etc.
+# > disable_rules('!lrs.convex_hull');
+# @example [notest] disable a single rule with the given header
+# > disable_rules('POINTED : LINEALITY_DIM');
 
 
 # @topic core/functions/help

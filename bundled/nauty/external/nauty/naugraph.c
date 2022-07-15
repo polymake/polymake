@@ -1,8 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Graph-specific auxiliary source file for version 2.6 of nauty.            *
+*  Graph-specific auxiliary source file for version 2.7 of nauty.            *
 *                                                                            *
-*   Copyright (1984-2016) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2019) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
@@ -17,6 +17,7 @@
 *       23-May-10 : add densenauty()                                         *
 *       15-Jan-12 : add TLS_ATTR attributes                                  *
 *       23-Jan-13 : add some parens to make icc happy                        *
+*       15-Oct-19 : fix default size of dnwork[] to match densenauty()       *
 *                                                                            *
 *****************************************************************************/
 
@@ -53,7 +54,7 @@ DYNALLSTAT(set,dnwork,dnwork_sz);
 static TLS_ATTR set workset[MAXM];   /* used for scratch work */
 static TLS_ATTR int workperm[MAXN];
 static TLS_ATTR int bucket[MAXN+2];
-static TLS_ATTR set dnwork[40*MAXM];
+static TLS_ATTR set dnwork[2*500*MAXM];
 #endif
 
 /*****************************************************************************
@@ -635,7 +636,7 @@ targetcell(graph *g, int *lab, int *ptn, int level, int tc_level,
 *                                                                            *
 *  densenauty(g,lab,ptn,orbits,&options,&stats,m,n,h)                        *
 *  is a slightly simplified interface to nauty().  It allocates enough       *
-*  workspace for 20 automorphisms and checks that the densegraph dispatch     *
+*  workspace for 500 automorphisms and checks that the densegraph dispatch   *
 *  vector is in use.                                                         *
 *                                                                            *
 *****************************************************************************/
@@ -651,10 +652,12 @@ densenauty(graph *g, int *lab, int *ptn, int *orbits,
     }
 
 #if !MAXN
-    DYNALLOC1(set,dnwork,dnwork_sz,2*60*m,"densenauty malloc");
+    /* Don't increase 2*500*m in the next line unless you also increase
+       the default declaration of dnwork[] earlier. */
+    DYNALLOC1(set,dnwork,dnwork_sz,2*500*m,"densenauty malloc");
 #endif
 
-    nauty(g,lab,ptn,NULL,orbits,options,stats,dnwork,2*60*m,m,n,h);
+    nauty(g,lab,ptn,NULL,orbits,options,stats,dnwork,2*500*m,m,n,h);
 }
 
 /*****************************************************************************

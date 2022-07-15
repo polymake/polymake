@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -717,13 +717,36 @@ sub prepare_header_search_pattern {
    $_[0] =~ s/([.|()])/\\$1/g;
 }
 
-# protected:
-# prepare a pattern for searching for rules by header
-sub header_search_pattern {
-   &prepare_header_search_pattern;
-   # expect optional labels omitted in the search pattern
-   $_[0] = qr/^(?: $hier_ids_re \s*:\s* )? (?-x:$_[0]) $/x;
+sub find_by_pattern {
+   my ($owner, $pattern, $filter) = @_;
+   if ($pattern =~ /^ (!)? ($hier_id_re) $/xo) {
+      # specified by label
+      my $label = $owner->find_rule_label($2)
+        or die "unknown label \"$pattern\"\n";
+      defined($filter)
+      ? grep { &$filter } $label->list_all_rules($1)
+      : $label->list_all_rules($1)
+
+   } elsif ($pattern =~ /:/) {
+      # specified by header
+      prepare_header_search_pattern($pattern);
+      # expect optional labels omitted in the search pattern
+      grep { $_->header =~ qr/^(?: $hier_ids_re \s*:\s* )? (?-x:$pattern) $/x } $owner->all_production_rules
+
+   } else {
+      croak( "invalid rule search pattern: expected a label or a complete header in the form \"OUTPUT : INPUT\"" );
+   }
 }
+
+sub all_to_disable {
+   my ($self) = @_;
+   if (defined(my $with_perm = $self->with_permutation)) {
+      ($self, $with_perm, @{$with_perm->actions})
+   } else {
+      ($self)
+   }
+}
+
 ####################################################################################
 # private:
 # create a closure working as a filter in BigObject::copy

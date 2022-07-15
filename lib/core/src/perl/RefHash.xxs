@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -71,7 +71,11 @@ SV* tmp_keysv::set(SV* keysv)
    Copy(obj.keyp, HEK_KEY(hekp), sizeof(SV*), char);
    HEK_LEN(hekp) = sizeof(SV*);
    HEK_HASH(hekp) = U32(obj.keyl >> 4);          // hash value
+#if defined(HVhek_NOTSHARED)
+   HEK_FLAGS(hekp) = HVhek_NOTSHARED;
+#else
    HEK_FLAGS(hekp) = HVhek_UNSHARED;
+#endif
    sv.sv_any = &xpv;
    sv.sv_refcnt = 1;
    sv.sv_flags = SVt_PVIV | SVf_IVisUV | SVf_POK | SVp_POK | PmFlagsForHashKey;

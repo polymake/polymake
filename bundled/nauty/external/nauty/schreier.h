@@ -1,4 +1,4 @@
-/* schreier.h - Version 1.2 (January 2013) */
+/* schreier.h - Version 1.3 (November 2020) */
 
 #ifndef  _SCHREIER_H_    /* only process this file once */
 #define  _SCHREIER_H_
@@ -13,8 +13,12 @@ typedef struct permnodestruct
     int nalloc;                          /* size of p[] in ints,
                                             <= 0 for a perm marker */
     int mark;                            /* a mark, 0 unless changed */
+#if FLEX_ARRAY_OK
+    int p[];                      
+#else
     int p[2];                            /* actual vector, extended to
                                             nalloc enties */
+#endif
 } permnode;
 
 typedef struct schreierlevel

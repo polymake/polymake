@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -277,7 +277,7 @@ monoextremals(const GenericMatrix<Matrix1, TropicalNumber<Addition, Scalar>>& ge
          for (auto apex : rows(apices)) {
             // why does (apices/new_apex) not work??
             apex_sectors = single_covector(apex, k);
-            if ((apex_sectors.contains(0)) & (apex_sectors.size()==2)) {
+            if ((apex_sectors.contains(0)) && (apex_sectors.size()==2)) {
                covered_sectors += apex_sectors;
             }
          }

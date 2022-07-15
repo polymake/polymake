@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -291,18 +291,26 @@ sub add_control {
 }
 ####################################################################################
 sub list_all_rules {
-   my ($self)=@_;
+   my ($self, $others) = @_;
    my @rules;
-   while (my ($list, $cnt)=each %{$self->controls}) {
-      for (my ($pos, $end)=(0, scalar @{$list->items}); $pos < $end; ++$pos) {
-         if ($list->labels->[$pos]==$self && instanceof Rule(my $rule=$list->items->[$pos])) {
-            push @rules, $rule;
-            --$cnt or last;
+   while (my ($list, $cnt) = each %{$self->controls}) {
+      for (my ($pos, $end) = (0, scalar @{$list->items}); $pos < $end; ++$pos) {
+         if (instanceof Rule(my $rule=$list->items->[$pos])) {
+            if ($others) {
+               if ($list->labels->[$pos] != $self) {
+                  push @rules, $rule;
+               }
+            } else {
+               if ($list->labels->[$pos] == $self) {
+                  push @rules, $rule;
+                  --$cnt or last;
+               }
+            }
          }
       }
    }
    keys %{$self->controls};  # reset iterator
-   (@rules, map { list_all_rules($_) } values %{$self->children})
+   (@rules, map { list_all_rules($_, $others) } values %{$self->children})
 }
 ####################################################################################
 # clock, rank => clock values of preference lists having lost effect

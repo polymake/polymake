@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -54,7 +54,7 @@ UserFunction4perl("# @category Other"
                   "# > $s = new SimplicialComplex(INPUT_FACES=>[[0, 1], [0, 2], [1, 2], [2, 3]]);"
                   "# > $i = stanley_reisner($s);"
                   "# > print $i -> GENERATORS;"
-                  "# | x_0*x_1*x_2 x_0*x_3 x_1*x_3",
+                  "# | x_0*x_3 x_1*x_3 x_0*x_1*x_2",
 
                   &stanley_reisner, "stanley_reisner(SimplicialComplex)");
 } }

@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -42,6 +42,13 @@ namespace libnormaliz {
 using std::map;
 using std::pair;
 using std::vector;
+
+template <typename Number>
+using InputMap = map<InputType, Matrix<Number> >;
+
+template <typename Number>
+using InputMapVV = map<InputType, vector<vector<Number> > >;
+
 
 template <typename Integer>
 class Full_Cone;
@@ -92,9 +99,9 @@ struct CONVEXHULLDATA {
 template <typename Integer>
 struct SHORTSIMPLEX {
     vector<key_t> key;      // full key of simplex
-    Integer height;         // height of last vertex over opposite facet
+    Integer height;         // height of last vertex over opposite facet, used in Full_Cone
     Integer vol;            // volume if computed, 0 else
-    Integer mult;           // used for renf_elem_class
+    Integer mult;           // used for renf_elem_class in Full_Cone
     vector<bool> Excluded;  // for disjoint decomposition of cone
                             // true in position i indictate sthat the facet
                             // opposite of generator i must be excluded
@@ -120,7 +127,6 @@ struct STANLEYDATA {
 
 template <typename Integer>
 class Cone {
-    
     // friend class ConeCollection<Integer>;
     //---------------------------------------------------------------------------
     //                               public methods
@@ -130,7 +136,15 @@ class Cone {
     //                    Constructors, they preprocess the input
     //---------------------------------------------------------------------------
 
-    typedef Integer elem_type;
+    // typedef Integer elem_type;
+
+    template<typename InputNumberType>
+    void process_multi_input(const InputMapVV<InputNumberType>& multi_input_data){
+        map<InputType, Matrix<InputNumberType> > mat_input;
+        for(auto T=multi_input_data.begin(); T!=multi_input_data.end();++T)
+            mat_input[T->first]=T->second;
+        process_multi_input(mat_input);
+    }
 
     Cone() {
     }  // default constructor
@@ -141,7 +155,7 @@ class Cone {
     template <typename T>
     Cone(InputType type, const vector<vector<T> >& input_data) {
         // convert to a map
-        map<InputType, vector<vector<T> > > multi_input_data;
+        InputMapVV<T> multi_input_data;
         /*= {{type, input_data()}};*/
         multi_input_data[type] = input_data;
         process_multi_input(multi_input_data);
@@ -153,7 +167,7 @@ class Cone {
             throw BadInputException("Input types must be pairwise different!");
         }
         // convert to a map
-        map<InputType, vector<vector<T> > > multi_input_data;
+        InputMapVV<T> multi_input_data;
         /*= {
             {type1, input_data1},
             {type2, input_data2},
@@ -174,12 +188,12 @@ class Cone {
             throw BadInputException("Input types must be pairwise different!");
         }
         // convert to a map
-        map<InputType, vector<vector<T> > > multi_input_data;
-         /*= {
-            {type1, input_data1},
-            {type2, input_data2},
-            {type3, input_data3},
-        };*/
+        InputMapVV<T> multi_input_data;
+        /*= {
+           {type1, input_data1},
+           {type2, input_data2},
+           {type3, input_data3},
+       };*/
         multi_input_data[type1] = input_data1;
         multi_input_data[type2] = input_data2;
         multi_input_data[type3] = input_data3;
@@ -188,7 +202,7 @@ class Cone {
 
     /* give multiple input */
     template <typename T>
-    Cone(const map<InputType, vector<vector<T> > >& multi_input_data) {
+    Cone(const InputMapVV<T>& multi_input_data) {
         process_multi_input(multi_input_data);
     }
 
@@ -198,9 +212,8 @@ class Cone {
     template <typename T>
     Cone(InputType type, const Matrix<T>& input_data) {
         // convert to a map
-        map<InputType, vector<vector<T> > > multi_input_data;
-        // = {{type, input_data.get_elements()}};
-        multi_input_data[type] = input_data.get_elements();
+        InputMap<T> multi_input_data;
+        multi_input_data[type] = input_data;
         process_multi_input(multi_input_data);
     }
 
@@ -210,13 +223,9 @@ class Cone {
             throw BadInputException("Input types must be pairwise different!");
         }
         // convert to a map
-        map<InputType, vector<vector<T> > > multi_input_data;
-        /*= {
-            {type1, input_data1.get_elements()},
-            {type2, input_data2.get_elements()},
-        };*/
-        multi_input_data[type1] = input_data1.get_elements();
-        multi_input_data[type2] = input_data2.get_elements();
+        InputMap<T> multi_input_data;
+        multi_input_data[type1] = input_data1;
+        multi_input_data[type2] = input_data2;
         process_multi_input(multi_input_data);
     }
 
@@ -231,33 +240,29 @@ class Cone {
             throw BadInputException("Input types must be pairwise different!");
         }
         // convert to a map
-        map<InputType, vector<vector<T> > > multi_input_data;
-        /*= {
-            {type1, input_data1.get_elements()},
-            {type2, input_data2.get_elements()},
-            {type3, input_data3.get_elements()},
-        };*/
-        multi_input_data[type1] = input_data1.get_elements();
-        multi_input_data[type2] = input_data2.get_elements();
-        multi_input_data[type3] = input_data3.get_elements();
+        InputMap<T> multi_input_data;
+        multi_input_data[type1] = input_data1;
+        multi_input_data[type2] = input_data2;
+        multi_input_data[type3] = input_data3;
         process_multi_input(multi_input_data);
     }
 
     /* give multiple input */
     template <typename T>
-    Cone(const map<InputType, Matrix<T> >& multi_input_data) {
-        map<InputType, vector<vector<T> > > tmp;
-        for (const auto& it : multi_input_data) {
-            tmp[it.first] = it.second.get_elements();
-        }
-        process_multi_input(tmp);
+    Cone(const InputMap<T>& multi_input_data) {
+        process_multi_input(multi_input_data);
     }
+
+    //-----------------------------------------------------------------------------
+    // From Normaliz input file
+    Cone(const string project);
 
     //---------------------------------------------------------------------------
     //                                Destructor
     //---------------------------------------------------------------------------
 
     ~Cone();
+    void delete_aux_cones();
 
     //---------------------------------------------------------------------------
     //                          give additional data
@@ -275,18 +280,20 @@ class Cone {
      * after the first computation for "dynamical" applications, in which
      * thecone is canged depending on previous computation results.
      *
-     * Only one additional matrix can be added at a time. Nevertheless it is useful
-     * to go through the map.
+     * If you want to add more than one type, use the map version.
      */
 
-    void modifyCone(const map<InputType, vector<vector<Integer> > >& add_multi_input);
-    void modifyCone(const map<InputType, vector<vector<mpq_class> > >& add_multi_input);
-    void modifyCone(const map<InputType, vector<vector<nmz_float> > >& add_multi_input);
+    void modifyCone(const InputMap<Integer>& add_multi_input);
+    void modifyCone(const InputMap<mpq_class>& add_multi_input);
+    void modifyCone(const InputMap<nmz_float>& add_multi_input);
 
-    template<typename T>
+    template <typename T>
     void modifyCone(InputType type, const vector<vector<T> >& input_data);
 
-    template<typename T>
+    template <typename T>
+    void modifyCone(const InputMapVV<T>& input_data);
+
+    template <typename T>
     void modifyCone(InputType type, const Matrix<T>& input_data);
 
     /* We must also transport data that cannot be conveyed by the constructors
@@ -301,18 +308,21 @@ class Cone {
     void setFaceCodimBound(long bound);
     void setAutomCodimBoundMult(long bound);
     void setAutomCodimBoundVectors(long bound);
+    void setDecimalDigits(long digiots);
+    void setBlocksizeHollowTri(long block_size);
 
-#ifdef ENFNORMALIZ
-    void setRenf(renf_class* renf);
-#endif
+    void setProjectName(const string& my_project);
+    string getProjectName() const;
+
+    void setRenf(const renf_class_shared renf);
 
     template <typename InputNumber>
-    void check_add_input(const map<InputType, vector<vector<InputNumber> > >& multi_add_data);
+    void check_add_input(const InputMap<InputNumber>& multi_add_data);
     template <typename InputNumber>
-    void check_consistency_of_dimension(const map<InputType, vector<vector<InputNumber> > >& multi_add_data);
+    void check_consistency_of_dimension(const InputMap<InputNumber>& multi_add_data);
 
-    map<InputType, vector<vector<Integer> > > mpqclass_input_to_integer(
-        const map<InputType, vector<vector<mpq_class> > >& multi_input_data_const);
+    InputMap<Integer> mpqclass_input_to_integer(
+        const InputMap<mpq_class>& multi_input_data_const);
 
     //---------------------------------------------------------------------------
     //                           make computations
@@ -332,6 +342,7 @@ class Cone {
     bool isComputed(ConeProperty::Enum prop) const;
     // returns true, when ALL properties in CheckComputed are computed
     bool isComputed(ConeProperties CheckComputed) const;
+    const ConeProperties& getIsComputed() const;
 
     void setComputed(ConeProperty::Enum prop);
     void setComputed(ConeProperty::Enum prop, bool value);
@@ -357,10 +368,6 @@ class Cone {
     Cone<Integer>& getSymmetrizedCone() const;
     Cone<Integer>& getProjectCone() const;
 
-    const Matrix<Integer>& getGeneratorsMatrix();
-    const vector<vector<Integer> >& getGenerators();
-    size_t getNrGenerators();
-
     const Matrix<Integer>& getExtremeRaysMatrix();
     const vector<vector<Integer> >& getExtremeRays();
     size_t getNrExtremeRays();
@@ -368,6 +375,10 @@ class Cone {
     const Matrix<nmz_float>& getVerticesFloatMatrix();
     const vector<vector<nmz_float> >& getVerticesFloat();
     size_t getNrVerticesFloat();
+
+    const Matrix<nmz_float>& getExtremeRaysFloatMatrix();
+    const vector<vector<nmz_float> >& getExtremeRaysFloat();
+    size_t getNrExtremeRaysFloat();
 
     const Matrix<nmz_float>& getSuppHypsFloatMatrix();
     const vector<vector<nmz_float> >& getSuppHypsFloat();
@@ -384,17 +395,17 @@ class Cone {
     const Matrix<Integer>& getMaximalSubspaceMatrix();
     const vector<vector<Integer> >& getMaximalSubspace();
     size_t getDimMaximalSubspace();
-    
+
     const Matrix<Integer>& getEquationsMatrix();
     const vector<vector<Integer> >& getEquations();
     size_t getNrEquations();
-    
+
     const Matrix<Integer>& getCongruencesMatrix();
     const vector<vector<Integer> >& getCongruences();
     size_t getNrCongruences();
 
     // depends on the ConeProperty::s SupportHyperplanes and Sublattice
-    map<InputType, vector<vector<Integer> > > getConstraints();
+    InputMapVV<Integer> getConstraints();
 
     const Matrix<Integer>& getExcludedFacesMatrix();
     const vector<vector<Integer> >& getExcludedFaces();
@@ -405,6 +416,8 @@ class Cone {
 
     vector<Integer> getWitnessNotIntegrallyClosed();
     vector<Integer> getGeneratorOfInterior();
+    vector<Integer> getCoveringFace();
+    vector<Integer> getAxesScaling();
 
     const Matrix<Integer>& getHilbertBasisMatrix();
     const vector<vector<Integer> >& getHilbertBasis();
@@ -432,6 +445,10 @@ class Cone {
     vector<size_t> getFVector();
     const vector<dynamic_bitset>& getIncidence();
 
+    const map<dynamic_bitset, int>& getDualFaceLattice();
+    vector<size_t> getDualFVector();
+    const vector<dynamic_bitset>& getDualIncidence();
+
     // the actual grading is Grading/GradingDenom
     vector<Integer> getGrading();
     Integer getGradingDenom();
@@ -445,9 +462,7 @@ class Cone {
 
     mpq_class getMultiplicity();
     mpq_class getVolume();
-#ifdef ENFNORMALIZ
     renf_elem_class getRenfVolume();
-#endif
     nmz_float getEuclideanVolume();
     mpq_class getVirtualMultiplicity();
     mpq_class getIntegral();
@@ -458,6 +473,8 @@ class Cone {
     string getPolynomial() const;
 
     bool inequalities_present;
+    bool addition_generators_allowed;
+    bool addition_constraints_allowed;
 
     bool isPointed();
     bool isInhomogeneous();
@@ -465,6 +482,7 @@ class Cone {
     bool isDeg1HilbertBasis();
     bool isIntegrallyClosed();
     bool isGorenstein();
+    bool isEmptySemiOpen();
     bool isReesPrimary();
     bool isIntHullCone();
     Integer getReesPrimaryMultiplicity();
@@ -480,20 +498,25 @@ class Cone {
     // if no triangulation was computed so far they return false
     bool isTriangulationNested();
     bool isTriangulationPartial();
-    const vector<pair<vector<key_t>, Integer> >& getTriangulation();
- const vector<pair<vector<key_t>, Integer> >& getTriangulation(ConeProperty::Enum quality);
-    const vector<vector<bool> >& getOpenFacets();
+    const pair<vector<SHORTSIMPLEX<Integer> >, Matrix<Integer> >& getTriangulation();
+    const pair<vector<SHORTSIMPLEX<Integer> >, Matrix<Integer> >& getBasicTriangulation();
+    const pair<vector<SHORTSIMPLEX<Integer> >, Matrix<Integer> >& getTriangulation(ConeProperty::Enum quality);
+    const pair<vector<SHORTSIMPLEX<Integer> >, Matrix<Integer> >& getConeDecomposition();
     const vector<pair<vector<key_t>, long> >& getInclusionExclusionData();
-    const list<STANLEYDATA<Integer> >& getStanleyDec();
-    list<STANLEYDATA_int>& getStanleyDec_mutable();  // allows us to erase the StanleyDec
-                                                     // in order to save memeory for weighted Ehrhart
+    const pair<list<STANLEYDATA<Integer> >, Matrix<Integer> >& getStanleyDec();
+    pair<list<STANLEYDATA_int>, Matrix<Integer> >& getStanleyDec_mutable();  // allows us to erase the StanleyDec
+                                                                             // in order to save memeory for weighted Ehrhart
+
+    string project_name;
 
     bool get_verbose();
     void write_cone_output(const string& output_file);
+    void write_precomp_for_input(const string& output_file);
 
     IntegrationData& getIntData();
 
     void resetGrading(vector<Integer> lf);
+    void resetProjectionCoords(const vector<Integer>& lf);
 
     const Matrix<Integer>& getMatrixConePropertyMatrix(ConeProperty::Enum property);
     const vector<vector<Integer> >& getMatrixConeProperty(ConeProperty::Enum property);
@@ -511,15 +534,20 @@ class Cone {
 
     nmz_float getFloatConeProperty(ConeProperty::Enum property);
 
-#ifdef ENFNORMALIZ
     renf_elem_class getFieldElemConeProperty(ConeProperty::Enum property);
-#endif
 
     long getMachineIntegerConeProperty(ConeProperty::Enum property);
 
     bool getBooleanConeProperty(ConeProperty::Enum property);
 
     nmz_float euclidean_corr_factor();
+
+    vector<string> getRenfData();
+    static vector<string> getRenfData(const renf_class*);
+    string getRenfGenerator();
+    string getRenfGenerator(const renf_class*);
+    const renf_class* getRenf();
+    renf_class_shared getRenfSharedPtr();
 
     //---------------------------------------------------------------------------
     //                          private part
@@ -549,12 +577,14 @@ class Cone {
     bool verbose;
     ConeProperties is_Computed;
     // Matrix<Integer> GeneratorsOfToricRing;
-    Matrix<Integer> OriginalMonoidGenerators;
+    Matrix<Integer> InputGenerators;
     Matrix<Integer> Generators;
-    Matrix<Integer> ReferenceGenerators;
+    // Matrix<Integer> ReferenceGenerators;
     Matrix<Integer> ExtremeRays;         // of the homogenized cone
+    Matrix<Integer> RationalExtremeRays;         // rational or algebraic: used in the computation of integer hulls
     Matrix<Integer> ExtremeRaysRecCone;  // of the recession cone, = ExtremeRays in the homogeneous case
     Matrix<nmz_float> VerticesFloat;
+    Matrix<nmz_float> ExtremeRaysFloat;
     vector<bool> ExtremeRaysIndicator;
     Matrix<Integer> VerticesOfPolyhedron;
     Matrix<Integer> SupportHyperplanes;
@@ -564,26 +594,28 @@ class Cone {
     Integer TriangulationDetSum;
     bool triangulation_is_nested;
     bool triangulation_is_partial;
-    vector<pair<vector<key_t>, Integer> > Triangulation;
+    pair<vector<SHORTSIMPLEX<Integer> >, Matrix<Integer> > Triangulation;       // the last computed triangulation
+    pair<vector<SHORTSIMPLEX<Integer> >, Matrix<Integer> > BasicTriangulation;  // the basic triangulation
     vector<vector<bool> > OpenFacets;
     vector<bool> projection_coord_indicator;
     vector<pair<vector<key_t>, long> > InExData;
-    list<STANLEYDATA_int> StanleyDec;
-    list<STANLEYDATA<Integer> > StanleyDec_export;
+    pair<list<STANLEYDATA_int>, Matrix<Integer> > BasicStanleyDec;
+    pair<list<STANLEYDATA<Integer> >, Matrix<Integer> > StanleyDec;
     mpq_class multiplicity;
     mpq_class volume;
     nmz_float euclidean_volume;
     nmz_float euclidean_height;  // for volume computations wuth renf_elem_class
-#ifdef ENFNORMALIZ
     renf_elem_class renf_volume;
-#endif
     mpq_class Integral;
     mpq_class VirtualMultiplicity;
     vector<Integer> WitnessNotIntegrallyClosed;
     vector<Integer> GeneratorOfInterior;
+    vector<Integer> CoveringFace;
+    vector<Integer> AxesScaling;
     Matrix<Integer> HilbertBasis;
     Matrix<Integer> HilbertBasisRecCone;
     Matrix<Integer> BasisMaxSubspace;
+    Matrix<Integer> RationalBasisMaxSubspace; // used for integer hull computation
     Matrix<Integer> ModuleGeneratorsOverOriginalMonoid;
     Matrix<Integer> Deg1Elements;
     HilbertSeries HSeries;
@@ -591,32 +623,37 @@ class Cone {
     IntegrationData IntData;
     vector<Integer> Grading;
     vector<Integer> Dehomogenization;
-    vector<Integer> IntHullNorm; // used in computation of integer hulls for guessing extreme rays
-    vector<Integer> Norm;  // used by v_standardize in the numberfield case
+    vector<Integer> IntHullNorm;  // used in computation of integer hulls for guessing extreme rays
+    vector<Integer> Norm;         // used by v_standardize in the numberfield case
     Integer GradingDenom;
     Integer internal_index;
     Integer unit_group_index;
     size_t number_lattice_points;
     vector<size_t> f_vector;
+    vector<size_t> dual_f_vector;
 
     vector<dynamic_bitset> Pair;        // for indicator vectors in project-and_lift
     vector<dynamic_bitset> ParaInPair;  // if polytope is a parallelotope
     bool check_parallelotope();
     bool is_parallelotope;
 
-    map<dynamic_bitset, int> FaceLattice;
+    map<dynamic_bitset, int> FaceLat;
+    map<dynamic_bitset, int> DualFaceLat;
     vector<dynamic_bitset> SuppHypInd;  // incidemnce vectors of the support hyperplanes
+    vector<dynamic_bitset> DualSuppHypInd;
 
     bool pointed;
     bool inhomogeneous;
     bool precomputed_extreme_rays;
     bool precomputed_support_hyperplanes;
-
+    bool empty_semiopen;
 
     bool input_automorphisms;
 
     bool polytope_in_input;
-    bool gorensetin;
+    bool rational_lattice_in_input;
+    bool inequalities_in_input;
+    bool positive_orthant;
 
     bool deg1_extreme_rays;
     bool deg1_hilbert_basis;
@@ -633,7 +670,7 @@ class Cone {
 
     bool is_approximation;
     Cone* ApproximatedCone;
-    
+
     bool is_inthull_cone;
 
     Matrix<Integer> WeightsGrad;
@@ -642,12 +679,13 @@ class Cone {
     bool normalization;  // true if input type normalization is used
     bool general_no_grading_denom;
 
-#ifdef ENFNORMALIZ
-    renf_class* Renf;
-#endif
+    const renf_class* Renf;
+    renf_class_shared RenfSharedPtr;
 
     long renf_degree;
     long face_codim_bound;
+    long decimal_digits;
+    long block_size_hollow_tri;
 
     // if this is true we allow to change to a smaller integer type in the computation
     bool change_integer_type;
@@ -666,17 +704,17 @@ class Cone {
     void compose_basis_change(const Sublattice_Representation<Integer>& SR);  // composes SR
 
     // main input processing
-    void process_multi_input(const map<InputType, vector<vector<Integer> > >& multi_input_data);
-    void process_multi_input_inner(map<InputType, vector<vector<Integer> > >& multi_input_data);
-    void process_multi_input(const map<InputType, vector<vector<mpq_class> > >& multi_input_data);
-    void process_multi_input(const map<InputType, vector<vector<nmz_float> > >& multi_input_data);
+    void process_multi_input(const InputMap<Integer>& multi_input_data);
+    void process_multi_input_inner(InputMap<Integer>& multi_input_data);
+    void process_multi_input(const InputMap<mpq_class>& multi_input_data);
+    void process_multi_input(const InputMap<nmz_float>& multi_input_data);
 
-    void prepare_input_lattice_ideal(map<InputType, vector<vector<Integer> > >& multi_input_data);
-    void prepare_input_constraints(const map<InputType, vector<vector<Integer> > >& multi_input_data);
-    void prepare_input_generators(map<InputType, vector<vector<Integer> > >& multi_input_data,
+    void prepare_input_lattice_ideal(InputMap<Integer>& multi_input_data);
+    void prepare_input_constraints(const InputMap<Integer>& multi_input_data);
+    void prepare_input_generators(InputMap<Integer>& multi_input_data,
                                   Matrix<Integer>& LatticeGenerators);
     template <typename InputNumber>
-    void homogenize_input(map<InputType, vector<vector<InputNumber> > >& multi_input_data);
+    void homogenize_input(InputMap<InputNumber>& multi_input_data);
     void check_precomputed_support_hyperplanes();
     bool check_lattice_restrictions_on_generators(bool& cone_sat_cong);
     void remove_superfluous_inequalities();
@@ -685,7 +723,7 @@ class Cone {
     void convert_lattice_generators_to_constraints(Matrix<Integer>& LatticeGenerators);
     void convert_equations_to_inequalties();
 
-    void check_gens_vs_reference();  // to make sure that newly computed generators agrre with the previously computed
+    // void check_gens_vs_reference();  // to make sure that newly computed generators agrre with the previously computed
 
     void setGrading(const vector<Integer>& lf);
     void setWeights();
@@ -702,18 +740,33 @@ class Cone {
     void make_Hilbert_series_from_pos_and_neg(const vector<num_t>& h_vec_pos, const vector<num_t>& h_vec_neg);
 
     void make_face_lattice(const ConeProperties& ToCompute);
+    void make_face_lattice_primal(const ConeProperties& ToCompute);
+    void make_face_lattice_dual(const ConeProperties& ToCompute);
     void compute_combinatorial_automorphisms(const ConeProperties& ToCompute);
     void compute_euclidean_automorphisms(const ConeProperties& ToCompute);
+    void compute_ambient_automorphisms(const ConeProperties& ToCompute);
+    void compute_ambient_automorphisms_gen(const ConeProperties& ToCompute);
+    void compute_ambient_automorphisms_ineq(const ConeProperties& ToCompute);
+    void compute_input_automorphisms(const ConeProperties& ToCompute);
+    void compute_input_automorphisms_gen(const ConeProperties& ToCompute);
+    void compute_input_automorphisms_ineq(const ConeProperties& ToCompute);
 
     AutomorphismGroup<Integer> Automs;
 
-    Matrix<Integer> prepare_input_type_2(const vector<vector<Integer> >& Input);
-    Matrix<Integer> prepare_input_type_3(const vector<vector<Integer> >& Input);
+    Matrix<Integer> prepare_input_type_2(const Matrix<Integer>& Input);
+    Matrix<Integer> prepare_input_type_3(const Matrix<Integer>& Input);
     void insert_default_inequalities(Matrix<Integer>& Inequalities);
-    
-    void compute_refined_triangulation(ConeProperties& ToCompute);
 
-    template <typename IntegerColl>    
+    void compute_refined_triangulation(ConeProperties& ToCompute);
+    void compute_pulling_triangulation(ConeProperties& ToCompute);
+
+    template <typename IntegerFC>
+    void extract_automorphisms(AutomorphismGroup<IntegerFC>& AutomsComputed, const bool must_transform = false);
+
+    void prepare_automorphisms(const ConeProperties& ToCompute);
+    void prepare_refined_triangulation(const ConeProperties& ToCompute);
+
+    template <typename IntegerColl>
     void compute_unimodular_triangulation(ConeProperties& ToCompute);
     template <typename IntegerColl>
     void compute_lattice_point_triangulation(ConeProperties& ToCompute);
@@ -723,18 +776,19 @@ class Cone {
     void prepare_collection(ConeCollection<IntegerColl>& Coll);
     template <typename IntegerColl>
     void extract_data(ConeCollection<IntegerColl>& Coll);
-    void extract_data(ConeCollection<Integer>& Coll);
+    // void extract_data(ConeCollection<Integer>& Coll);
 
     /* only used by the constructors */
     void initialize();
-    
+
 #ifdef NMZ_EXTENDED_TESTS
     void set_extended_tests(ConeProperties& ToCompute);
 #endif
 
-    template <typename IntegerFC>
     void compute_full_cone(ConeProperties& ToCompute);
-    
+    template <typename IntegerFC>
+    void compute_full_cone_inner(ConeProperties& ToCompute);
+
     void pass_to_pointed_quotient();
 
     /* compute the generators using the support hyperplanes */
@@ -752,12 +806,14 @@ class Cone {
     /* extract the data from Full_Cone, this may remove data from Full_Cone!*/
     template <typename IntegerFC>
     void extract_data(Full_Cone<IntegerFC>& FC, ConeProperties& ToCompute);
+    template <typename IntegerFC>
+    void extract_data_dual(Full_Cone<IntegerFC>& FC, ConeProperties& ToCompute);
 
     template <typename IntegerFC>
     void extract_convex_hull_data(Full_Cone<IntegerFC>& FC, bool primal);
     template <typename IntegerFC>
     void push_convex_hull_data(Full_Cone<IntegerFC>& FC, bool primal);
-    
+
     void create_convex_hull_data();
 
     template <typename IntegerFC>
@@ -797,8 +853,9 @@ class Cone {
 
     void compute_vertices_float(ConeProperties& ToCompute);
     void compute_supp_hyps_float(ConeProperties& ToCompute);
+    void compute_extreme_rays_float(ConeProperties& ToCompute);
 
-    void make_StanleyDec_export();
+    void make_StanleyDec_export(const ConeProperties& ToCompute);
 
     void NotComputable(string message);  // throws NotComputableException if default_mode = false
 
@@ -818,12 +875,17 @@ class Cone {
 
     void compute_volume(ConeProperties& ToCompute);
 
+    void compute_rational_data(ConeProperties& ToCompute);
     void try_multiplicity_by_descent(ConeProperties& ToCompute);
     void try_multiplicity_of_para(ConeProperties& ToCompute);
 
+    void try_signed_dec(ConeProperties& ToCompute);
+    template <typename IntegerFC>
+    void try_signed_dec_inner(ConeProperties& ToCompute);
+
     void compute_projection(ConeProperties& ToCompute);
-    void compute_projection_from_gens(const vector<Integer>& GradOrDehom);
-    void compute_projection_from_constraints(const vector<Integer>& GradOrDehom, ConeProperties& ToCompute);
+    void compute_projection_from_gens(const vector<Integer>& GradOrDehom, ConeProperties& ToComput);
+    // out of use: void compute_projection_from_constraints(const vector<Integer>& GradOrDehom, ConeProperties& ToCompute);
 
     // in order to avoid getRank fromm inside compute
     size_t get_rank_internal();
@@ -831,7 +893,7 @@ class Cone {
 
     void compute_lattice_points_in_polytope(ConeProperties& ToCompute);
     void prepare_volume_computation(ConeProperties& ToCompute);
-    
+
     void compute_affine_dim_and_recession_rank();
     void compute_recession_rank();
 
@@ -840,7 +902,8 @@ class Cone {
                                                 Matrix<IntegerFC>& FC_Vectors,
                                                 const Matrix<Integer>& ConeVectors,
                                                 bool primal,
-                                                vector<key_t>& Key);
+                                                vector<key_t>& Key,
+                                                const bool must_transform);
 
     vector<vector<key_t> > extract_subsets(const vector<vector<key_t> >& FC_Subsets, size_t max_index, const vector<key_t>& Key);
 };
@@ -848,14 +911,14 @@ class Cone {
 // helpers
 
 template <typename Integer>
-vector<vector<Integer> > find_input_matrix(const map<InputType, vector<vector<Integer> > >& multi_input_data,
+Matrix<Integer> find_input_matrix(const InputMap<Integer>& multi_input_data,
                                            const InputType type);
 
 template <typename Integer>
-void insert_zero_column(vector<vector<Integer> >& mat, size_t col);
+void insert_zero_column(Matrix<Integer>& mat, size_t col);
 
 template <typename Integer>
-void insert_column(vector<vector<Integer> >& mat, size_t col, Integer entry);
+void insert_column(Matrix<Integer>& mat, size_t col, Integer entry);
 
 // computes approximating lattice simplex using the A_n dissection of the unit cube
 // q is a rational vector with the denominator in the FIRST component q[0]
@@ -926,14 +989,12 @@ inline void approx_simplex(const vector<Integer>& q, std::list<vector<Integer> >
     }
 }
 
-#ifdef ENFNORMALIZ
 template <>
 inline void approx_simplex(const vector<renf_elem_class>& q,
                            std::list<vector<renf_elem_class> >& approx,
                            const long approx_level) {
     assert(false);
 }
-#endif
 
 // Doubly templated functions
 
@@ -941,8 +1002,8 @@ template <typename Integer>
 template <typename T>
 void Cone<Integer>::modifyCone(InputType input_type, const vector<vector<T> >& Input) {
     // convert to a map
-    map<InputType, vector<vector<T> > > multi_add_input;
-    multi_add_input[input_type] = Input;
+    InputMap<T> multi_add_input;
+    multi_add_input[input_type] = Matrix<T>(Input);
     modifyCone(multi_add_input);
 }
 //---------------------------------------------------------------------------
@@ -951,14 +1012,24 @@ template <typename Integer>
 template <typename T>
 void Cone<Integer>::modifyCone(InputType input_type, const Matrix<T>& Input) {
     // convert to a map
-    map<InputType, vector<vector<T> > > multi_add_input;
-    multi_add_input[input_type] = Input.get_elements();
+    InputMap<T> multi_add_input;
+    multi_add_input[input_type] = Input;
     modifyCone(multi_add_input);
 }
 
+template <typename Integer>
+template <typename T>
+void Cone<Integer>::modifyCone(const InputMapVV<T>& Input) {
+        InputMap<T> multi_add_input;
+        for(auto M = Input.begin(); M != Input.end(); ++M)
+            multi_add_input[M->first] = M->second;
+        modifyCone(multi_add_input);
+}
+
+
 
 #ifdef NMZ_EXTENDED_TESTS
-    void run_additional_tests_libnormaliz();
+void run_additional_tests_libnormaliz();
 #endif
 
 }  // end namespace libnormaliz

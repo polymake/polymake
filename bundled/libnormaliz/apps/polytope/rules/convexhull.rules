@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -16,7 +16,7 @@
 
 object Cone<Rational> {
 
-   rule libnormaliz.convex_hull.primal: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS, CONE_AMBIENT_DIM {
+   rule libnormaliz.convex_hull.primal, libnormaliz.convex_hull: FACETS, LINEAR_SPAN : RAYS | INPUT_RAYS, CONE_AMBIENT_DIM {
       my ($f,$ls) = normaliz_compute($this,from_facets=>0,facets=>1,verbose=>0,skip_long=>0);
       $this->FACETS = $f;
       $this->LINEAR_SPAN = $ls;
@@ -26,7 +26,7 @@ object Cone<Rational> {
    precondition : POINTED;
    incurs FacetPerm;
 
-   rule libnormaliz.convex_hull.dual: RAYS , LINEALITY_SPACE : FACETS | INEQUALITIES, CONE_AMBIENT_DIM {
+   rule libnormaliz.convex_hull.dual, libnormaliz.convex_hull: RAYS , LINEALITY_SPACE : FACETS | INEQUALITIES, CONE_AMBIENT_DIM {
       my ($r) = normaliz_compute($this,from_facets=>1,rays=>1,verbose=>0,skip_long=>0);
       $this->RAYS = $r;
       $this->LINEALITY_SPACE = new Matrix(0, $r->cols);

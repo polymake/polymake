@@ -1,5 +1,6 @@
 {"app": "fan", "embed": "k_skeleton.cc",
  "inst": [
   {"args": ["Rational", "void", "void"], "func": "k_skeleton", "include": ["polymake/Rational.h"], "sig": "k_skeleton:T1.B.x", "tp": "1"},
+  {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "k_skeleton", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "k_skeleton:T1.B.x", "tp": 1},
  null ],
 "version": 3}

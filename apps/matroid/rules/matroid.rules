@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -58,6 +58,34 @@ rule POLYTOPE.VERTICES, POLYTOPE.CONE_AMBIENT_DIM, POLYTOPE.INEQUALITIES, POLYTO
 }
 precondition : CONNECTED;
 weight 1.10;
+
+rule POLYTOPE.EHRHART_POLYNOMIAL : SPARSE_PAVING, N_ELEMENTS, RANK, N_BASES {
+	my $n = $this->N_ELEMENTS;
+	my $r = $this->RANK;
+	my $lambda = binomial($n,$r)-$this->N_BASES;
+	if($lambda == 0){
+		$this->POLYTOPE->EHRHART_POLYNOMIAL = polytope::ehrhart_polynomial_hypersimplex($r,$n);
+	}else{
+		$this->POLYTOPE->EHRHART_POLYNOMIAL = polytope::ehrhart_polynomial_hypersimplex($r,$n) + $lambda*(polytope::ehrhart_polynomial_product_simplicies($r,$n-$r) - polytope::ehrhart_polynomial_minimal_matroid($r,$n));
+	}
+}
+precondition : CONNECTED && SPARSE_PAVING;
+weight 1.20;
+
+rule POLYTOPE.EHRHART_POLYNOMIAL : SPLIT_FLACETS, N_ELEMENTS, RANK {
+	my $n = $this->N_ELEMENTS;
+	my $r = $this->RANK;
+	my $f = polytope::ehrhart_polynomial_hypersimplex($r,$n);
+	for my $i (1..$this->SPLIT_FLACETS->size-1){
+		for my $flat (@{$this->SPLIT_FLACETS->[$i]}){
+			$f-= polytope::ehrhart_polynomial_cuspidal_matroid($r,$n,$flat->size,$r-$i)-polytope::ehrhart_polynomial_hypersimplex($i,$flat->size)*polytope::ehrhart_polynomial_hypersimplex($r-$i,$n-$flat->size);
+		}
+	}
+	$this->POLYTOPE->EHRHART_POLYNOMIAL = $f;
+}
+precondition : CONNECTED && SPLIT;
+weight 1.50;
+
 
 rule RANK : NON_BASES { # should be more expensive than the computation from BASES
    $this->RANK=$this->NON_BASES->[0]->size();
@@ -350,6 +378,41 @@ rule SPLIT : SPLIT_FLACETS, CONNECTED_COMPONENTS, CIRCUITS {
 }
 weight 2.10;
 
+rule POSITROID : SPLIT_FLACETS, CONNECTED_COMPONENTS {
+       my $bool = 1;
+       foreach my $S (@{$this->SPLIT_FLACETS}) {
+               foreach my $flat (@{$S}){
+                       foreach my $comp (@{$this->CONNECTED_COMPONENTS}) {
+                               my $set = $comp*$flat;
+                               next if( $set->size==0 );
+                               my $count = -1;
+                               my $pre = -1;
+                               for my $i (@{$comp}){
+                                       if( $count==-1 && !$set->contains($i) ){
+                                               $pre = $i;
+                                               $count = 0;
+                                               next;
+                                       }
+                                       if( $set->contains($i) && !$set->contains($pre) ){
+                                               ++$count;
+                                       }
+                                       if( $i==$comp->back && !$set->contains($i) && $set->contains($comp->front)){
+                                               ++$count;
+                                       }
+                                       if($count==2 ){
+                                               $bool = 0;
+                                               last;
+                                       }
+                                       $pre  =$i;
+                               }
+                               last if(!$bool);
+                       }
+                       last if(!$bool);
+               }
+       }
+
+       $this->POSITROID = $bool;
+}
 
 
 

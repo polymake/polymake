@@ -1,6 +1,6 @@
 /*****************************************************************************
 *                                                                            *
-*  Vertex-invariants source file for nauty 2.6.                              *
+*  Vertex-invariants source file for nauty 2.7.                              *
 *                                                                            *
 *   Copyright (1989-2013) Brendan McKay.  All rights reserved.               *
 *   Subject to waivers and disclaimers in nauty.h.                           *

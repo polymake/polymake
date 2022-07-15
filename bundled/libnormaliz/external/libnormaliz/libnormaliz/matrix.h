@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -30,11 +30,11 @@
 #include <list>
 #include <iostream>
 #include <string>
-#include <math.h>
+#include <cmath>
 
 #include <libnormaliz/general.h>
 #include <libnormaliz/integer.h>
-#include <libnormaliz/convert.h>
+// #include <libnormaliz/convert.h>
 #include <libnormaliz/vector_operations.h>
 #include "libnormaliz/dynamic_bitset.h"
 // #include <libnormaliz/sublattice_representation.h>
@@ -192,7 +192,8 @@ class Matrix {
     void print(const string& name, const string& suffix) const;         //  writes matrix into name.suffix
     void print_append(const string& name, const string& suffix) const;  // the same, but appends matrix
     void print(std::ostream& out, bool with_format = true) const;       // writes matrix to the stream
-    void pretty_print(std::ostream& out, bool with_row_nr = false)
+    void debug_print(char mark = '*') const;
+    void pretty_print(std::ostream& out, bool with_row_nr = false, bool count_from_one = false)
         const;                     // writes matrix in a nice format to the stream                   // read a row
     size_t nr_of_rows() const;     // returns nr
     size_t nr_of_columns() const;  // returns nc
@@ -235,8 +236,8 @@ class Matrix {
     void resize_columns(size_t nr_cols);
     void Shrink_nr_rows(size_t new_nr_rows);
 
-    vector<Integer> diagonal() const;  // returns the diagonale of this
-                                       // this should be a quadratic matrix
+    vector<Integer> diagonal() const;       // returns the diagonale of this
+                                            // this should be a quadratic matrix
     size_t maximal_decimal_length() const;  // return the maximal number of decimals
                                             // needed to write an entry
 
@@ -302,6 +303,8 @@ class Matrix {
     Matrix transpose() const;  // returns the transpose of this
     void transpose_in_place();
 
+    bool zero_product_with_transpose_of(const Matrix& B);
+
     bool is_diagonal() const;
 
     //---------------------------------------------------------------------------
@@ -314,7 +317,7 @@ class Matrix {
     void reduction_modulo(const Integer& modulo);  // this=this mod scalar
     Integer matrix_gcd() const;                    // returns the gcd of all elem
     vector<Integer> make_prime();                  // each row of this is reduced by its gcd,
-                                   // vector of gcds returned
+                                                   // vector of gcds returned
     void make_cols_prime(size_t from_col, size_t to_col);
     // the columns of this in the specified range are reduced by their gcd
     void simplify_rows(const vector<Integer>& Norm);  // applies v_standardize to the rows
@@ -450,6 +453,15 @@ class Matrix {
                           bool compute_denom = true,
                           bool make_sol_prime = false) const;
 
+    // the sdame with prefabricated work matrices
+    void invert_submatrix(const vector<key_t>& key,
+                          Integer& denom,
+                          Matrix<Integer>& Inv,
+                          Matrix<Integer>& Work,
+                          Matrix<Integer>& unitMat,
+                          bool compute_denom = true,
+                          bool make_sol_prime = false) const;
+
     // find linear form that is constant on the rows
 
     vector<Integer> find_linear_form() const;
@@ -473,8 +485,15 @@ class Matrix {
 
     // for simplicial subcones
 
-    // computes support hyperplanes and volume
+    // computes support hyperplanes and volume, second version with prefabricated work matrices
     void simplex_data(const vector<key_t>& key, Matrix<Integer>& Supp, Integer& vol, bool compute_vol) const;
+    void simplex_data(const vector<key_t>& key,
+                      Matrix<Integer>& Supp,
+                      Integer& vol,
+                      Matrix<Integer>& Work,
+                      Matrix<Integer>& unitMat,
+                      bool compute_vol) const;
+
     // finds subdivision points
     vector<Integer> optimal_subdivision_point() const;
 
@@ -500,7 +519,7 @@ class Matrix {
 
     // try to sort the rows in such a way that the extreme points of the polytope spanned by the rows come first
 
-    size_t extreme_points_first(bool verbose, const vector<Integer> norm = vector<Integer>(0));
+    size_t extreme_points_first(bool verbose, vector<key_t>& perm);
 
     // find an inner point in the cone spanned by the rows of the matrix
 
@@ -526,89 +545,87 @@ class Matrix {
 //                  Matrices of binary expansions
 //---------------------------------------------------------------------------
 
-/* 
+/*
  * Binary matrices contain matrices of nonnegative integers.
  * Each entry is stored "vertically" as the binary expansion of an
  * index (relaive to values) i. The k-th binary digit of i (counting k from 0)
  * is in layer k.
- * 
+ *
  * The "true" value represented by i is values[i] (or mpz_values[i], see below).
  *
  * The goal is to store large matrices of relatively
  * small numbers with as little space as possible.
- * 
+ *
  * Moreover this structure needs as a brifge to nauty.
- * 
+ *
  * It can happen that mpz_class values must be taken into account,
  * even if Integer = long or long long. (See nmz_nauty.cpp,
- * makeMMFromGensOnly). Therefore we have a field mpz_values in 
- * addition to values. Transfer to *this via get_data_mpz. 
+ * makeMMFromGensOnly). Therefore we have a field mpz_values in
+ * addition to values. Transfer to *this via get_data_mpz.
  */
 
 template <typename Integer>
 class BinaryMatrix {
-    
     template <typename>
     friend class BinaryMatrix;
-    
+
     vector<vector<dynamic_bitset> > Layers;
     size_t nr_rows, nr_columns;
     // mpz_class offset;  // to be added to "entries" to get true value
-    
+
     vector<Integer> values;
     vector<mpz_class> mpz_values;
 
-    public:
-       
+   public:
     void insert(long val, key_t i, key_t j);
-    
+
     size_t get_nr_rows() const;
     size_t get_nr_columns() const;
     size_t get_nr_layers() const;
 
     bool test(key_t i, key_t j, key_t k) const;
     long val_entry(size_t i, size_t j) const;
-    Matrix<Integer> get_value_mat() const; 
+    Matrix<Integer> get_value_mat() const;
     Matrix<mpz_class> get_mpz_value_mat() const;
-    
+
     const vector<vector<dynamic_bitset> >& get_layers() const;
     const vector<Integer>& get_values() const;
     const vector<mpz_class>& get_mpz_values() const;
-    
+
     BinaryMatrix();
     BinaryMatrix(size_t m, size_t n);
     BinaryMatrix(size_t m, size_t n, size_t height);
     BinaryMatrix reordered(const vector<key_t>& row_order, const vector<key_t>& col_order) const;
     bool equal(const BinaryMatrix& Comp) const;
-    
-    void get_data_mpz(BinaryMatrix<mpz_class>&  BM_mpz);
+
+    void get_data_mpz(BinaryMatrix<mpz_class>& BM_mpz);
     void set_values(const vector<Integer>& V);
-    
+
     void pretty_print(std::ostream& out, bool with_row_nr = false) const;
 };
 
 template <typename Integer>
-bool BM_compare(const BinaryMatrix<Integer>& A, const BinaryMatrix<Integer>& B){
-    if(A.get_nr_rows() < B.get_nr_rows())
-            return true;
-    if(A.get_nr_rows() > B.get_nr_rows())
-            return false;
-    if(A.get_nr_columns() < B.get_nr_columns())
-            return true;
-    if(A.get_nr_columns() > B.get_nr_columns())
-            return false;
-    if(A.get_values() < B.get_values())
-            return true;
-    if(A.get_values() > B.get_values())
-            return false;
-    if(A.get_mpz_values() < B.get_mpz_values())
-            return true;
-    if(A.get_mpz_values() > B.get_mpz_values())
-            return false;
-     if(A.get_layers() < B.get_layers())
-         return true;
-     return false;
-} 
+bool BM_compare(const BinaryMatrix<Integer>& A, const BinaryMatrix<Integer>& B) {
+    if (A.get_nr_rows() < B.get_nr_rows())
+        return true;
+    if (A.get_nr_rows() > B.get_nr_rows())
+        return false;
+    if (A.get_nr_columns() < B.get_nr_columns())
+        return true;
+    if (A.get_nr_columns() > B.get_nr_columns())
+        return false;
+    if (A.get_values() < B.get_values())
+        return true;
+    if (A.get_values() > B.get_values())
+        return false;
+    if (A.get_mpz_values() < B.get_mpz_values())
+        return true;
+    if (A.get_mpz_values() > B.get_mpz_values())
+        return false;
+    if (A.get_layers() < B.get_layers())
+        return true;
+    return false;
+}
 // class end *****************************************************************
 //                  LLL with returned transformation matrices
 //---------------------------------------------------------------------------
@@ -644,7 +661,7 @@ Matrix<Number> LLL_red(const Matrix<Number>& U, Matrix<Integer>& T, Matrix<Integ
             /* cout << "MMMMM " << i << " " << j << " " << M[i][j] << endl;
             cout << i << "---" << G[i];
             cout << j << "---" << G[j];*/
-            if (isnan(M[i][j])) {
+            if (std::isnan(M[i][j])) {
                 T = Tinv = Matrix<Integer>(U.nr_of_rows());
                 return U;
             }
@@ -719,8 +736,9 @@ vector<vector<T> > to_matrix(const vector<T>& v) {
     return mat;
 }
 
-template <typename Integer>
-Matrix<Integer> readMatrix(const string project);
+// For
+// Matrix<Integer> readMatrix(const string project);
+// see inout.h
 
 //---------------------------------------------------------------------------
 //                  Conversion between integer types
@@ -760,6 +778,11 @@ void convert(Matrix<ToType>& to_mat, const Matrix<FromType>& from_mat) {
 // if a set occurs more than once, only the last instance is recognized as maximal
 template <typename IncidenceVector>
 void maximal_subsets(const vector<IncidenceVector>& ind, IncidenceVector& is_max_subset);
+
+// computes the incidence of LinForms withz Gens ijn the following sense:
+// Incidence[i][j] = 1 <==> scalar product(LinForms[i], Gnes[j]) == 0
+template <typename Integer>
+void makeIncidenceMatrix(vector<dynamic_bitset>& Incidence, const Matrix<Integer>& Gens, const Matrix<Integer>& LinForms);
 
 }  // namespace libnormaliz
 

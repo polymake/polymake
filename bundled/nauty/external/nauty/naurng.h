@@ -18,8 +18,8 @@
 extern "C" {
 #endif
 
-void ran_init(long seed);
-long ran_nextran(void);
+extern void ran_init(long seed);
+extern long ran_nextran(void);
 
 #ifdef __cplusplus
 }

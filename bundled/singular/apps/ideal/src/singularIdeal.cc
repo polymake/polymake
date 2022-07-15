@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -87,6 +87,14 @@ public:
    SingularIdeal_impl(const ::ideal i, const idhdl r)
    {
       singIdeal = idCopy(i);
+      singRing = r;
+   }
+
+   // take ownership of singular ideal object
+   // it will be deleted in the destructor
+   SingularIdeal_impl(const ::ideal i, const idhdl r, std::true_type)
+   {
+      singIdeal = i;
       singRing = r;
    }
 
@@ -179,9 +187,7 @@ public:
    {
       check_ring(singRing); 
       ::ideal res = id_Head(singIdeal,IDRING(singRing));
-      SingularIdeal_wrap* initial = new SingularIdeal_impl(res,singRing);
-      id_Delete(&res,IDRING(singRing));
-      return initial;
+      return new SingularIdeal_impl(res, singRing, std::true_type());
    }
 
    // Compute the radical of an ideal using primdec.lib from Singular
@@ -348,9 +354,7 @@ public:
       check_ring(singRing);
       SingularIdeal_impl toBeReduced(ideal, singRing);
       ::ideal q = kNF(singIdeal, nullptr, toBeReduced.singIdeal);
-      SingularIdeal_impl reduced(q, singRing);
-      id_Delete(&q,IDRING(singRing));
-      return reduced.polynomials();
+      return SingularIdeal_impl(q, singRing, std::true_type()).polynomials();
    }
 
    Polynomial<> reduce(const Polynomial<>& p) const
@@ -410,7 +414,7 @@ public:
 
 
 
-std::pair<std::unique_ptr<SingularIdeal_wrap>, int> build_slack_ideal_minors(const Matrix<Rational>& slackMatrix, Int dim)
+std::pair<Array<Polynomial<>>, int> build_slack_ideal_minors(const Matrix<Rational>& slackMatrix, Int dim)
 {
    const int r = safe_cast(slackMatrix.rows());
    const int c = safe_cast(slackMatrix.cols());
@@ -439,7 +443,7 @@ std::pair<std::unique_ptr<SingularIdeal_wrap>, int> build_slack_ideal_minors(con
 
    // The parameters may still be changed.
    ::ideal singMinor = getMinorIdeal(variableSlackMatrix, minorrk, 0, "Bareiss", nullptr, true);
-   return { std::make_unique<SingularIdeal_impl>(singMinor, singRingHdl), nvars };
+   return { SingularIdeal_impl(singMinor, singRingHdl, std::true_type()).polynomials(), nvars };
 }
 
 BigObject slack_ideal_non_saturated(BigObject P)
@@ -450,7 +454,7 @@ BigObject slack_ideal_non_saturated(BigObject P)
    const auto minor_wrap = build_slack_ideal_minors(slackMatrix, dim);
    return BigObject("Ideal",
                     "N_VARIABLES", minor_wrap.second,
-                    "GENERATORS", minor_wrap.first->polynomials());
+                    "GENERATORS", minor_wrap.first);
 }
 
 } // end namespace singular

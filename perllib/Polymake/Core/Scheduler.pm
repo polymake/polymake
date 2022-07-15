@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -157,6 +157,8 @@ sub copy4schedule {
 }
 
 sub perm_path { $_[0]->rule->perm_path }
+
+*all_to_disable = \&Rule::all_to_disable;
 
 sub without_permutation {
    my ($self) = @_;
@@ -1070,14 +1072,7 @@ sub gather_more_rules {
          if (defined(my $explain_failure = rule_status($self, $object, $rule))) {
             dbg_print( "  infeasible: ", $rule->header, ": $explain_failure" ) if $explain_failure;
             return if $rule == $self->final;
-            push @infeasible, $rule;
-            $self->run->{$rule} = Rule::Exec::infeasible;
-            if (defined($rule->with_permutation)) {
-               foreach ($rule->with_permutation, @{$rule->with_permutation->actions}) {
-                  push @infeasible, $_;
-                  $self->run->{$_} = Rule::Exec::infeasible;
-               }
-            }
+            push @infeasible, grep { $self->run->{$_} = Rule::Exec::infeasible; 1 } $rule->all_to_disable;
             next RULE;
 
          } else {
@@ -1691,7 +1686,7 @@ my $disabled_rules;
 
 sub temp_disable_rules {
    unless (defined $disabled_rules) {
-      my $further_rule_filter=$viable_rules;
+      my $further_rule_filter = $viable_rules;
       local with ($Scope->locals) {
          local scalar $disabled_rules = { };
          local scalar $viable_rules = sub {
@@ -1700,11 +1695,8 @@ sub temp_disable_rules {
          };
       }
    }
-   foreach my $rule (@_) {
-      $disabled_rules->{$rule}=1;
-      if (defined($rule->with_permutation)) {
-         $disabled_rules->{$_}=1 for ($rule->with_permutation, @{$rule->with_permutation->actions});
-      }
+   foreach my $rule (map { $_->all_to_disable } @_) {
+      $disabled_rules->{$rule} = 1;
    }
 }
 ####################################################################################

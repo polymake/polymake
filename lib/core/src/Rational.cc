@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -265,6 +265,43 @@ Rational pow(const Rational& base, long exp)
 }
 
 }
+
+
+// If the C++ library that was used to build the GMP C++ bindings is different
+// from the one that is used for polymake several bundled libraries might break
+// because there are no output/input operators for the GMP C++ types.
+// These signatures replicate what is present in gmp.h but when building this
+// with a different C++ library this will produce slightly different symbols
+// (with / without an extra ::__1)
+//
+// This is enabled from the configure scripts of bundled/{libnormaliz,sympol}
+
+#ifdef PM_MIXED_OSTREAM
+
+std::ostream& operator<< (std::ostream &s, mpz_srcptr i) {
+   pm::Integer pi;
+   pi.copy_from(i);
+   return s << pi;
+}
+std::ostream& operator<< (std::ostream &s, mpq_srcptr r) {
+   pm::Rational pr;
+   pr.copy_from(r);
+   return s << pr;
+}
+std::istream& operator>> (std::istream &s, mpz_ptr i) {
+   pm::Integer pi;
+   s >> pi;
+   mpz_set(i, pi.get_rep());
+   return s;
+}
+std::istream& operator>> (std::istream &s, mpq_ptr r) {
+   pm::Rational pr;
+   s >> pr;
+   mpq_set(r, pr.get_rep());
+   return s;
+}
+
+#endif
 
 // Local Variables:
 // mode:C++

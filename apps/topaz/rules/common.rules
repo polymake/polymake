@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -507,7 +507,12 @@ weight 4.10;
 rule MINIMAL_NON_FACES : HASSE_DIAGRAM.ADJACENCY, HASSE_DIAGRAM.DECORATION, HASSE_DIAGRAM.INVERSE_RANK_MAP, HASSE_DIAGRAM.TOP_NODE, HASSE_DIAGRAM.BOTTOM_NODE {
    $this->MINIMAL_NON_FACES=minimal_non_faces($this->HASSE_DIAGRAM);
 }
-weight 4.10 : DIM { $this->DIM <= 10 ? [0,0] : [4,10] }
+weight 4.10;
+precondition : DIM { $this->DIM <= 10; }
+# this is not really a strict precondition for the algorithm
+# it used to be implemented as a dynamic weight but those don't work as expected (#7)
+# and this causes the lawler client to run for some medium sized (5-dim) examples where it
+# is a lot slower than the one via the hasse-diagram
 
 
 # This implements an old algorithm described by Lawler:
@@ -517,9 +522,15 @@ weight 4.10 : DIM { $this->DIM <= 10 ? [0,0] : [4,10] }
 # See also Chapter 2 of "Hypergraphs", C. Berge, North-Holland, Amsterdam, 1989
 
 rule MINIMAL_NON_FACES : FACETS, DIM, N_VERTICES {
-   $this->MINIMAL_NON_FACES=lawler_minimal_non_faces($this->FACETS, $this->N_VERTICES);
+   my $mnf = lawler_minimal_non_faces($this->FACETS, $this->N_VERTICES);
+   $this->MINIMAL_NON_FACES = new IncidenceMatrix($mnf->size > 0 ? @$mnf : 0, $this->N_VERTICES);
 }
-weight 4.10 : DIM { $this->DIM > 10 ? [0,0] : [4,10] }
+weight 4.10;
+precondition : DIM { $this->DIM > 10; }
+# this is not really a strict precondition for the algorithm
+# it used to be implemented as a dynamic weight but those don't work as expected (#7)
+# and this causes the lawler client to run for some medium sized (5-dim) examples where it
+# is a lot slower than the one via the hasse-diagram
 
 
 rule LOCALLY_STRONGLY_CONNECTED : {

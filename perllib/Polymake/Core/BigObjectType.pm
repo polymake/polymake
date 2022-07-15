@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -799,32 +799,26 @@ sub override_rule {
 ####################################################################################
 sub find_rule_label {
    my ($self, $pattern)=@_;
-   $self->application->prefs->find_label($pattern)
+   $self->application->find_rule_label($pattern)
+}
+
+sub all_production_rules {
+   my ($self) = @_;
+   map { @{$_->production_rules} } $self, @{$self->linear_isa}
 }
 
 sub find_rules_by_pattern {
-   my ($self, $pattern)=@_;
-   if ($pattern =~ /^ $hier_id_re $/xo) {
-      # specified by label
-      my $label=$self->find_rule_label($pattern)
-        or die "unknown label \"$pattern\"\n";
-      grep { $self->isa($_->defined_for) } $label->list_all_rules
-
-   } elsif ($pattern =~ /:/) {
-      # specified by header:
-      Rule::header_search_pattern($pattern);
-      grep { $_->header =~ $pattern } map { @{$_->production_rules} } $self, @{$self->linear_isa}
-
-   } else {
-      die "invalid rule search pattern: expected a label or a complete header in the form \"OUTPUT : INPUT\"\n";
-   }
+   my ($self, $pattern) = @_;
+   Rule::find_by_pattern($self, $pattern, sub { $self->isa($_->defined_for) })
 }
 
 sub disable_rules {
-   my @rules=&find_rules_by_pattern
+   my ($self, $pattern) = @_;
+   my @rules = $self->find_rules_by_pattern($pattern)
      or die "no matching rules found\n";
    Scheduler::temp_disable_rules(@rules);
 }
+
 ####################################################################################
 sub add_method_rule {
    my ($self, $header, $code, $name)=@_;
@@ -1332,10 +1326,11 @@ sub create_augmentation {
 }
 ####################################################################################
 sub find_rule_label {
-   &BigObjectType::find_rule_label // do {
-      my $pure_type_app=$_[0]->pure_type->application;
-      if ($pure_type_app != $_[0]->application) {
-         $pure_type_app->prefs->find_label($_[1])
+   my ($self, $pattern) = @_;
+   $self->application->find_rule_label($pattern) // do {
+      my $pure_type_app = $self->pure_type->application;
+      if ($pure_type_app != $self->application) {
+         $pure_type_app->find_rule_label($pattern)
       } else {
          undef
       }

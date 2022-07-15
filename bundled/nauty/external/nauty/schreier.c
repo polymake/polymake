@@ -155,7 +155,11 @@ static permnode
 	    free(p);
     }
 
+#if FLEX_ARRAY_OK
+    p = (permnode*) malloc(sizeof(permnode)+n*sizeof(int)); 
+#else
     p = (permnode*) malloc(sizeof(permnode)+(n-2)*sizeof(int)); 
+#endif
 
     if (p == NULL)
     {

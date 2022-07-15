@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -130,8 +130,8 @@ RETRY:
          }
 
          ($version) = $output =~ /SoPlex version ([\d.]+)/;
-         if (Polymake::Configure::v_cmp($version, "2.2.0") < 0) {
-            die "SoPlex version is $version. Minimal required version is 2.2.0\n",
+         if (Polymake::Configure::v_cmp($version, "4.0.0") < 0) {
+            die "SoPlex version is $version. Minimal required version is 4.0.0\n",
                 "Full version string:\n$output\n\n";
          }
          ($gmp) = $output =~ /\[rational: ([-\d\w\s.]+)\]/;

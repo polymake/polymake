@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -109,36 +109,9 @@ int main() {
 
 
    if ($UseBundled) {
-      # check GMP C++ bindings (only for bundled sympol)
-      my $build_error=Polymake::Configure::build_test_program(<<'---', LIBS => "$Polymake::Configure::ARCHFLAGS -lgmpxx -lgmp");
-#include <cstddef>
-#include <gmpxx.h>
-#include <iostream>
-int main() {
-   mpq_class x(7,3);
-   std::cout << __GNU_MP_VERSION << '.' << __GNU_MP_VERSION_MINOR << '.' << __GNU_MP_VERSION_PATCHLEVEL << std::flush;
-   return 0;
-}
----
-      if ($?==0) {
-         my $is_version=Polymake::Configure::run_test_program();
-         if ($?==0) {
-            if (Polymake::Configure::v_cmp($is_version,"4.2.0")<0) {
-               die "The GNU Multiprecision Library (GMP) C++ bindings installed at your site are of version $is_version\n",
-                   "while 4.2.0 is the minimal required version.\n",
-                   "Since a more recent GMP installation was found, it was probably configured without --enable-cxx .\n";
-            }
-         } else {
-            die "Could not run a test program linked to the C++ version of the GNU Multiprecision Library (GMP).\n",
-                "Probably the shared library libgmpxx.$Config::Config{dlext} is missing or of an incompatible machine type.\n";
-         }
-      } else {
-         die "Could not compile a test program checking for C++ bindings of the GNU Multiprecision Library (GMP).\n",
-             "The most probable reasons are that a gmpxx package is missing, lacking the developer's subpackage \n",
-             "or GMP was configured without C++ support (--enable-cxx).\n",
-             "Please refer to the installation instructions at $Wiki/howto/install.\n",
-             "The complete error log follows:\n", $build_error;
-      }
+      Polymake::Configure::check_gmpxx();
+
+      Polymake::Configure::check_gmpxx_ostream();
    }
 
    if ($UseBundled) {

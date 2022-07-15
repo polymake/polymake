@@ -1,7 +1,7 @@
 /*****************************************************************************
-* This is the header file for versions 2.5 of nautinv.c.                     *
+* This is the header file for versions 2.7 of nautinv.c.                     *
 *                                                                            *
-*   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
+*   Copyright (1984-2018) Brendan McKay.  All rights reserved.               *
 *   Subject to the waivers and disclaimers in nauty.h.                       *
 *                                                                            *
 *   CHANGE HISTORY                                                           *

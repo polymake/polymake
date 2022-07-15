@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -90,17 +90,19 @@ bool split_compatibility_check(BigObject m)
 
    Array<Int> rk(components.size());
    Int rank = 0;
-   for (auto it = entire(circuits); !it.at_end(); ++it) {
-      for (Int i = 0; i < components.size(); ++i) {
-         if (components[i].contains(it->front())) {
-            if (rk[i] < it->size()-1)
-               rk[i]= it->size()-1;
-         }
-      }
+   for (Int i = 0; i < components.size(); ++i) {
+       auto set = components[i];
+       for (auto it = entire(circuits); !it.at_end(); ++it) {
+           if (incl(*it,set)<1) {
+               set-= it->front();
+           }
+       }
+       rk[i] = set.size();
    }
    for (Int i = 0; i < components.size(); ++i) {
       rank += rk[i];
    }
+
    for (Int f_rk = 0; f_rk < rank; ++f_rk) {
       const Array<Set<Int>> F = sf[f_rk];
       for (Int g_rk = 0; g_rk <= f_rk; ++g_rk) {
@@ -115,17 +117,17 @@ bool split_compatibility_check(BigObject m)
             const Int val1 = f_rk + g_rk - rk[i];
             for (Int g = 0; g < G.size(); ++g) {
                if (!(G[g]*components[i]).empty()) {
-                  if (f_rk == g_rk && f == g) {
+		  if (f_rk == g_rk && f == g) {
                      break;
                   }
                   if ((G[g]*F[f]).size() <= val1)
-                     break;
+                     continue;
                   if (F[f].size()-(G[g]*F[f]).size() <= val2)
-                     break;
+                     continue;
                   if ( G[g].size()-(G[g]*F[f]).size() <= -val2)
-                     break;
+                     continue;
                   if (n-(G[g]+F[f]).size() <= -val1)
-                     break;
+                     continue;
                   return false;
                } else {
                    return false; // splits in distinct components

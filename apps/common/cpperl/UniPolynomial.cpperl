@@ -65,5 +65,6 @@
   {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>", "Int"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "_ne", "sig": "_ne:O.X.X"},
   {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>", "Int"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "_eq", "sig": "_eq:O.X.X"},
   {"args": ["UniPolynomial<Rational, Int>", "perl::Canned<const Vector<Integer>&>", "perl::Canned<const pm::Series<long, true>&>"], "include": ["polymake/Integer.h", "polymake/Rational.h", "polymake/RationalFunction.h", "polymake/Set.h", "polymake/Vector.h"], "op": "new", "sig": "new.X.X"},
+  {"args": ["perl::Canned<UniPolynomial<Rational, Int>&>", "perl::Canned<const UniPolynomial<Rational, Int>&>"], "include": ["polymake/Rational.h", "polymake/RationalFunction.h"], "op": "Sub", "ret": "lvalue", "sig": "Sub:O.X1.X"},
  null ],
 "version": 3}

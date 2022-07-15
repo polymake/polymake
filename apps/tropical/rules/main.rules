@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -72,14 +72,16 @@ declare object Cycle<Addition> : fan::PolyhedralComplex<Rational>;
 # > $C=new Hypersurface<Min>(MONOMIALS=>[ [2,0,0],[1,1,0],[0,2,0],[1,0,1],[0,1,1],[0,0,2] ], COEFFICIENTS=>[6,5,6,5,5,7]);
 declare object Hypersurface<Addition> : Cycle<Addition>;
 
-# This encodes a patchworking structure on a hypersurface.
+# This encodes a "combinatorial" patchworking structure on a hypersurface.
+# That is, it requires the support of the dual triangulation to be the full set of lattice points in a scaled simplex.
+# See Joswig and Vater, ICMS 2020, doi:10.1007/978-3-030-52200-1_20.
 declare object Patchwork;
 
 # Abstract tropical curve, possibly with marked edges, edge lengths, vertex weights.
 # Additional functionality for moduli space computations.
 # @tparam Scalar Edge length type.
 # @example We construct a tropical quartic curve of genus 3.
-# Edge labels as in Fig. 4 (000) on Brodsky et al., Res. Math. Sci (2015).
+# Edge labels as in Fig. 4 (000) on Brodsky et al., Res. Math. Sci (2015), doi:10.1186/s40687-014-0018-1.
 # > ($u,$v,$w,$x,$y,$z)=0..5;
 # > $skeleton = new IncidenceMatrix([[$u,$v,$x],[$v,$w,$z],[$u,$w,$y],[$x,$y,$z]]);
 # > $quartic = new tropical::Curve(EDGES_THROUGH_VERTICES=>$skeleton, EDGE_LENGTHS=>[1,2,3,4,5,6]);

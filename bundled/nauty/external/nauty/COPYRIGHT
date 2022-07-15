@@ -1,12 +1,13 @@
 This is the license for the software package Nauty and
 Traces, package versions 2.6r3 and later.
 
-Four categories of software are included in the package:
-A. All files not listed as B-D below, copyright Brendan McKay (1984-)
+Five categories of software are included in the package:
+A. All files not listed as B-E below, copyright Brendan McKay (1984-)
 B. Files traces.h, traces.c and dretodot.c, copyright Adolfo Piperno (2008-)
 C. File watercluster2.c, copyright Gunnar Brinkmann (2009-)
-D. Files planarity.h and planarity.c, copyright Magma project,
-   University of Sydney
+D. Files planarity.h and planarity.c, copyright Magma project.
+E. Files nautycliquer.h and nautycliquer.c, copyright to Sampo
+   Niskanen and Patric Östergård.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this software except in compliance with the License.
@@ -24,6 +25,7 @@ Brendan McKay: Australian National University; Brendan.McKay@anu.edu.au
 Adolfo Piperno: University of Rome "Sapienza"; piperno@di.uniroma1.it
 Gunnar Brinkmann: University of Ghent; Gunnar.Brinkmann@UGent.be
 Magma Administration: University of Sydney; admin@maths.usyd.edu.au
+Patric Ostergard: Aalto Univerity; patric.ostergard@aalto.fi
 
 ---END-OF-FORMAL-COPYRIGHT-NOTICE---
 

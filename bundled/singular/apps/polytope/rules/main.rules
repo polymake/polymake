@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -22,13 +22,3 @@ rule SLACK_IDEAL.NON_SATURATED.GENERATORS, SLACK_IDEAL.NON_SATURATED.N_VARIABLES
 
 }
 
-object SlackIdeal {
-   
-   rule GENERATORS, N_VARIABLES : NON_SATURATED.GENERATORS, NON_SATURATED.N_VARIABLES {
-      my $m = new Polynomial(ones_vector(1), ones_matrix<Int>(1,$this->NON_SATURATED->N_VARIABLES));
-      my $sat = $this->NON_SATURATED->SATURATION(new Array<Polynomial>([$m]));
-      $this->GENERATORS = $sat->GENERATORS;
-      $this->N_VARIABLES = $this->NON_SATURATED->N_VARIABLES;
-   }
-
-}

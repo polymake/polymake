@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,7 @@ namespace pm { namespace perl { namespace glue {
 namespace {
 
 Perl_check_t def_ck_CONST, def_ck_ENTERSUB, def_ck_LEAVESUB, def_ck_LEAVEEVAL,
-   def_ck_GV, def_ck_RV2SV, def_ck_RV2AV, def_ck_RV2HV, def_ck_RV2CV, def_ck_ANONCODE, def_ck_PRINT, def_ck_SYSTEM;
+   def_ck_GV, def_ck_RV2SV, def_ck_RV2AV, def_ck_RV2HV, def_ck_RV2CV, def_ck_ANONCODE, def_ck_PRINT, def_ck_SYSTEM, def_ck_COMPLEMENT;
 Perl_ppaddr_t def_pp_GV, def_pp_GVSV, def_pp_AELEMFAST, def_pp_PADAV, def_pp_SPLIT, def_pp_LEAVESUB, def_pp_ANONCODE,
               def_pp_ENTEREVAL, def_pp_REGCOMP, def_pp_NEXTSTATE, def_pp_DBSTATE, def_pp_ANONLIST, def_pp_SASSIGN, def_pp_PRINT;
 
@@ -1615,7 +1615,7 @@ OP* intercept_ck_negate(pTHX_ OP* o)
    return o;
 }
 
-OP* intercept_ck_anonlist(pTHX_ OP* o)
+OP* intercept_ck_anonlist_complement(pTHX_ OP* o)
 {
    OP* a = cUNOPo->op_first;
    if (a->op_type == OP_ANONLIST && (a->op_flags & OPf_SPECIAL)) {
@@ -1624,10 +1624,10 @@ OP* intercept_ck_anonlist(pTHX_ OP* o)
          OP* new_op = construct_const_creation_optree(aTHX_ op_descr, a, false);
          clear_bit_flags(o->op_flags, OPf_KIDS);
          FreeOp(o);
-         o = new_op;
+         return new_op;
       }
    }
-   return o;
+   return def_ck_COMPLEMENT(aTHX_ o);
 }
 
 OP* pp_print_bool(pTHX)
@@ -2370,7 +2370,7 @@ OP* pp_declare_var(pTHX_ unsigned int imp_flag, unsigned int optype)
    const bool allow_redeclare=get_lex_flags(aTHX) & LexCtxAllowReDeclare;
    set_import_flag(aTHX_ (GV*)TOPs, imp_flag, allow_redeclare || (PL_op->op_private & OPpLVAL_INTRO));
    if ((PL_op->op_flags & OPf_WANT) == OPf_WANT_VOID) {
-      POPs;
+      (void)POPs;
       PUTBACK;
       return NORMAL;
    }
@@ -4018,7 +4018,7 @@ PPCODE:
             Perl_croak(aTHX_ "subroutine reference expected");
          AV* op_descr = newAV();
          SV* reset_sv = newSVuv((UV)PL_check[OP_COMPLEMENT]);
-         SV* catch_sv = newSVuv((UV)&intercept_ck_anonlist);
+         SV* catch_sv = newSVuv((UV)&intercept_ck_anonlist_complement);
          av_extend(op_descr, intercept_op_last);
          av_store(op_descr, intercept_op_code, newSViv(OP_COMPLEMENT));
          av_store(op_descr, intercept_op_subref, SvREFCNT_inc_simple_NN(subr));
@@ -4456,6 +4456,7 @@ BOOT:
    def_ck_ANONCODE  = PL_check[OP_ANONCODE];
    def_ck_PRINT     = PL_check[OP_PRINT];
    def_ck_SYSTEM    = PL_check[OP_SYSTEM];
+   def_ck_COMPLEMENT= PL_check[OP_COMPLEMENT];
    def_kw_plugin = PL_keyword_plugin;
 
    pm::perl::ops::init_globals(aTHX);

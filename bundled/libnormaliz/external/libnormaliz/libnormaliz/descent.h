@@ -1,6 +1,6 @@
 /*
  * Normaliz
- * Copyright (C) 2007-2019  Winfried Bruns, Bogdan Ichim, Christof Soeger
+ * Copyright (C) 2007-2022  W. Bruns, B. Ichim, Ch. Soeger, U. v. d. Ohe
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  * As an exception, when this program is distributed through (i) the App Store
  * by Apple Inc.; (ii) the Mac App Store by Apple Inc.; or (iii) Google Play
@@ -33,6 +33,7 @@
 #include <libnormaliz/matrix.h>
 #include <libnormaliz/sublattice_representation.h>
 #include "libnormaliz/dynamic_bitset.h"
+#include "libnormaliz/automorph.h"
 
 namespace libnormaliz {
 using std::map;
@@ -40,41 +41,65 @@ using std::pair;
 using std::vector;
 
 template <typename Integer>
+class IsoType;
+
+template <typename Integer>
+class OrbitInfo {
+   public:
+    vector<key_t> FacetInOrbit;  // the selected facet in the orbit
+    vector<size_t> SizeOfOrbit;
+    vector<Integer> HeightFixPointOverFacet;  // the height of the fix_point
+    vector<Integer> fix_point;
+    mpz_class deg_fix_point;
+};
+
+template <typename Integer>
 class DescentSystem;
 
 template <typename Integer>
 class DescentFace {
-   public:
+    template <typename>
+    friend class DescentSystem;
+
+    bool dead;  // to be skipped in next round.
     // size_t dim; // cone dimension of the face
     mpq_class coeff;
-    // bool facets_computed;
-    // bool multiplicity_computed;
-    bool simplicial;
+    // OrbitInfo<Integer>* Orbits;
+    // bool simplicial;
     size_t tree_size;  // the number of paths in the tree from top to to this face
     // dynamic_bitset own_facets; // own_facets[i]==true <==> SuppHyps[i] contains this face
 
-    // libnormaliz::key_t selected_gen; // the generator of C selected for descent
-    // vector<dynamic_bitset> opposite_facets; // facets opposite to the selected generator,
-    // identified by the SuppsHyps containing them
-    // vector<Integer> heights; // over opposite  facets
-    // vector<key_t> CuttingFacet; // the facets of C cutting out the opposite facets
-
+    dynamic_bitset FacetsOfFace;  // an indicator picking for each facet F of *this a facet of the cone
+                                  // cutting out F from *this
+#ifdef NMZ_HASHLIBRARY
+    vector<unsigned char> ERC_Hash;
+#else
+    vector<long> ERC_Hash;
+#endif
+   public:
     DescentFace();
     // DescentFace(const size_t dim_given, const dynamic_bitset& facets_given);
-    void compute(DescentSystem<Integer>& FF,
-                 size_t dim,
+
+    void compute(DescentSystem<Integer>& FF,  // comments see cpp
+                 const size_t dim,
                  const dynamic_bitset& own_facets,
                  vector<key_t>& mother_key,
-                 vector<dynamic_bitset>& opposite_facets,
                  vector<key_t>& CuttingFacet,
-                 vector<Integer>& heights,
-                 key_t& selected_gen);
+                 list<pair<dynamic_bitset, DescentFace<Integer> > >& Children);
+
+    void compute_with_orbits(DescentSystem<Integer>& FF,
+                             const size_t dim,
+                             const dynamic_bitset& signature,
+                             list<pair<dynamic_bitset, DescentFace<Integer> > >& Children);
 };
 
 template <typename Integer>
 class DescentSystem {
-   public:
+    template <typename>
+    friend class DescentFace;
+
     bool verbose;
+    bool facet_based;
 
     Matrix<Integer> Gens;
     Matrix<Integer> SuppHyps;
@@ -83,6 +108,8 @@ class DescentSystem {
     vector<mpz_class> GradGens_mpz;
 
     bool SimplePolytope;
+    bool exploit_automorphisms;
+    bool strict_type_check;
 
     size_t dim;
     size_t nr_supphyps;
@@ -98,15 +125,29 @@ class DescentSystem {
     map<dynamic_bitset, DescentFace<Integer> > OldFaces;
     map<dynamic_bitset, DescentFace<Integer> > NewFaces;
 
+    list<OrbitInfo<Integer> > OldFacesOrbitInfos;
+
     vector<size_t> OldNrFacetsContainingGen;
     vector<size_t> NewNrFacetsContainingGen;
 
     mpq_class multiplicity;
 
-    DescentSystem(const Matrix<Integer>& Gens, const Matrix<Integer>& SuppHyps, const vector<Integer>& Grading);
+    /* mpq_class mult_simp( const dynamic_bitset&  SimpInds, const vector<key_t>& SimpKeys,
+                            const Sublattice_Representation<Integer>& sub_latt,
+                            const vector<Integer>&  selected_apex, const mpz_class& deg_selected_apex) const;
+    void find_iso_type_and_orbit_data(IsoType<Integer>& IT, const dynamic_bitset& GensInd,
+                                      DescentFace<Integer>& F, OrbitInfo<Integer>& MyOrbits);*/
+
+    void collect_old_faces_in_iso_classes(size_t& nr_iso_classes);
+    void make_orbits_global();
+
+   public:
+    DescentSystem(Matrix<Integer>& Gens, Matrix<Integer>& SuppHyps, vector<Integer>& Grading, bool swap_allowed = true);
     DescentSystem();
     void compute();
     bool set_verbose(bool onoff);
+    void setExploitAutoms(bool exploit);
+    void setStrictIsoTypeCheck(bool check);
     mpq_class getMultiplicity();
 };
 

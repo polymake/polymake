@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -16,7 +16,7 @@
 */
 
 #include "polymake/client.h"
-#include "polymake/polytope/hypersimplex.h"
+#include "polymake/polytope/matroid_polytopes.h"
 #include "polymake/Rational.h"
 #include "polymake/Matrix.h"
 #include "polymake/Array.h"

@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -449,6 +449,11 @@ property SPLIT_FLACETS : Array<Array<Set>>;
 # @category Advanced properties
 # Whether all SPLIT_FLACETS in the matroid are compatible.
 property SPLIT : Bool;
+
+# @category Advanced properties
+# Whether the matroid is a positroid.
+# Warning: This property is not preserved under matroid isomorphisms.
+property POSITROID : Bool;
 
 # @category Advanced properties
 # The h-vector of a matroid

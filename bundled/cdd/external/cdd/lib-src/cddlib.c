@@ -1,6 +1,5 @@
 /* cddlib.c: cdd library  (library version of cdd)
    written by Komei Fukuda, fukuda@math.ethz.ch
-   Version 0.94h, April 30, 2015
    Standard ftp site: ftp.ifor.math.ethz.ch, Directory: pub/fukuda/cdd
 */
 
@@ -32,7 +31,6 @@
 */
 
 #include "setoper.h" 
-  /* set operation library header (Ver. June 1, 2000 or later) */
 #include "cdd.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -320,7 +318,6 @@ dd_boolean dd_DDInputAppend(dd_PolyhedraPtr *poly, dd_MatrixPtr M,
 
   if ((*poly)->child!=NULL) dd_FreeDDMemory(*poly);
   dd_AppendMatrix2Poly(poly, M);
-  (*poly)->representation=dd_Inequality;
   found=dd_DoubleDescription(*poly, &error);
   *err=error;
   return found;

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2021
+/* Copyright (c) 1997-2022
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -118,7 +118,57 @@ bool check_flat_axiom_impl(const Array<SetType>& F, bool verbose = false)
    return check_hyperplane_axiom_impl(H, verbose);
 }
 
-} }
+template<typename Container>
+bool check_circuits_axiom_impl(const Container& circuits, bool verbose = false){
+	/*
+	   The circuits axioms are:
+	   (C1) The empty set is not in C;
+	   (C2) If c, c' are in C, and c is a subset of c' then c=c'
+	   (C3) If  c ne c' both in C and e is an element in there intersection   
+	   then there exists c* in C such that c* si a subset of c cup c' - e
+	   */
+	int r = 0; 
+	for (auto c1it = entire(circuits); !c1it.at_end(); ++c1it, ++r){
+		// Check for the empty set
+		if ((*c1it).empty()) {
+			if (verbose) cout << "The given set of circuits\n" << circuits << "do not form a matroid.\nCircuit " << r << " is empty. " << endl;
+			return false;
+		}
+	}
+
+	for (auto c1it = entire(circuits); !c1it.at_end(); ++c1it){
+		for (auto c2it = entire(circuits); !c2it.at_end(); ++c2it){
+			if(c1it==c2it){break;}
+			Set<Int> inter = (*c1it) * (*c2it);
+			// Check for equal or contained supports   
+			if (inter.size() == (*c1it).size() || inter.size() == (*c2it).size()) {
+				if (verbose) cout << "The given set of circuits\n" << circuits << "do not form a matroid.\nCircuits " << *c1it << " and " << *c2it << " are contained in one another." << endl;
+				return false;
+			}
+
+			// Check valuated circuit exchange axiom:
+			for (auto e = entire(inter); !e.at_end(); e++) {
+				bool found_one = false;
+				// Go through circuits that don't contain e
+				for (auto c3it = entire(circuits); !c3it.at_end(); ++c3it){
+					if(!(*c3it).contains(*e) && incl(*c3it,(*c1it)+(*c2it))==-1){
+						found_one = true;
+						break;
+					}
+				}
+				if (!found_one) {
+					if (verbose) {
+						cout << "The given set of circuits\n" << circuits << "do not form a matroid.\nThe Circuit exchange axiom fails for the circuits " << *c1it << " and " << *c2it << " wich have " << *e << " in their intersection." << endl;
+					}
+					return false;
+				}
+			}
+		}
+	}
+	return true;
+}
+
+}}
 
 
 // Local Variables:

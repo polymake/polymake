@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -157,15 +157,15 @@ property CD_INDEX_COEFFICIENTS : Vector<Integer>;
 
 
 # @category Combinatorics
-# h-vector, defined via recursion on the face lattice of a polytope.
+# (Toric) h-vector, defined via recursion on the face lattice of a polytope.
 # Coincides for simplicial polytopes with the combinatorial definition
-# of the h-vector via shellings
+# of the h-vector via shellings.
 
 property H_VECTOR : Vector<Integer>;
 
 
 # @category Combinatorics
-# dual h-vector, defined via recursion on the face lattice of a polytope.
+# Dual h-vector, defined via recursion on the face lattice of a polytope.
 # Coincides for simple polytopes with the combinatorial definition
 # of the h-vector via abstract objective functions.
 
@@ -192,7 +192,7 @@ property CUBICAL_H_VECTOR : Vector<Integer>;
 
 property G_VECTOR : Vector<Integer>;
 
-
+# for a simple polytope, h_k counts the vertices of indegree k, with respect to an arbitrary (linear) objective function
 rule DUAL_H_VECTOR : CONE_AMBIENT_DIM, COMBINATORIAL_DIM, VERTICES, GRAPH.ADJACENCY, FAR_FACE {
    my $lp=$this->add("LP", temporary, LINEAR_OBJECTIVE => unit_vector<Scalar>($this->CONE_AMBIENT_DIM, 1));
    my $DG=dgraph($this, $lp, generic=>1);

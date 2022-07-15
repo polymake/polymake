@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2021
+#  Copyright (c) 1997-2022
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -173,18 +173,21 @@
 
 
 # @topic core/objects/Core::BigObject/methods/disable_rules
-# Temporarily disable production rules matching given pattern for an object.
-# Rules are re-enabled after the complete execution of the current script
+#
+# Temporarily disable production rules matching a given pattern for this big object.
+#
+# Rules are re-enabled after the completion of the current user cycle,
+# that is, end of user script or complete execution of the current shell input.
 # or input expression in interactive mode.
 #
 # Works much like the user function [[functions/disable_rules]] but only affecting
 # the given object.
 # @param [complete Core::Rule] String pattern either a label (see [[prefer]]) or a rule header.
-#   The rule header must exactly match the definition in the rulefile,
-#   up to white spaces around property names.
-#   If the given pattern matches headers of several rules, or the given label
-#   is associated with several rules, they all will be disabled regardless
-#   their precoditions, weights, or other attributes.
+#  If it's a label, selected rules are those having this label or any of its sublabels.
+#  If the label is preceded with an explamation mark '!', not the selected rules are disabled
+#  but all others competing with them.
+#  If it's a rule header, it must exactly match the definition in the rulefile,
+#  up to white spaces around property names.
 
 
 # @topic core/objects/Core::BigObject/methods/apply_rule
