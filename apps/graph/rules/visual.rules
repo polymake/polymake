@@ -21,6 +21,7 @@ custom $graph="0 0 0";
 
 require Visual::Graph;
 require Visual::Lattice;
+require Visual::PhylogeneticTree;
 
 # @topic objects/Visual::Graph
 # @category Visualization

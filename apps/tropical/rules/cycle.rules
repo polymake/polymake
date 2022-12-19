@@ -231,6 +231,18 @@ object Cycle {
       }
    }
 
+   # The 'polytope' method in application fan uses lookup to deal with different
+   # representations but when only projective vertices are present in a Cycle
+   # we end up with an almost empty object, so we overload that method, compute
+   # proper vertices and then delegate to the method from application fan.
+   method polytope($) {
+      my ($this, $i)=@_;
+      $this->provide("VERTICES")
+         if defined($this->lookup("PROJECTIVE_VERTICES"));
+      return fan::PolyhedralComplex::polytope($this, $i);
+   }
+
+
    # @category Weights and lattices
    # Convenience function to ask for [[LATTICE_NORMALS]]->{new Pair<Int,Int>(i,j)}
    # @param Int i Row index in [[CODIMENSION_ONE_POLYTOPES]].

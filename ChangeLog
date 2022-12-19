@@ -1,3 +1,28 @@
+=== polymake 4.8 ===
+
+-- general --
+  * Various bugfixes
+
+-- interfaces --
+  * plantri: introduce interface to plantri for generation of planar graphs.
+		https://users.cecs.anu.edu.au/~bdm/plantri/
+  * soplex: disable simplifier due to bug with rational post-solving
+  * libnormaliz: allow non-full-dimensional input for dual convex hull
+
+-- graph --
+  * PhylogeneticTree: add documentation and new functionality
+
+-- ideal --
+  * pluecker_ideal changed to c++ client
+  * pluecker_ideal_generators allows specifying desired coefficient type
+  * introduce pluecker_ideal(Matroid)
+
+-- topaz --
+  * multi_triangulation_sphere can now directly output the link of a face
+
+-- tropical --
+  * add tropical median
+
 === polymake 4.7 ===
 
 -- distribution --

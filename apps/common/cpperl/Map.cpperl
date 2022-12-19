@@ -126,5 +126,9 @@
   {"args": ["perl::Canned<Map<Set<Int>, Rational>&>", "perl::Canned<const pm::PointedSubset<pm::Series<long, true> >&>"], "include": ["polymake/Map.h", "polymake/PowerSet.h", "polymake/Rational.h", "polymake/Set.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
   {"class": "Map<Array<Int>, Array<Array<Int>>>", "include": ["polymake/Array.h", "polymake/Map.h"], "pkg": "Polymake::common::Map_A_Array__Int_I_Array__Array__Int_Z"},
   {"args": ["Map<Array<Int>, Array<Array<Int>>>"], "include": ["polymake/Array.h", "polymake/Map.h"], "op": "new", "sig": "new"},
+  {"class": "Map<std::string, Int>", "include": ["polymake/Map.h"], "pkg": "Polymake::common::Map_A_String_I_Int_Z"},
+  {"args": ["Map<std::string, Int>"], "include": ["polymake/Map.h"], "op": "new", "sig": "new"},
+  {"args": ["perl::Canned<Map<std::string, Int>&>", "std::string"], "include": ["polymake/Map.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
+  {"args": ["perl::Canned<const Map<std::string, Int>&>", "std::string"], "include": ["polymake/Map.h"], "op": "brk", "ret": "lvalue", "sig": "brk:O.X2.X"},
  null ],
 "version": 3}

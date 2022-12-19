@@ -411,7 +411,7 @@ rule WEAKLY_CENTERED : FACETS, AFFINE_HULL {
 weight 1.10;
 
 rule WEAKLY_CENTERED : VERTICES | POINTS, LINEALITY_SPACE | INPUT_LINEALITY, CONE_AMBIENT_DIM{
-   my $pt = new Polytope(POINTS=>[unit_vector($this->CONE_AMBIENT_DIM, 0)]);
+   my $pt = new Polytope<Scalar>(POINTS=>[unit_vector<Scalar>($this->CONE_AMBIENT_DIM, 0)]);
     $this->WEAKLY_CENTERED = contains_V_V_via_LP($pt, $this);
 }
 weight 4.10;

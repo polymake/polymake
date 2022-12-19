@@ -100,7 +100,7 @@ BigObject polarize(BigObject p_in, OptionSet options)
       if (facets_property_read) {
          orthogonalize(entire(rows(lin)));
          project_to_orthogonal_complement(pts, lin); // cheap if lin==0
-         p_out.take( facets_property == "FACETS" ? Str("RAYS") : Str("INPUT_RAYS") ) << pts;
+         p_out.take( facets_property == "FACETS" ? Str("RAYS") : Str("INPUT_RAYS") ) << remove_zero_rows(pts);
       }
 
       // if p was obtained by some transformation,

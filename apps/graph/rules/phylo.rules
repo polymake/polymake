@@ -1,0 +1,595 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Phylogenetics
+# Contains a rooted phylogenetic tree (see Definition 2.2.1 from [C. Semple, M. Steel: Phylogenetics]) with edge lengths.
+# Every edge must have a positive length.
+# They can be defined in terms of the distance matrix and the taxa only if the distance is ultrametric; see Section 7.2 from [C. Semple, M. Steel: Phylogenetics].
+# The root has always index 0.
+# @tparam Scalar edge length type
+declare object PhylogeneticTree<Scalar=Rational> : Graph<Undirected> {
+
+	# The edge lengths.
+	property EDGE_LENGTHS : EdgeMap<Undirected, Scalar> : construct(ADJACENCY);
+
+	# The labels associated to the nodes.
+	# @example The following prints the labels of the nodes.
+	# The root is unlabeled, so an empty string is printed.
+	# > $T = new PhylogeneticTree(NEWICK => "(Rabbit:5,(Rat:2,Mouse:2)Muroidea:3)Glires:5,Wolf:10;");
+	# > print $T -> LABELS;
+	# |  Glires Rabbit Muroidea Rat Mouse Wolf
+	property LABELS : NodeMap<Undirected, String> : construct(ADJACENCY);
+
+	# The indices of the taxa.
+	property LEAVES : Map<String, Int>;
+
+	# The distances from nodes to any of its descendant leaves.
+	# @example
+	# > $T = new PhylogeneticTree(NEWICK => "(Rabbit:5,(Rat:2,Mouse:2):3):5,Wolf:10;");
+	# > print rows_labeled($T -> ADJACENCY);
+	# | 0:1 6
+	# | 1:0 2 3
+	# | 2:1
+	# | 3:1 4 5
+	# | 4:3
+	# | 5:3
+	# | 6:0
+	# > print $T -> EDGE_LENGTHS;
+	# | 5 5 3 2 2 10
+	# > print $T -> NODE_HEIGHTS;
+	# | 10 5 0 2 0 0 0
+	property NODE_HEIGHTS : NodeMap<Undirected, Scalar>;
+
+	# Checks if the input tree is equidistant.
+	property EQUIDISTANT: Bool;
+
+	# The names of the taxa, i.e. the labels of the leaves.
+	# @example The following prints the taxa. Note that two internal nodes are labeled; they do not count as taxa.
+	# > $T = new PhylogeneticTree(NEWICK => "(Rabbit:5,(Rat:2,Mouse:2)Muroidea:3)Glires:5,Wolf:10;");
+	# > print $T -> TAXA;
+	# | Mouse Rabbit Rat Wolf
+	property TAXA : Array<String>;
+
+	# The number of taxa.
+	# @example The following prints the number of taxa. Note that two internal nodes are labeled; they do not count as taxa.
+	# > $T = new PhylogeneticTree(NEWICK => "(Rabbit:5,(Rat:2,Mouse:2)Muroidea:3)Glires:5,Wolf:10;");
+	# > print $T -> N_TAXA;
+	# | 4
+	property N_TAXA : Int;
+
+	# The corresponding tree distance matrix.
+	# @example The following prints the cophenetic matrix. The entries correspond to alphabetically ordered taxa.
+	# > $T = new PhylogeneticTree(NEWICK => "(Rabbit:5,(Rat:2,Mouse:2):3):5,Wolf:10;");
+	# > print $T -> TAXA;
+	# | Mouse Rabbit Rat Wolf
+	# > print $T -> COPHENETIC_MATRIX;
+	# | 0 10 4 20
+	# | 10 0 10 20
+	# | 4 10 0 20
+	# | 20 20 20 0
+	property COPHENETIC_MATRIX : Matrix<Scalar>;
+
+	# A valid representation in the Newick format (see: https://evolution.genetics.washington.edu/phylip/newicktree.html).
+	# @example Prints a Newick representation of a tree given by the cophenetic matrix and its list of taxa.
+	# > $T0 = new PhylogeneticTree(COPHENETIC_MATRIX=>[[0,10,4,20],[10,0,10,20],[4,10,0,20],[20,20,20,0]], TAXA => ["Mouse","Rabbit","Rat","Wolf"]);
+	# > print $T0 -> NEWICK;
+	# | Wolf:10,(Rabbit:5,(Mouse:2,Rat:2):3):5;
+	property NEWICK : String;
+
+
+	rule ADJACENCY, EDGE_LENGTHS, LABELS, LEAVES : NEWICK {
+		my $ga = new GraphAdjacency<Undirected>();
+		my $el = new EdgeMap<Undirected, Scalar>($ga);
+		my $la = new NodeMap<Undirected, String>($ga);
+		my $lv = new Map<String, Int>();
+
+		$ga -> add_node();
+
+		my $str = $this -> NEWICK;
+
+		my $index_semicolon = index($str, ';');
+		if ($index_semicolon < 0) {
+			die "Error: Invalid Newick format; semicolon not found";
+		}
+		$str = substr($str, 0, $index_semicolon);
+		
+		$str =~ tr/ //ds; # this eliminates the spaces from the string
+		
+		if ($str =~ /^\((.*)\)(\w+)$/) {
+			$str = $1;
+			$la -> [0] = $2;
+		}
+		else {
+			if ($str =~ /^\((.*)\)$/) {
+				$str = $1;
+			}
+		}
+
+		my $open_bracket_count = 0;
+		my @node_stack = (0);
+
+		while ($str ne "") {
+			if ($str =~ /^\(/) {
+				++$open_bracket_count;
+				$ga -> add_node();
+				push @node_stack, $ga -> nodes - 1;
+				$ga -> add_edge($node_stack[-2], $node_stack[-1]);
+				$str = substr $str, 1;
+				next;
+			}
+
+			if ($str =~ /^\)/) {
+				if ($open_bracket_count <= 0) {
+					die "Error: Invalid Newick format; brackets do not properly close";
+				}
+				--$open_bracket_count;
+				$str = substr $str, 1;
+
+				if ($str =~ /^(\w+)/) {
+					my $label = $1;
+					$la -> [$node_stack[-1]] = $label;
+					$str = substr $str, length($label);
+				}
+
+				if ($str =~ /^:\d+/) {
+					if ($str =~ /^:(\d+\.\d+)/) {
+						if (typeof Scalar == typeof Int) {
+							die "Error: Floating point entry for tree with integer lengths";
+						}
+						my $number = $1;
+						$str = substr $str, 1 + length($number);
+						if (typeof Scalar == typeof Float) {
+							$el -> edge($node_stack[-2], $node_stack[-1]) = $number + 0.0; 
+						} else {
+							$number =~ /(\d+).(\d+)/;
+							my $numerator = new Rational($1);
+							my $denominator = new Rational($2);
+							my $pow = 10 ** length($2);
+							my $fraction = ( $numerator + ($denominator / $pow) );
+							$el -> edge($node_stack[-2], $node_stack[-1]) = $fraction; 
+						}
+						pop @node_stack;
+					} else {
+						$str =~ /^:(\d+)/;
+						my $number = $1;
+						$str = substr $str, 1 + length($number);
+						$el -> edge($node_stack[-2], $node_stack[-1]) = $number + 0;
+						pop @node_stack;
+					}
+				} else {
+					die "Error: Invalid Newick format; no edge length";
+				}
+				next;
+			}
+
+			if ($str =~ /^(\w+)/) {
+				my $label = $1;
+				$str = substr $str, length($label);
+				$ga -> add_node();
+				my $leaf_node = $ga -> nodes - 1;
+				$la -> [$leaf_node] = $label;
+				$lv -> {$label} = $leaf_node;
+
+				if ($str =~ /^:\d+/) {
+					if ($str =~ /^:(\d+\.\d+)/) {
+						if (typeof Scalar == typeof Int) {
+							die "Error: Floating point entry for tree with integer lengths";
+						}
+						my $number = $1;
+						$str = substr $str, 1 + length($number);
+						if (typeof Scalar == typeof Float) {
+							$el -> edge($node_stack[-1], $leaf_node) = $number + 0.0;
+						}
+						else {
+							$number =~ /(\d+).(\d+)/;
+							my $numerator = new Rational($1);
+							my $denominator = new Rational($2);
+							my $pow = 10 ** length($2);
+							my $fraction = ( $numerator + ($denominator / $pow) );
+							$el -> edge($node_stack[-1], $leaf_node) = $fraction; 
+						}
+					} else {
+						$str =~ /^:(\d+)/;
+						my $number = $1;
+						$str = substr $str, 1 + length($number);
+						$el -> edge($node_stack[-1], $leaf_node) = $number + 0;
+					}
+				} else {
+					die "Error: Invalid Newick format; no edge length";
+				}
+				next;
+			}
+
+			if ($str =~ /^,/) {
+				$str = substr $str, 1;
+				next;
+			}
+
+			die "Error: Invalid Newick format.";
+		}
+
+		$this -> ADJACENCY = $ga;
+		$this -> EDGE_LENGTHS = $el;
+		$this -> LABELS = $la;
+		$this -> LEAVES = $lv;
+	}
+	weight 1.10;
+
+	rule TAXA : LEAVES {
+		$this -> TAXA = new Array<String>(keys(%{$this -> LEAVES}));
+	}
+	weight 1.10;
+
+	rule N_TAXA : TAXA {
+		$this -> N_TAXA = $this -> TAXA -> size();
+	}
+	weight 1.10;
+
+	rule COPHENETIC_MATRIX : ADJACENCY, EDGE_LENGTHS, TAXA, N_TAXA, LEAVES, LABELS {
+		my $ntaxa = $this -> N_TAXA;
+		my $mat = new Matrix<Scalar>(zero_matrix($ntaxa, $ntaxa));
+
+		sub dfs_cm {
+			my ($node, $len, $tree, $visited, $ini, $Mat, $n) = @_;
+			$visited -> [$node] = 1;
+
+			# print "node = $node; len = $len; ini = $ini; visited = \n $visited \n===\n";
+
+			# print $tree -> ADJACENCY -> nodes, "+++", $tree -> ADJACENCY -> degree($node) , "\n";
+
+			if ($tree -> ADJACENCY -> degree($node) == 1 && $node != 0) {
+				my $label = $tree -> LABELS -> [$node];
+				my $index = 0;
+				for (my $k = 0; $k < $n && $index == 0; ++$k) {
+					if ($tree -> TAXA -> [$k] eq $label) {
+						$index = $k;
+					}
+				}
+				$Mat -> [$ini][$index] = $len;
+				$Mat -> [$index][$ini] = $len;
+			}
+
+			my @neighbours = @{$tree -> ADJACENCY -> adjacent_nodes($node)};
+			for (my $j = 0; $j < scalar @neighbours; ++$j) {
+				if ($visited -> [$neighbours[$j]] == 0) {
+					my $dist = $tree -> EDGE_LENGTHS -> edge($node, $neighbours[$j]);
+
+					# print "before dfs : ", $tree -> ADJACENCY -> nodes, "\n";
+
+					dfs_cm($neighbours[$j], $len + $dist, $tree, $visited, $ini, $Mat, $n);
+				}
+			}
+		}
+
+		for (my $i = 0; $i < $ntaxa; ++$i) {
+			my $visited = new Vector<Int>(zero_vector($this -> ADJACENCY -> nodes));
+
+			# print "before dfs : ", $this -> ADJACENCY -> nodes, "\n";
+
+			dfs_cm($this -> LEAVES -> {$this -> TAXA -> [$i]}, 0, $this, $visited, $i, $mat, $ntaxa);
+		}
+
+
+		$this -> COPHENETIC_MATRIX = $mat;
+	}
+	weight 2.10;
+
+	rule NODE_HEIGHTS, EQUIDISTANT : ADJACENCY, EDGE_LENGTHS {
+
+		my $nh = new NodeMap<Undirected, Scalar>($this -> ADJACENCY);
+		my $is_equidistant = true;
+		my $scalarType = typeof Scalar;
+
+		sub dfs_nh {
+
+			my ($node, $tree, $visited, $node_ht) = @_;
+			$visited -> [$node] = 1;
+
+			if ($tree -> ADJACENCY -> degree($node) == 1 && $node != 0) {
+				$node_ht -> [$node] = 0;
+				return 0;
+			} else {
+				my $height = 0;
+				my $first_check = false;
+				my $first_ht = 0;
+				my @neighbours = @{$tree -> ADJACENCY -> adjacent_nodes($node)};
+				for (my $j = 0; $j < scalar @neighbours; ++$j) {
+					if ($visited -> [$neighbours[$j]] == 0) {
+						my $value = dfs_nh($neighbours[$j], $tree, $visited, $node_ht, $_[4]);
+						my $edge_len = $tree -> EDGE_LENGTHS -> edge($node, $neighbours[$j]);
+						if ($height < $value + $edge_len) {
+							$height = $value + $edge_len;
+						}
+
+						# $_[4] is an alias for the fifth parameter: $is_equidistant
+						# We do not use a local variable, as we want to be able to change this parameter
+						if ($_[4]) {
+							if ($first_check) {
+								if ($scalarType -> equal -> ($value + $edge_len, $first_ht) == false) {
+									$_[4] = false;
+								}
+							} else {
+								$first_ht = $value + $edge_len;
+								$first_check = true;
+							}
+						}
+					}
+				}
+				$node_ht -> [$node] = $height;
+				return $height;
+			}
+		}
+
+		my $visited = new Vector<Int>(zero_vector($this -> ADJACENCY -> nodes));
+		dfs_nh(0, $this, $visited, $nh, $is_equidistant);
+
+		$this -> NODE_HEIGHTS = $nh;
+		$this -> EQUIDISTANT = $is_equidistant;
+	}
+	weight 1.10;
+
+	rule ADJACENCY, EDGE_LENGTHS, LABELS, LEAVES, NODE_HEIGHTS: COPHENETIC_MATRIX, TAXA {
+		my $n = $this -> COPHENETIC_MATRIX -> rows;
+		if ($n != $this -> COPHENETIC_MATRIX -> cols) {
+			die "Error: Cophenetic matrix is not square.";
+		}
+		if ($n != $this -> TAXA -> size) {
+			die "Error: The number of taxa does not match the matrix size.";
+		}
+
+		if ($this -> COPHENETIC_MATRIX != transpose($this -> COPHENETIC_MATRIX)) {
+			die "Error: The cophenetic matrix is not symmetric.";
+		}
+
+		my $scalarType = typeof Scalar;
+
+		for (my $i = 0; $i < $n; ++$i) {
+			for (my $j = $i + 1; $j < $n; ++$j) {
+				for (my $k = $j + 1; $k < $n; ++$k) {
+					my $dij = $this -> COPHENETIC_MATRIX -> [$i][$j];
+					my $djk = $this -> COPHENETIC_MATRIX -> [$j][$k];
+					my $dki = $this -> COPHENETIC_MATRIX -> [$k][$i];
+					my $minim = min($dij, min($djk, $dki));
+					my $maxim = max($dij, max($djk, $dki));
+					my $middl = $dij + $djk + $dki - $minim - $maxim;
+					if ($scalarType -> equal -> ($maxim, $middl) == false) {
+						die "Error: The dissimilarity is not ultrametric.";
+					}
+				}
+ 			}
+		}
+
+		my $ga = new GraphAdjacency<Undirected>();
+		my $el = new EdgeMap<Undirected, Scalar>($ga);
+		my $la = new NodeMap<Undirected, String>($ga);
+		my $lv = new Map<String, Int>();
+		my $nh = new NodeMap<Undirected, Scalar>($ga);
+
+		$ga -> add_node(); # The root has index 0
+
+		for (my $i = 1; $i <= $n; ++$i) {
+			$ga -> add_node();
+			$la -> [$i] = $this -> TAXA -> [$i - 1];
+			$lv -> {$this -> TAXA -> [$i - 1]} = $i;
+		}
+
+		my $repr = new Vector<Int>(zero_vector(2 * $n - 1));
+		my $curr_cluster = new Vector<Int>(zero_vector(2 * $n - 1));
+		for (my $i = 1; $i <= $n; ++$i) {
+			$repr -> [$i] = $i - 1;
+			$curr_cluster -> [$i] = 1;
+		}
+
+		for (my $counter = 1; $counter < $n - 1; ++$counter) {
+			my $opt_i = 0;
+			my $opt_j = 0;
+			my $dist_opt = 0;
+			for (my $i = 1; $i < 2 * $n - 1; ++$i) {
+				if ($curr_cluster -> [$i]) {
+					for (my $j = $i + 1; $j < 2 * $n - 1; ++$j) {
+						if ($curr_cluster -> [$j]) {
+							if ($opt_i == 0 && $opt_j == 0) {
+								$opt_i = $i;
+								$opt_j = $j;
+								$dist_opt = $this -> COPHENETIC_MATRIX -> [$repr -> [$i]][$repr -> [$j]];
+							} else {
+								my $dist_ij = $this -> COPHENETIC_MATRIX -> [$repr -> [$i]][$repr -> [$j]];
+								if ($dist_ij < $dist_opt) {
+									$opt_i = $i;
+									$opt_j = $j;
+									$dist_opt = $dist_ij;
+								}
+							}
+						}
+					}
+				}
+			}
+			$ga -> add_node();
+			my $node = $ga -> nodes - 1;
+			$repr -> [$node] = $repr -> [$opt_i];
+			$ga -> add_edge($node, $opt_i);
+			$ga -> add_edge($node, $opt_j);
+			$curr_cluster -> [$opt_i] = 0;
+			$curr_cluster -> [$opt_j] = 0;
+			$curr_cluster -> [$node] = 1;
+			$nh -> [$node] = $dist_opt / 2;
+			$el -> edge($node, $opt_i) = $nh -> [$node] - $nh -> [$opt_i];
+			$el -> edge($node, $opt_j) = $nh -> [$node] - $nh -> [$opt_j];
+		}
+
+		my $opt_i = 0;
+		my $opt_j = 0;
+		for (my $i = 1; $i < 2 * $n - 1; ++$i) {
+			if ($curr_cluster -> [$i]) {
+				if ($opt_i) {
+					$opt_j = $i;
+				}
+				else {
+					$opt_i = $i;
+				}
+			}
+		}
+		my $dist_opt = $this -> COPHENETIC_MATRIX -> [$repr -> [$opt_i]][$repr -> [$opt_j]];
+		$ga -> add_edge(0, $opt_i);
+		$ga -> add_edge(0, $opt_j);
+		$nh -> [0] = $dist_opt / 2;
+		$el -> edge(0, $opt_i) = $nh -> [0] - $nh -> [$opt_i];
+		$el -> edge(0, $opt_j) = $nh -> [0] - $nh -> [$opt_j];
+
+		sub dfs_contract {
+
+			my ($node, $graph, $edge_lengths, $visited, $leaf_threshold) = @_;
+			$visited -> [$node] = 1;
+
+			my @neighbours = @{$graph -> adjacent_nodes($node)};
+			for (my $j = 0; $j < scalar @neighbours; ++$j) {
+				if ($neighbours[$j] > $leaf_threshold && $visited -> [$neighbours[$j]] == 0) {
+					dfs_contract($neighbours[$j], $graph, $edge_lengths, $visited);
+					# if ($edge_lengths -> edge($node, $neighbours[$j]) == 0) {
+					if ($scalarType -> equal -> ($edge_lengths -> edge($node, $neighbours[$j]), 0)) {
+						$graph -> contract_edge($node, $neighbours[$j]);
+					}
+				}
+			}
+		}
+
+		my $visited = new Vector<Int>(2 * $n - 1);
+		dfs_contract(0, $ga, $el, $visited, $n);
+
+		$this -> ADJACENCY = $ga;
+		$this -> EDGE_LENGTHS = $el;
+		$this -> LABELS = $la;
+		$this -> LEAVES = $lv;
+		$this -> NODE_HEIGHTS = $nh;
+	}
+	weight 3.10;
+
+	rule NEWICK : ADJACENCY, EDGE_LENGTHS, LABELS, N_TAXA {
+
+		sub dfs_nw {
+
+			my ($node, $tree, $visited, $parent) = @_;
+			$visited -> [$node] = 1;
+
+			my @neighbours = @{$tree -> ADJACENCY -> adjacent_nodes($node)};
+			my $str = "";
+
+			if (scalar @neighbours == 1) {
+				$str = $str.($tree -> LABELS -> [$node]) . ":" . ($tree -> EDGE_LENGTHS -> edge($parent,$node));
+			} else {
+				$str = "(";
+				my $not_first = 0;
+				for (my $j = 0; $j < scalar @neighbours; ++$j) {
+					if ($visited -> [$neighbours[$j]] == 0) {
+						my $str0 = dfs_nw($neighbours[$j], $tree, $visited, $node);
+						if ($not_first) {
+							$str = $str.",";
+						}
+						$not_first = 1;
+						$str = $str.$str0;
+					}
+				}
+				$str = $str = $str.($tree -> LABELS -> [$node]) . "):" . ($tree -> EDGE_LENGTHS -> edge($parent,$node)) ;
+			}
+
+			return $str;
+		}
+
+		my $visited = new Vector<Int>(zero_vector(2 * ($this -> N_TAXA) - 1));
+		my $str = "";
+
+		$visited -> [0] = 1;
+		my @neighbours = @{$this -> ADJACENCY -> adjacent_nodes(0)};
+		for (my $j = 0; $j < scalar @neighbours; ++$j) {
+			my $str0 = dfs_nw($neighbours[$j], $this, $visited, 0);
+			if ($j) {
+				$str = $str.",";
+			}
+			$str = $str.$str0;
+		}
+		$str = $str.";";
+		$this -> NEWICK = $str;
+	}
+	weight 1.10;
+
+}
+
+# We add extra procedures for manipulating non-equidisitant trees.
+# The following function constructs an equidisitant tree from a possibly non-equidisitant input tree.
+# The output tree has the same internal edge lenghts as the input tree.
+function makeEquidistant<Scalar>(PhylogeneticTree<Scalar>) {
+
+	my ($inputTree) = @_;
+	if ($inputTree -> EQUIDISTANT) {
+		#return new PhylogeneticTree<Scalar>(NEWICK => ($inputTree -> NEWICK));
+		return $inputTree;
+	}
+	
+	my $totalHeight = $inputTree -> NODE_HEIGHTS -> [0];
+	my $addition = new Map<String, Scalar>();
+
+	sub dfs_mequi {
+	
+		my ($node, $tree, $visited, $length, $addit) = @_;
+		$visited -> [$node] = 1;
+
+		# print "Enter ", $node, " *** ", $length, "\n";
+
+		if ($tree -> ADJACENCY -> degree($node) == 1 && $node != 0) {
+			$addit -> {$tree -> LABELS -> [$node]} = $totalHeight - $length;
+		} else {
+			my @neighbours = @{$tree -> ADJACENCY -> adjacent_nodes($node)};
+			for (my $j = 0; $j < scalar @neighbours; ++$j) {
+				if ($visited -> [$neighbours[$j]] == 0) {
+					my $edge_len = $tree -> EDGE_LENGTHS -> edge($node, $neighbours[$j]);
+					dfs_mequi($neighbours[$j], $tree, $visited, $length + $edge_len, $addit);
+				}
+			}
+			
+		}
+	}
+
+	my $visited = new Vector<Int>(zero_vector($inputTree -> ADJACENCY -> nodes));
+	dfs_mequi(0, $inputTree, $visited, new Scalar(0), $addition);
+	
+	print $addition, "\n";
+	
+	my $newCophMatrix = new Matrix<Scalar>($inputTree -> COPHENETIC_MATRIX);
+	my $n = $inputTree -> N_TAXA;
+	for (my	$i = 0; $i < $n; ++$i) {
+		for (my $j = $i + 1; $j < $n; ++$j) {
+			$newCophMatrix -> elem($i, $j) += $addition -> {$inputTree -> TAXA -> [$i]} + $addition -> {$inputTree -> TAXA -> [$j]};
+			$newCophMatrix -> elem($j, $i) = $newCophMatrix -> elem($i, $j);
+		}
+	}
+	
+	my $outputTree = new Phylo<Scalar>(COPHENETIC_MATRIX => $newCophMatrix, TAXA => ($inputTree -> TAXA));
+	return $outputTree;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+

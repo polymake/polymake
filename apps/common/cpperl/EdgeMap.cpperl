@@ -40,5 +40,7 @@
   {"class": "EdgeMap<Undirected, std::string>", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::EdgeMap_A_Undirected_I_String_Z"},
   {"args": ["EdgeMap<Undirected, Array<Array<Int>>>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Array.h", "polymake/Graph.h"], "op": "new", "sig": "new.X"},
   {"args": ["EdgeMap<Undirected, std::string>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Graph.h"], "op": "new", "sig": "new.X"},
+  {"args": ["perl::AnchorArg<perl::Canned<Wary<EdgeMap<Undirected, Rational>>&>>", "void", "void"], "include": ["polymake/Graph.h", "polymake/Rational.h"], "op": "cal", "ret": "lvalue", "sig": "cal:O:F:M14.x.x"},
+  {"args": ["perl::AnchorArg<perl::Canned<const Wary<EdgeMap<Undirected, Rational>>&>>", "void", "void"], "include": ["polymake/Graph.h", "polymake/Rational.h"], "op": "cal", "ret": "lvalue", "sig": "cal:O:F:M14.x.x"},
  null ],
 "version": 3}

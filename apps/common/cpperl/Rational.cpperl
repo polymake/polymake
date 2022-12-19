@@ -87,5 +87,7 @@
   {"args": ["perl::Canned<const Rational&>", "perl::Canned<const Rational&>"], "include": ["polymake/Rational.h"], "op": "_le", "sig": "_le:O.X.X"},
   {"args": ["Rational", "perl::Canned<const Integer&>", "perl::Canned<const pm::RationalParticle<false, pm::Integer>&>"], "include": ["polymake/Integer.h", "polymake/Rational.h"], "op": "new", "sig": "new.X.X"},
   {"args": ["Rational", "perl::Canned<const Integer&>"], "include": ["polymake/Integer.h", "polymake/Rational.h"], "op": "convert", "ret": "empty", "sig": "convert:O"},
+  {"args": ["perl::Canned<const Rational&>", "perl::Canned<const pm::SameElementVector<pm::Rational const&>&>"], "include": ["polymake/Rational.h", "polymake/linalg.h"], "op": "mul", "sig": "mul:O.X.X16"},
+  {"args": ["perl::Canned<const Rational&>", "perl::Canned<const Rational&>"], "include": ["polymake/Rational.h"], "op": "_ne", "sig": "_ne:O.X.X"},
  null ],
 "version": 3}

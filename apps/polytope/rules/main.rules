@@ -112,7 +112,8 @@ INCLUDE
   common::geomview.rules
   mptopcom.rules
   topcom.rules
-  azove.rules
+  azove.rules  
+  plantri.rules
 
 # @category Convex hull computation
 # Use the //double description// method as implemented in [[wiki:external_software#cddlib]].

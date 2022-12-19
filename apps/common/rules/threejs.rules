@@ -80,7 +80,8 @@ use Polymake::Struct [ '@ISA' => 'SimpleViewer' ];
 sub file_suffix { ".html" }
 
 sub new {
-   unless (defined $Visual::webbrowser) {
+   my $www = eval { return $Visual::webbrowser };
+   if ($@ || !defined($www)) {
       die <<'.';
 requires web browser;
 please specify the output File option or call reconfigure("common::webbrowser.rules");

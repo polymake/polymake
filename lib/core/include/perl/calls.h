@@ -167,7 +167,7 @@ public:
       other.val_flags = ValueFlags::is_mutable;
    }
 
-   ~FunCall();
+   ~FunCall() noexcept(false);
 
    template <typename... Args>
    static

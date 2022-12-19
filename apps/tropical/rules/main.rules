@@ -102,6 +102,8 @@ INCLUDE
   patchwork.rules
   voronoi.rules
   curve.rules
+  tropical_median.rules
+  #mcf.rules --moved to graph
 
 # Local Variables:
 # mode: perl

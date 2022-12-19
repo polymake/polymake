@@ -116,13 +116,11 @@ struct CubeIndexTag {};
 using CubeIndex = NamedType<Int, CubeIndexTag>;
    
 /*
-  At the moment 
-
-  from c++17 on, the following defines can be
-  inline constexpr Int max_n_vertices(31); 
-  inline constexpr Int first_cube_index(Int(1) << max_n_vertices);
+  From c++17 on, the following defines can be
+  inline constexpr Int max_n_vertices(sizeof(Int)*4-1); 
+  inline constexpr Int first_cube_index(Int(1) << (2*max_n_vertices));
 */
-#define max_n_vertices 31
+#define max_n_vertices ((Int) sizeof(Int)*4-1)
 #define first_cube_index (CubeIndex(Int(1) << (2*max_n_vertices)))
 #define MAGIC_VERTEX_MULTIPLE 256
    

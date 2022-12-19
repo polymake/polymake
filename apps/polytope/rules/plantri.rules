@@ -1,0 +1,101 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+CREDIT plantri
+  plantri is a program for generation of certain types of planar graphs.
+  The authors are Gunnar Brinkmann (University of Ghent) and Brendan McKay (Australian National University).
+  https://users.cecs.anu.edu.au/~bdm/plantri/
+
+# path to the plantri executable
+custom $plantri;
+
+CONFIGURE {
+   find_program($plantri, "plantri") or return;
+}
+
+# @category Data Conversion
+# Convert the output of [[wiki:external_software#plantri]] program into polymake Polytope object. 
+# Returns an Array of combinatorial types of simplicial 3-polytopes (or their duals).
+# @param Int number of vertices
+# @param String options (not affecting the output format) as described in the plantri manual
+# @return Array<Polytope>
+# @example Combinatorial types of simplicial 3-polytopes with 6 vertices.
+# > $A = plantri_list(6);
+# > print $A->size();
+# | 2
+# Distribution of vertex degrees of the first polytope in that list.
+# > print histogram($A->[0]->VERTEX_DEGREES);
+# | {(3 2) (4 2) (5 2)}
+# @example Simple 3-polytopes with seven facets.
+# > $B = plantri_list(7,"-d");
+# > print $B->size();
+# | 5
+# > print $B->[0]->F_VECTOR;
+# | 10 15 7
+
+user_function plantri_list {
+    my $n_args = scalar @_;
+    if ($n_args < 1 || $n_args > 2){ die "plantri: <number of vertices> [<plantri options>]" }
+    my ($num_verts, $options) = @_;
+    my $plantri_doublecode_call = $plantri . " $options -T " . $num_verts;
+    my $plantri_output = `$plantri_doublecode_call`;
+    my @triangulations = split /\n/, $plantri_output;
+    my $n_tris = scalar @triangulations;    
+    my $return_array = new Array<Polytope>($n_tris);
+    
+    for(my $tri_index = 0; $tri_index < $n_tris; $tri_index++) {    	
+    	# Get the data associated to the chosen triangulation
+   	my @chosen_tri = split /(\d+)/, $triangulations[$tri_index];
+   	# Get number of vertices, and vertex information
+    	my $n_verts = $chosen_tri[1];
+    	my @v= split / /, $chosen_tri[2];
+    	shift(@v);
+    	my $vertices = new Array<String>(@v);
+    	# Get number of faces and face information
+    	my $n_facets = $chosen_tri[3];
+    	my @f= split / /, $chosen_tri[4];
+    	shift(@f);
+    	my $facets = new Array<String>(@f);
+    	# Initiate the VIF matrix
+    	my $VIF_out = new IncidenceMatrix($n_facets,$n_verts);
+
+    	# For each vertex, check which faces contains it
+    	for (my $vert_id = 0; $vert_id < $n_verts; $vert_id++) {
+        	# For each edge list given for each vertex, we add the first edge to the last to get all edge pairs that contains the chosen vertex
+        	my $myvert = $vertices->[$vert_id] . substr($vertices->[$vert_id], 0, 1);
+        	for (my $i = 0; $i < length($myvert)-1; $i++) {
+            		# Get each consecutive edges in the edge list, and check if it appears on cyclic edge list given by the faces  
+            		my $lookfor = scalar reverse substr($myvert,$i,2);
+            		for (my $facet_id = 0; $facet_id < $n_facets; $facet_id++) {
+                		my $myfacet = $facets->[$facet_id] . substr($facets->[$facet_id], 0, 1);
+                		if (index($myfacet,$lookfor) != -1){
+                    			#If edges from vertex pair is in the face, then add this incidence relation.
+                    			$VIF_out->elem($facet_id,$vert_id) = 1;
+                    		}
+                
+            		}
+        	}        	
+    	}
+    	$return_array->[$tri_index] = new Polytope(COMBINATORIAL_DIM=>3, VERTICES_IN_FACETS=>$VIF_out);    
+    }
+    return($return_array);
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level: 3
+# indent-tabs-mode:nil
+# End:

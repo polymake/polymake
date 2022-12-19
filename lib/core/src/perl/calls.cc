@@ -91,7 +91,8 @@ FunCall::FunCall(std::nullptr_t, ValueFlags val_flags_,  Int reserve)
    , method_name(nullptr)
    , val_flags(val_flags_) {}
 
-FunCall::~FunCall()
+// the function calls may throw exceptions but since C++11 destructors are implicitly noexcept(true)
+FunCall::~FunCall() noexcept(false)
 {
    if (val_flags != ValueFlags::is_mutable) {
       dTHX;

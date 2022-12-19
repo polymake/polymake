@@ -13,5 +13,9 @@
   {"class": "NodeMap<Directed, Matrix<Rational>>", "include": ["polymake/Graph.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "pkg": "Polymake::common::NodeMap_A_Directed_I_Matrix_A_Rational_I_NonSymmetric_Z_Z"},
   {"class": "NodeMap<Undirected, Array<Set<Int>>>", "include": ["polymake/Array.h", "polymake/Graph.h", "polymake/Set.h"], "pkg": "Polymake::common::NodeMap_A_Undirected_I_Array__Set__Int_Z"},
   {"args": ["NodeMap<Undirected, Array<Set<Int>>>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Array.h", "polymake/Graph.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
+  {"class": "NodeMap<Undirected, Rational>", "include": ["polymake/Graph.h", "polymake/Rational.h"], "pkg": "Polymake::common::NodeMap_A_Undirected_I_Rational_Z"},
+  {"class": "NodeMap<Undirected, std::string>", "include": ["polymake/Graph.h"], "pkg": "Polymake::common::NodeMap_A_Undirected_I_String_Z"},
+  {"args": ["NodeMap<Undirected, std::string>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Graph.h"], "op": "new", "sig": "new.X"},
+  {"args": ["NodeMap<Undirected, Rational>", "perl::Canned<const Graph<Undirected>&>"], "include": ["polymake/Graph.h", "polymake/Rational.h"], "op": "new", "sig": "new.X"},
  null ],
 "version": 3}

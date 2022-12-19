@@ -21,8 +21,10 @@
 #include "polymake/hash_set"
 #include "polymake/Set.h"
 #include "polymake/PowerSet.h"
+#include "polymake/IncidenceMatrix.h"
 #include "polymake/group/orbit.h"
 #include "polymake/group/named_groups.h"
+#include "polymake/topaz/boundary_tools.h"
 #include <algorithm>
 
 namespace polymake { namespace topaz {
@@ -33,6 +35,11 @@ using Diagonal = std::pair<Int, Int>;
 using DiagonalIndex = hash_map<Diagonal, Int> ;
 using DiagonalList = std::vector<Diagonal>;
 using DiagonalLabels = std::vector<std::string>;
+
+enum IncludeCrossings : bool {   
+   yes = true,                             
+   no = false
+};
 
 bool inside(Int x, const Diagonal& d)
 {
@@ -82,6 +89,8 @@ bool contains_new_k_plus_1_crossing(Int new_d,
                                     const DiagonalList& diagonals)
 {
    if (k > 1) {
+      if (family.size() < k)
+         return false;
       for (auto kc_it = entire(all_subsets_of_k(family, k)); !kc_it.at_end(); ++kc_it) {
          if (!crosses_all(new_d, *kc_it, diagonals)) // first, a linear test
             continue;
@@ -97,6 +106,32 @@ bool contains_new_k_plus_1_crossing(Int new_d,
    }
 }
 
+void
+fill_upper_layer(hash_set<Set<Int>>& upper_layer,
+                 const hash_set<Set<Int>>& lower_layer,
+                 const Int k,
+                 const Int m,
+                 const DiagonalList& diagonals,
+                 const Array<Array<Int>>& igens,
+                 const Set<Int>& link_of,
+                 const IncludeCrossings include_crossings)
+{
+   for (const auto& F: lower_layer) {
+      for (Int d_index = 0; d_index < m; ++d_index) {
+         if (!F.contains(d_index) &&
+             include_crossings ==
+             contains_new_k_plus_1_crossing(d_index, k, F, diagonals)) {
+            for (const auto& G: group::unordered_orbit<group::on_container>(igens, Set<Int>(F+d_index))) {
+               if (!link_of.size() ||
+                   incl(link_of, G) <= 0) {
+                  upper_layer += G;
+               }
+            }
+         }
+      }
+   }
+}   
+   
 Array<Int> induced_gen(const Array<Int>& g,
                        const DiagonalList& diagonals,
                        const DiagonalIndex& index_of)
@@ -146,6 +181,87 @@ void prepare_diagonal_data(Int n,
          labels.push_back(oss.str());
       }
    }
+}
+
+
+void
+dihedral_group_action(const Int n,
+                      const DiagonalList& diagonals,
+                      DiagonalIndex& index_of,
+                      BigObject& ind_Aut,
+                      BigObject& induced_action,
+                      Array<Array<Int>>& igens)
+{
+   BigObject Aut = group::dihedral_group(2*n);
+   const Array<Array<Int>> gens = Aut.give("PERMUTATION_ACTION.GENERATORS");
+   igens = induced_action_gens_impl(gens, diagonals, index_of);
+   
+   induced_action.set_description("action of D_" + std::to_string(2*n)
+                                  + " on the vertices of the simplicial complex, induced by the action of D_"
+                                  + std::to_string(2*n) + " on the vertices of the polygon");
+   
+   const group::ConjugacyClassReps<> class_reps = Aut.give("PERMUTATION_ACTION.CONJUGACY_CLASS_REPRESENTATIVES");
+   group::ConjugacyClassReps<> induced_ccr(class_reps.size());
+   auto iicr_it = entire(induced_ccr);
+   for (const auto& r: class_reps) {
+      *iicr_it = induced_gen(r, diagonals, index_of);
+      ++iicr_it;
+   }
+   induced_action.take("CONJUGACY_CLASS_REPRESENTATIVES") << induced_ccr;
+   ind_Aut.take("CHARACTER_TABLE") << group::dn_character_table(2*n);
+   ind_Aut.take("ORDER") << 2*n;
+}
+
+void
+symmetric_group_action(const Int m,
+                       const Int n,
+                       DiagonalIndex& index_of,
+                       BigObject& ind_Aut,
+                       BigObject& induced_action,
+                       Array<Array<Int>>& igens)
+{
+   induced_action.set_description("action of S" + std::to_string(m)
+                                  + " on the vertices of the simplicial complex, induced by the action of D_"
+                                  + std::to_string(2*n) + " on the vertices of the polygon");
+   igens = group::symmetric_group_gens(m);
+   if (m<8) {
+      induced_action.take("CONJUGACY_CLASS_REPRESENTATIVES") << group::sn_reps(m);
+      ind_Aut.take("CHARACTER_TABLE") << group::sn_character_table(m);
+   }
+   ind_Aut.take("ORDER") << Integer::fac(m);
+}
+
+void
+initialize_f_vector(Array<Int>::iterator& fvec_it,
+                    const Int m,
+                    const Int k)
+{
+   // the complex is k-neighborly, so we know part of the f-vector
+   *fvec_it++ = m;
+   for (Int kk = 2; kk <= k; ++kk)
+      *fvec_it++ = Int(Integer::binom(m,kk));
+}
+
+void
+squeeze_matrix(IncidenceMatrix<>& facets,
+               DiagonalLabels& labels,
+               const hash_set<Set<Int>>& lower_layer,
+               const Set<Int>& link_of)
+{
+   facets.resize(lower_layer.size(), labels.size());
+   auto lit = entire(lower_layer);
+   for (auto rit = entire(rows(facets)); !rit.at_end(); ++rit, ++lit)
+      *rit = Set<Int>(*lit - link_of);
+   
+   auto c = ind2map_consumer(facets.cols());
+   facets.squeeze_cols(c);
+
+   const Array<Int> index_map(facets.cols(), entire(c.give_map()));
+   DiagonalLabels squeezed_labels(facets.cols());
+   for (auto it = entire<indexed>(index_map); !it.at_end(); ++it) 
+      squeezed_labels[it.index()] = labels[*it];
+
+   labels.swap(squeezed_labels);
 }
 
 } } }

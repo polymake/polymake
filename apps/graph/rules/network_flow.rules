@@ -1,0 +1,69 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+REQUIRE_APPLICATION polytope
+
+# Computes optimal transport plan of a transportation problem.
+# @param Matrix m-by-n matrix containing the transportation costs
+# @param Vector m-vector containing the supply
+# @param Vector n-vector containing the demand
+# @return Matrix
+user_function default.otp: optimal_transport_plan<Scalar>(Matrix<Scalar>, Vector<Scalar>, Vector<Scalar>) {
+    my ($cost, $supply, $demand) = @_;
+    my $m = $cost -> rows();
+    my $n = $cost -> cols();
+    if ($supply -> dim != $m) {
+        die "Error: The size of the supply vector does not match the number of rows of the cost matrix.";
+    }
+    if ($demand -> dim != $n) {
+        die "Error: The size of the demand vector does not match the number of columns of the cost matrix.";
+    }
+
+    my $total_supply = 0;
+    for (my $i = 0; $i < $m; ++$i) {
+        if ($supply -> [$i] <= 0) {
+            die "Error: The supply must be positive.";
+        }
+        $total_supply += $supply -> [$i];
+    }
+
+    my $total_demand = 0;
+    for (my $i = 0; $i < $n; ++$i) {
+        if ($demand -> [$i] <= 0) {
+            die "Error: The demand must be positive.";
+        }
+    $total_demand += $demand -> [$i];
+    }
+
+    if ($total_supply != $total_demand) {
+        die "Error: The total supply differs from the total demand.";
+    }
+
+    my $transPoly = new polytope::Polytope(polytope::transportation($supply, $demand));
+    my $C = new Vector<Scalar>([0]);
+    for (my $i = 0; $i < $m; ++$i) {
+        $C = $C | ($cost -> [$i]);
+    }
+    $transPoly -> LP(LINEAR_OBJECTIVE => $C);
+
+    my $transport_plan = new Matrix<Scalar>($m, $n);
+    for (my $i = 0; $i < $m; ++$i) {
+        for (my $j = 0; $j < $n; ++$j) {
+            $transport_plan -> elem($i, $j) = $transPoly -> LP -> MINIMAL_VERTEX -> [$i * $n + $j + 1];
+        }
+    }
+    return $transport_plan;
+}

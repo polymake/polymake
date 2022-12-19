@@ -35,6 +35,9 @@ INCLUDE
   lattice.rules
   visual.rules
   doubly_connected_edge_list.rules
+  phylo.rules
+  visual_phylo.rules
+  network_flow.rules
 
 # self-configuring rules
 INCLUDE
@@ -48,6 +51,7 @@ INCLUDE
   tikz.rules
   svg.rules
   x3d.rules
+  mcf.rules
 
 # Local Variables:
 # mode: perl

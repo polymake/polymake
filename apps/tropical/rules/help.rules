@@ -42,6 +42,9 @@
 # @topic category any/gfan
 # These +++ are wrappers for gfan functions.
 
+# @topic category any/Phylogenetics
+# These +++ deal with applications of tropical geometry to phylogenetics.
+
 # Local Variables:
 # mode: perl
 # cperl-indent-level: 3

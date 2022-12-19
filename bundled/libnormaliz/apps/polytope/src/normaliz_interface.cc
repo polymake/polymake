@@ -107,7 +107,7 @@ std::vector<std::vector<Scalar>> pmMatrix_to_stdvectorvector(const Matrix<FromSc
 // create libnormaliz cone object based on given type
 //  from rays or inequalities
 template <typename Scalar>
-libnormaliz::Cone<Scalar> libnormaliz_create_cone(BigObject c, bool from_ineq, bool compute_facets, bool with_grading)
+libnormaliz::Cone<Scalar> libnormaliz_create_cone(BigObject c, libnormaliz::ConeProperties& todo, bool from_ineq, bool compute_facets, bool with_grading)
 {
   std::map<libnormaliz::InputType, std::vector<std::vector<Scalar>>> inputmap;
   Matrix<Rational> data;
@@ -124,8 +124,14 @@ libnormaliz::Cone<Scalar> libnormaliz_create_cone(BigObject c, bool from_ineq, b
     }
     // lookup dual description if we do not want to compute it
     if (!compute_facets) {
-      if (c.lookup("FACETS | INEQUALITIES") >> data)
+      if (c.lookup("FACETS | INEQUALITIES") >> data) {
         inputmap[libnormaliz::Type::inequalities] = pmMatrix_to_stdvectorvector<Scalar, Rational>(data);
+#if NMZ_RELEASE == 30904
+        // this avoids a bug in normaliz 3.9.4 which triggers a failed assertion
+        // see https://github.com/Normaliz/Normaliz/issues/400
+        todo.set(libnormaliz::ConeProperty::NoCoarseProjection);
+#endif
+      }
       if (c.lookup("LINEAR_SPAN | EQUATIONS") >> data)
         inputmap[libnormaliz::Type::equations] = pmMatrix_to_stdvectorvector<Scalar, Rational>(data);
     }
@@ -155,10 +161,10 @@ RationalFunction<> nmz_convert_HS(const libnormaliz::HilbertSeries& nmzHilb)
 
 template <typename Scalar>
 ListReturn normaliz_compute_with(BigObject c, OptionSet options,
-                                       const libnormaliz::ConeProperties& todo, bool with_grading)
+                                       libnormaliz::ConeProperties& todo, bool with_grading)
 {
   ListReturn result;
-  libnormaliz::Cone<Scalar> nmzCone = libnormaliz_create_cone<Scalar>(c, options["from_facets"], options["facets"], with_grading);
+  libnormaliz::Cone<Scalar> nmzCone = libnormaliz_create_cone<Scalar>(c, todo, options["from_facets"], options["facets"], with_grading);
   // in the first case we have done computation with long already or disabled it explicitly
   // the second case is for non-bundled libnormaliz where the long variant is handled
   // by libnormaliz directly

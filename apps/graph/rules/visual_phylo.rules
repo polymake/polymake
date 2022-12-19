@@ -1,0 +1,79 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+# @category Visualization
+# Attributes modifying the appearance of phylogenetic trees
+
+options %Visual::PhylogeneticTree::decorations = (
+   %Visual::Graph::decorations,
+);
+
+object PhylogeneticTree {
+
+user_method VISUAL(%Visual::PhylogeneticTree::decorations) {
+   my ($this, $decor)=@_;
+   my $coord = $this->tree_embedding;
+   visualize( new Visual::PhylogeneticTree( Name => $this->name,
+                                 Graph => $this,
+                                 Coord => $coord,
+                                 NodeLabels => $this->LABELS,
+                                 EdgeLabels => $this->EDGE_LENGTHS,
+                                 $decor,
+                               ));
+}
+
+sub tree_embedding {
+   my ($this)=@_;
+   my $n_leaves = $this->N_TAXA;
+   my $adj = $this->ADJACENCY;
+   my $el = $this->EDGE_LENGTHS;
+   my $leaf_counter = 0;
+   my @positions;
+   $positions[0] = new Vector(0, $n_leaves/2);
+   foreach (@{$adj->adjacent_nodes(0)}) {
+      calc_pos_recursive($_, 0);
+   }
+
+   return convert_to<Float>(new Matrix(@positions));
+
+   sub calc_pos_recursive {
+      my ($current_node, $pred) = @_;
+      # the y coordinate is later changed after it has been computed for the nodes in the succeeding subtree
+      $positions[$current_node] = new Vector($positions[$pred]->[0] + $el->[$adj->edge($current_node, $pred)], 0);
+      my $n_adj_nodes = $adj->adjacent_nodes($current_node)->size;
+      if ($n_adj_nodes == 1) {
+         # its a leaf
+         $positions[$current_node]->[1] = $leaf_counter;
+         $leaf_counter++;
+      } else {
+         my $succ_y = 0;
+         foreach (@{$adj->adjacent_nodes($current_node)}) {
+            next if ($_ == $pred);
+            calc_pos_recursive($_, $current_node);
+            $succ_y += $positions[$_]->[1];
+         }
+         $positions[$current_node]->[1] = $succ_y/($n_adj_nodes-1);
+      }
+   }
+}
+
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

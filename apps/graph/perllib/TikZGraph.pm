@@ -87,6 +87,73 @@ sub line_break_label_length {
 	return max(map {length($_)} split(/\\\\/,shift));
 }
 
+package TikZ::PhylogeneticTree;
+use Polymake::Struct (
+   [ '@ISA' => 'Wire' ],
+);
+
+sub helperCoordinatesToString {
+    # Coordinate definitions
+    # we only need those if edges are not straight lines
+    my ($self)=@_;
+    my $id = $self->id; # this is used to make all TikZ ids globally unique
+    my $text = "\n  % DEF HELPER COORDINATES\n";
+    foreach (my $e=$self->source->all_edges; $e; ++$e) {
+        my $a=$e->[0]; my $b=$e->[1];
+        my $va = $self->source->Vertices->[$a];
+        my $vb = $self->source->Vertices->[$b];
+        my $point = new Vector<Float>($vb);
+        if ($va->[1] != $vb->[1]) {
+           # only if the y coordinates differ the helper point is different from the predecessor node
+           $point->[0] = $vb->[0]; $point->[1] = $va->[1];
+        }
+        my $coordstring = Visual::print_coords($point);
+        $coordstring =~ s/\s+/, /g;
+        $text .= "  \\coordinate (v$b\_$a$id) at ($coordstring);\n";
+    }
+    $text .= "\n";
+
+    return $text;
+}
+
+sub tikzedge {
+    my ($self,$e,$label) = @_;
+    my $a=$e->[0]; my $b=$e->[1];
+    my $id = $self->id;
+    my $text = "";
+    my $tikzid = "edgestyle$id";
+    $tikzid .= "_$a\_$b" if ($self->edgecode);
+    $text .= "  \\draw[$tikzid] (v$b$id) -- (v$b\_$a$id) -- (v$a$id)";
+    $text .= " node [edgelabelstyle$id\_$a\_$b] {$label}" if (defined($label) && $label ne "");
+    $text .= ";\n";
+    return $text;
+}
+
+sub drawAllEdges {
+    my ($self) = @_;
+    my @edges;
+    foreach (my $e=$self->source->all_edges; $e; ++$e) {
+        push @edges, $e;    
+    } 
+    $self->edgesToString(\@edges);
+}
+
+sub toString {
+    my ($self, $trans)=@_;
+    my $text = "";
+    my $drawvertices = $self->source->VertexStyle !~ $Visual::hidden_re;
+    my $drawedges = $self->source->EdgeStyle !~ $Visual::hidden_re;
+    $text .= $self->header;
+    $text .= $self->coordinatesToString; 
+    $text .= $self->helperCoordinatesToString; 
+    $text .= $self->vertexStylesToString("right") if ($drawvertices);
+    $text .= $self->edgeStylesToString . $self->drawAllEdges if ($drawedges);
+    $text .= $self->drawAllPoints if ($drawvertices);
+    $text .= $self->trailer;
+    return $text;
+}
+
+###########################################
 1
 
 

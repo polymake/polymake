@@ -14,34 +14,22 @@
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
-REQUIRE
-   common::tikz.rules
+package Visual::PhylogeneticTree;
 
-CREDIT tikz
+use Polymake::Struct (
+   [ '@ISA' => 'Visual::Graph' ],
+   #[ '$NodeLabels' => '$this->create_node_labels(#%)', default =>'undef' ],
+   #[ '$NodeColor' => 'unify_decor(#%)', default => 'undef' ],
+   #[ '$NodeBorderColor' => 'unify_decor(#%)', default => '"0 0 0"' ],
+);
 
-require TikZGraph;
-
-
-package TikZ::Viewer;
-
-global_method tikz.graph: draw(Visual::Graph, @) {
-   my ($self, $G)=@_;
-   $self->append(new Wire($G));
+sub create_node_labels {
+   
 }
 
-global_method tikz.lattice: draw(Visual::Lattice, @) {
-   my ($self, $G)=@_;
-   $self->append(new Lattice($G));
-}
-
-global_method tikz.phylogenetictree: draw(Visual::PhylogeneticTree, @) {
-   my ($self, $G)=@_;
-   $self->append(new PhylogeneticTree($G));
-}
-
-prefer tikz.lattice
+1;
 
 # Local Variables:
 # mode: perl
-# cperl-indent-level:3
+# c-basic-offset:3
 # End:

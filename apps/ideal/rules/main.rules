@@ -37,7 +37,6 @@ declare object Groebner;
 INCLUDE
    ideal_properties.rules
    ideal.rules
-   grassmann_pluecker.rules
    slack_ideal.rules
 
 # Local Variables:

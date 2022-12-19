@@ -77,6 +77,8 @@ Solver::solve(const Matrix<Rational>& Inequalities, const Matrix<Rational>& Equa
 
    // turn off output
    soplex.setIntParam(soplex::SoPlex::IntParam::VERBOSITY, soplex::SoPlex::VERBOSITY_ERROR);
+   // disable simplifier due to https://github.com/scipopt/soplex/issues/6
+   soplex.setIntParam(soplex::SoPlex::IntParam::SIMPLIFIER, soplex::SoPlex::SIMPLIFIER_OFF);
 #if POLYMAKE_DEBUG
    if (debug_print) {
       soplex.setIntParam(soplex::SoPlex::IntParam::VERBOSITY, soplex::SoPlex::VERBOSITY_NORMAL);

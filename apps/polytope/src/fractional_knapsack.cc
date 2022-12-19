@@ -42,7 +42,22 @@ UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Produce a knapsack polytope defined by one linear inequality (and non-negativity constraints)."
                   "# "
                   "# @param Vector<Rational> b linear inequality"
-                  "# @return Polytope",
+                  "# @return Polytope"
+                  "# @example [prefer cdd] [require bundled:cdd] For the inequality 2x_1 + 3x_2 + 5x_3 <= 10 we compute the facets of the corresponding"
+                  "# knapsack polytope (i.e., the integer hull of the fractional knapsack polytope)."
+                  "# > $K = fractional_knapsack([10,-2,-3,-5]);"
+                  "# > print $K->FACETS;"
+                  "# | 10 -2 -3 -5"
+                  "# | 0 1 0 0"
+                  "# | 0 0 1 0"
+                  "# | 0 0 0 1"
+                  "# > $IK = integer_hull($K);"
+                  "# > print $IK->FACETS;"
+                  "# | 0 1 0 0"
+                  "# | 6 -1 -2 -3"
+                  "# | 5 -1 -3/2 -5/2"
+                  "# | 0 0 1 0"
+                  "# | 0 0 0 1",
                   &fractional_knapsack, "fractional_knapsack");
 } }
 

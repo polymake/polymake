@@ -28,12 +28,13 @@
 namespace polymake { namespace polytope {
 
 /*
- *  computes the either gomory-chvatal closure of a polyhedron
- *  or a totally dual integral system
+ *  Computes the Gomory-Chvátal closure of a polyhedron (if round is set to true);
+ *  or computes a totally dual integral system of defining inequalities (if round is set to false).
+ *  In both cases a new big object is returned.
  */
 BigObject gc_and_tdi(BigObject p_in, bool round)
 {
-   Matrix<Rational> vertices;  // Hilbert Basis and Vertices
+   Matrix<Rational> vertices;  // Hilbert basis and Vertices
    Set<Vector<Rational> > hilbert_ineqs;  // the new inequalities
    Vector<Rational> obj, this_vector;  // one inequality
    Int n, i, k;  // counting variables
@@ -42,20 +43,20 @@ BigObject gc_and_tdi(BigObject p_in, bool round)
    p_in.give("VERTICES") >> vertices;
    p_in.give("N_VERTICES") >> n;
 
-   // For every vertex do
+   // for every vertex do
    for (i = 0; i < n; ++i) {
       if (vertices(i,0) == 0)
          continue;
-      // Compute the Hilbertbasis of its normal cone
+      // compute the Hilbert basis of its normal cone
       BigObject C = call_function("normal_cone", p_in, i);
       Matrix<Integer> hb = C.call_method("HILBERT_BASIS");
-      // For every Hilbertbasis element do
+      // for every Hilbert basis element do
       for (k=0; k < hb.rows(); ++k) {
          // compute the right hand side
          this_vector= hb.row(k);
          obj = (0 | this_vector);
          // round if the gc_closure is needed
-         val = (round == 1) ? (ceil(obj * (vertices[i]))) : val =  (obj * (vertices[i]));
+         val = (round == 1) ? ceil(obj * (vertices[i])) : obj * (vertices[i]);
          this_vector = (-val | this_vector);
 
          // add inequality to the system
@@ -67,7 +68,7 @@ BigObject gc_and_tdi(BigObject p_in, bool round)
 }
 
 /*
- *  computes the gomory-chvatal closure of a polyhedron
+ *  Computes the Gomory-Chvátal closure of a polyhedron.
  */
 BigObject gc_closure(BigObject p_in)
 {
@@ -76,7 +77,7 @@ BigObject gc_closure(BigObject p_in)
 
 
 /*
- *  computes a totally dual integral inequality system for a polyhedron
+ *  Computes a totally dual integral inequality system for a polyhedron.
  */
 BigObject make_totally_dual_integral(BigObject p_in)
 {
@@ -84,7 +85,7 @@ BigObject make_totally_dual_integral(BigObject p_in)
 }
 
 /*
- *  Checks wether a given system of inequalities is totally dual integral or not
+ *  Checks wether a given system of inequalities is totally dual integral or not.
  */
 bool totally_dual_integral(const Matrix<Rational>& inequalities)
 {
@@ -98,7 +99,7 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
    const Matrix<Rational> vertices = p_in.give("VERTICES");
    const IncidenceMatrix<> eq_sets = p_in.give("INEQUALITIES_THRU_VERTICES");
 
-   //FIXME constraint, since polymake cannot compute hilbertbasis of non pointed cones
+   //FIXME constraint, since polymake cannot compute Hilbert basis of non pointed cones
    const Int polytope_dim = p_in.give("CONE_DIM");
    if (dim != polytope_dim)
       throw std::runtime_error("totally_dual_integral: the inequalities should describe a full dimensional polyhedron");
@@ -107,24 +108,21 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
    for (Int i = 0; i < vertices.rows(); ++i) {
       if (vertices(i,0) == 0)
          continue;
-      // compute the normal_cone and its hilbert basis
+      // compute the normal_cone and its Hilbert basis
       BigObject C = call_function("normal_cone", p_in, i);
       Matrix<Rational> hb = C.call_method("HILBERT_BASIS");
 
       // for every hilbert basis element of the normal cone
-      // check weather it can be written as a non negative
+      // check whether it can be written as a non negative
       // integral linear combination of the active constraints
       for (Int j = 0; j < hb.rows(); ++j){
          // solutions is a polyhedron of all possible linear combinations
-         // which give the hilbert basis element
+         // which give the Hilbert basis element
          Matrix<Rational> temp_matrix(-hb.row(j) | T(ineq.minor(eq_sets[i], range_from(1))));
 
          BigObject solutions("Polytope<Rational>",
                              "INEQUALITIES", unit_matrix<Rational>(temp_matrix.cols()),
                              "EQUATIONS", temp_matrix);
-
-         // FIXME: workaround for the scheduling problem. Ticket #195
-         solutions.give("VERTICES") >> temp_matrix;
 
          // check if there is an integral solution. If not -> return false
          // if the solution polytope is not bounded we cannot just count them
@@ -150,19 +148,21 @@ bool totally_dual_integral(const Matrix<Rational>& inequalities)
 
 
 UserFunction4perl("# @category Producing a polytope from polytopes"
-                  "# Produces the gomory-chvatal closure of a full dimensional polyhedron"
+                  "# Computes the Gomory-Chvátal closure of a full dimensional polyhedron."
+                  "# See Schrijver, Theory of Linear and Integer programming (Wiley 1986), §23.1."
                   "# @param Polytope P"
                   "# @return Polytope",
                   &gc_closure, "gc_closure");
 
 UserFunction4perl("# @category Producing a polytope from polytopes"
-                  "# Produces a polyhedron with an totally dual integral inequality formulation of a full dimensional polyhedron"
+                  "# Computes a polyhedron with an totally dual integral inequality formulation of a full dimensional polyhedron."
+                  "# See Schrijver, Theory of Linear and Integer programming (Wiley 1986), §22.3."
                   "# @param Polytope P"
                   "# @return Polytope",
                   &make_totally_dual_integral, "make_totally_dual_integral");
 
 UserFunction4perl("# @category Optimization"
-                  "# Checks weather a given system of inequalities is totally dual integral or not."
+                  "# Checks if a given system of inequalities is totally dual integral or not."
                   "# The inequalities should describe a full dimensional polyhedron"
                   "# @param Matrix inequalities"
                   "# @return Bool"

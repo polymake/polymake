@@ -1,0 +1,525 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+
+function facets_matrix<Scalar>(Matrix<Scalar>, Matrix<Scalar>) {
+    my ($costMatrix, $flowMatrix) = @_;
+    my $m = $costMatrix -> rows();
+    my $n = $costMatrix -> cols();
+	my $scalarType = typeof Scalar;
+   
+    if ($m != $flowMatrix -> rows() || $n != $flowMatrix -> cols()) {
+        die "The dimension of the cost matrix does not match the dimension of the flow matrix.";
+    }
+   
+    my $g = new GraphAdjacency<Undirected>();
+   
+    for (my $i = 0; $i < $m + $n; ++$i) {
+        $g -> add_node();
+    }
+   
+    # here we prefer the coordinate nodes to have the indices from 0 to $n - 1
+    for (my $i = 0; $i < $m; ++$i) {
+        for (my $j = 0; $j < $n; ++$j) {
+            # if ($flowMatrix -> elem($i, $j) != 0) {
+			if ($scalarType -> equal -> ($flowMatrix -> elem($i, $j), 0) == false) {
+                $g -> add_edge($j, $i + $n);
+            }
+        }
+    }
+   
+    my $multip = new NodeMap<Undirected, Scalar>($g); # dual prices
+    my $labels = new NodeMap<Undirected, Int>($g); # represent the connecting components
+
+    for (my $i = 0; $i < $m + $n; ++$i) {
+        $labels -> [$i] = -1;
+    }
+
+    my $d = 0;
+
+    sub dfs_initialize_mult {
+
+        my ($G, $node, $lab, $labList, $mult, $edgeCosts, $N) = @_;
+        $labList -> [$node] = $lab;
+
+        my @neighbours = @{$G -> adjacent_nodes($node)};
+        for (my $u = 0; $u < scalar @neighbours; ++$u) {
+            my $next = $neighbours[$u];
+            if ($labList -> [$next] == -1) {
+                my $i = 0;
+				my $j = 0;
+                if ($node < $N) { $j = $node; $i = $next - $N; }
+                else { $i = $node - $N; $j = $next; }
+				
+                $mult -> [$next] = $edgeCosts -> elem($i, $j) - $mult -> [$node];
+                dfs_initialize_mult($G, $next, $lab, $labList, $mult, $edgeCosts, $N);
+            }
+        }
+    }
+
+    for (my $j = 0; $j < $n; ++$j) {
+        if ($labels -> [$j] == -1) {
+            ++$d;
+            dfs_initialize_mult($g, $j, $d - 1, $labels, $multip, $costMatrix, $n);
+        }
+    }
+   
+    my $delta = new Matrix<Scalar>($d, $d);
+    my $bigM = new Scalar(0);
+    for (my $i = 0; $i < $m; ++$i) {
+        for (my $j = 0; $j < $n; ++$j) {
+            if ( $bigM < $multip -> [$n + $i] + $multip -> [$j] - $costMatrix -> elem($i, $j) ) {
+                $bigM = $multip -> [$n + $i] + $multip -> [$j] - $costMatrix -> elem($i, $j);
+            }
+        }
+    }
+
+    for (my $i = 0; $i < $d; ++$i) {
+        for (my $j = 0; $j < $d; ++$j) {
+            if ($i != $j) {
+                $delta -> elem($i, $j) = $bigM;
+            }
+        }
+    }
+   
+    for (my $i = 0; $i < $m; ++$i) {
+        for (my $j = 0; $j < $n; ++$j) {
+            if ($delta -> elem($labels -> [$n + $i], $labels -> [$j]) > $multip -> [$n + $i] + $multip -> [$j] - $costMatrix -> elem($i, $j)) {
+                $delta -> elem($labels -> [$n + $i], $labels -> [$j]) = $multip -> [$n + $i] + $multip -> [$j] - $costMatrix -> elem($i, $j);
+            }
+        }
+    }
+
+	# Floyd-Warshall algorithm
+    for (my $k = 0; $k < $d; ++$k) {
+        for (my $i = 0; $i < $d; ++$i) {
+            for (my $j = 0; $j < $d; ++$j) {
+                if ($delta -> elem($i, $j) > $delta -> elem($i, $k) + $delta -> elem($k, $j)) {
+                    $delta -> elem($i, $j) = $delta -> elem($i, $k) + $delta -> elem($k, $j)
+                }
+            }
+        }
+    }
+	
+	# facets -> (i,j) contains the maximal value of x_i - x_j over the polytrope
+    my $facets = new Matrix<Scalar>($n, $n);
+    for (my $i = 0; $i < $n; ++$i) {
+        for (my $j = 0; $j < $n; ++$j) {
+            $facets -> elem($i, $j) = $multip -> [$i] - $multip -> [$j] + $delta -> elem($labels -> [$i], $labels -> [$j]);
+        }
+    }
+    return $facets;
+}
+
+# @category Phylogenetics
+# Computes the asymmetric tropical Fermat-Weber set.
+# See A. Comăneci, M. Joswig: Tropical medians by transportation, arXiv:2205.00036
+# @param Matrix V whose rows represent points in the tropical projective torus
+# @return polytope::Polytope
+# @example [application polytope] [prefer cdd] [require bundled:cdd] Computes the Fermat-Weber set of three points and prints its ordinary vertices.
+# > $V = new Matrix([[2,-1,-1],[-1,2,-1],[-1,-1,2]]);
+# > $FW = tropical::fw_set($V);
+# > print $FW -> VERTICES;
+# | 1 0 3 0
+# | 1 3 3 0
+# | 1 3 0 0
+# | 1 0 -3 0
+# | 1 -3 -3 0
+# | 1 -3 0 0
+user_function fw_set<Scalar>(Matrix<Scalar>) {
+	my $S = new Matrix<Scalar>(@_);
+	
+	my $m = $S -> rows();
+    my $n = $S -> cols();
+	
+	my $supply = new Vector<Scalar>($n * ones_vector<Scalar>($m));
+	my $demand = new Vector<Scalar>($m * ones_vector<Scalar>($n));
+	
+	# we compute a maximal cost flow; we need a "-" sign in front of $S
+	my $flowMatrix = optimal_transport_plan(-$S, $supply, $demand);
+	
+	my $facets = facets_matrix($S, $flowMatrix);
+	
+	my $ineq_matrix = new Matrix<Scalar>(($n-1)*$n, $n+1);
+	my $counter = 0;
+	for (my $i = 0; $i < $n; ++$i) {
+		for (my $j = 0; $j < $n; ++$j) {
+			if ($i != $j) {
+				$ineq_matrix -> elem($counter, 0) = $facets -> elem($i, $j);
+				$ineq_matrix -> elem($counter, $i + 1) = -1;
+				$ineq_matrix -> elem($counter, $j + 1) = 1;
+				++$counter;
+			}
+		}
+	}
+	
+	my $P = new polytope::Polytope(INEQUALITIES=>$ineq_matrix);
+	
+	return $P;
+}
+
+# @category Phylogenetics
+# Returns the tropical median--the average of the tropical vertices of the asymmetric tropical Fermat-Weber set.
+# See A. Comăneci, M. Joswig: Tropical medians by transportation, arXiv:2205.00036
+# @param Matrix V whose rows represent points in the tropical projective torus
+# @return Vector
+# @example Computes the tropical median of five points.
+# > $V = new Matrix([[14,-7,-7],[13,-14,1],[11,-13,2],[10,1,-11],[3,-3,0]]);
+# > print tropical_median($V);
+# | 9 -6 -3
+user_function tropical_median<Scalar> (Matrix<Scalar>) {
+	my $S = new Matrix<Scalar>(@_);
+	
+	my $m = $S -> rows();
+    my $n = $S -> cols();
+	
+	my $supply = new Vector<Scalar>($n * ones_vector<Scalar>($m));
+	my $demand = new Vector<Scalar>($m * ones_vector<Scalar>($n));
+	
+	# we compute an maximal cost flow; we need a "-" sign in front of $S
+	my $flowMatrix = optimal_transport_plan(-$S, $supply, $demand);
+	
+	my $trop_vert = facets_matrix($S, $flowMatrix);
+	
+	my $c = new Vector(ones_vector($n));
+    $c = -$c;
+    for (my $i = 0; $i < $n; ++$i) {
+        my $ok = 1;
+        for (my $j = 0; $j < $i && $ok; ++$j) {
+            if ($trop_vert -> elem($i, $j) == -$trop_vert -> elem($j, $i)) {
+                $c -> [$i] = $c -> [$j];
+                $ok = 0;
+            }
+        }
+        if ($ok) {
+            $c -> [$i] = $i;
+        }
+    }
+
+    my $k = 0;
+	my $s = new Vector<Scalar>($n);
+	if (typeof Scalar == typeof Int) {
+		$s = new Vector<Rational>($n);
+	}
+    
+    for (my $i = 0; $i < $n; ++$i) {
+        if ($c -> [$i] == $i) {
+            ++$k;
+            my $sum_row = new Scalar(0);
+			if (typeof Scalar == typeof Int) {
+				$sum_row = new Rational(0);
+			}
+            for (my $j = 0; $j < $n; ++$j) {
+                $sum_row += $trop_vert -> elem($i, $j);
+            }
+            my $sum_avg = $sum_row / $n;
+            my $v = new Vector<Scalar>($trop_vert -> [$i]);
+            if (typeof Scalar == typeof Int) {
+				$v = new Vector<Rational>($trop_vert -> [$i]);
+				$v -= $sum_avg * ones_vector<Rational>($n);
+			}
+			else {
+				$v -= $sum_avg * ones_vector<Scalar>($n);
+            }
+			$s += $v;
+        }
+    }
+    $s /= $k;
+    return -$s;
+}
+
+# @category Phylogenetics
+# Computes the tropical median consensus of given phylogenetic trees. They must have the same taxa.
+# It accepts only equidistant trees (see Section 7.2 from [C. Semple, M. Steel: Phylogenetics]).
+# The method is described in A. Comăneci, M. Joswig: Tropical medians by transportation, arXiv:2205.00036
+# @return PhylogeneticTree
+# @example The tropical median consensus of three phylogenetic trees.
+# > $T1 = new graph::PhylogeneticTree(NEWICK => "(H:30,(C:10,B:10):20):10,G:40;");
+# > $T2 = new graph::PhylogeneticTree(NEWICK => "((H:10,C:10):20,B:30):10,G:40;");
+# > $T3 = new graph::PhylogeneticTree(NEWICK => "(H:25,C:25):15,(B:15,G:15):25;");
+# > $Tc = tropical_median_consensus($T1, $T2, $T3);
+# > print $Tc -> NEWICK;
+# | G:40,(B:35,(C:30,H:30):5):5;
+user_function tropical_median_consensus<Scalar>(PhylogeneticTree<Scalar>+) {
+	my $Trees = new Array<graph::PhylogeneticTree<Scalar>>($_[0]);
+	return tropical_median_consensus($Trees);
+}
+
+function tropical_median_consensus<Scalar>(Array<graph::PhylogeneticTree<Scalar>>) {
+	my ($Trees) = @_;
+	my $n_trees = $Trees -> size();
+
+	sub ordinal {
+		return $_.(qw/th st nd rd/)[/(?<!1)([123])$/ ? $1 : 0] for int shift;
+	}
+
+	for (my $i = 0; $i < $n_trees; ++$i) {
+		if ($Trees -> [$i] -> EQUIDISTANT == false) {
+			die "Error: The ", ordinal($i + 1), " tree is not equidistant.";
+		}
+	}
+
+	for (my $i = 1; $i < $n_trees; ++$i) {
+		if ($Trees -> [0] -> TAXA ne $Trees -> [$i] -> TAXA) {
+			die "Error: The trees have different taxa.";
+		}
+	}
+
+	my $n_taxa = $Trees -> [0] -> N_TAXA;
+	my $N = $n_taxa * ($n_taxa - 1) / 2;
+	my $S = new Matrix<Scalar>(zero_matrix<Scalar>($n_trees, $N));
+	my $max_entry = new Scalar(0);
+
+	for (my $k = 0; $k < $n_trees; ++$k) {
+		for (my $i = 0; $i < $n_taxa; ++$i) {
+			for (my $j = $i + 1; $j < $n_taxa; ++$j) {
+				$S -> [$k][$i*$n_taxa - ($i+1)*($i+2)/2 + $j] = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				if ($max_entry < $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j]) {
+					$max_entry = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				}
+			}
+		}
+	}
+
+	my $sol = tropical_median($S);
+	my $aux = $max_entry - maximum($sol);
+	my $sol_mat = new Matrix<Scalar>($n_taxa, $n_taxa);
+	if (typeof Scalar == typeof Int) {
+		$sol_mat = new Matrix<Rational>($n_taxa, $n_taxa);
+	}
+
+	for (my $i = 0; $i < $n_taxa; ++$i) {
+		for (my $j = $i + 1; $j < $n_taxa; ++$j) {
+			$sol_mat -> [$i][$j] = $sol -> [$i*$n_taxa - ($i+1)*($i+2)/2 + $j] + $aux;
+			$sol_mat -> [$j][$i] = $sol_mat -> [$i][$j];
+		}
+	}
+
+	if (typeof Scalar == typeof Int) {
+		my $consensus = new graph::PhylogeneticTree<Rational>(COPHENETIC_MATRIX => $sol_mat, TAXA => $Trees -> [0] -> TAXA);
+		return $consensus;
+	} else {
+		my $consensus = new graph::PhylogeneticTree<Scalar>(COPHENETIC_MATRIX => $sol_mat, TAXA => $Trees -> [0] -> TAXA);
+		return $consensus;
+	}
+}
+
+function weighted_tropical_median<Scalar> (Matrix<Scalar>, Array<Scalar>) {
+	my ($S, $w) = @_;
+	
+	my $m = $S -> rows();
+    my $n = $S -> cols();
+	
+	if ($m != $w -> size()) {
+		die "Error: The number of weights does not match the number of points.";
+	}
+	
+	my $totalW = 0;
+	for (my $i = 0; $i < $m; ++$i) {
+		$totalW += $w -> [$i];
+	}
+	
+	# do I need special representatives for the points (i.e. rows of $S)?
+	my $supply = new Vector<Scalar>($n * (new Vector<Scalar>($w)));
+	my $demand = new Vector<Scalar>($totalW * ones_vector<Scalar>($n));
+	
+	# we compute a maximal cost flow; we need a "-" sign in front of $S
+	# warning: mcf only uses integer supplies and demands
+	my $flowMatrix = optimal_transport_plan(-$S, $supply, $demand);
+	
+	my $trop_vert = facets_matrix($S, $flowMatrix);
+	
+	my $c = new Vector(ones_vector<Scalar>($n));
+    $c = -$c;
+    for (my $i = 0; $i < $n; ++$i) {
+        my $ok = 1;
+        for (my $j = 0; $j < $i && $ok; ++$j) {
+            if ($trop_vert -> elem($i, $j) == -$trop_vert -> elem($j, $i)) {
+                $c -> [$i] = $c -> [$j];
+                $ok = 0;
+            }
+        }
+        if ($ok) {
+            $c -> [$i] = $i;
+        }
+    }
+
+    my $k = 0;
+	my $s = new Vector<Scalar>($n);
+	if (typeof Scalar == typeof Int) {
+		$s = new Vector<Rational>($n);
+	}
+    
+    for (my $i = 0; $i < $n; ++$i) {
+        if ($c -> [$i] == $i) {
+            ++$k;
+            my $sum_row = new Scalar(0);
+            for (my $j = 0; $j < $n; ++$j) {
+                $sum_row += $trop_vert -> elem($i, $j);
+            }
+            my $sum_avg = $sum_row / $n;
+            my $v = new Vector<Scalar>($trop_vert -> [$i]);
+            $v -= $sum_avg * ones_vector<Scalar>($n);
+            $s += $v;
+        }
+    }
+    $s /= $k;
+    return -$s;
+	
+}
+
+function weighted_tropical_median_consensus<Scalar>(Array<graph::PhylogeneticTree<Scalar>>, Array<Scalar>) {
+	my ($Trees, $w) = @_;
+	my $n_trees = $Trees -> size();
+
+	if ($n_trees != $w -> size()) {
+		die "Error: The number of weights does not match the number of trees.";
+	}
+
+	sub ordinal {
+		return $_.(qw/th st nd rd/)[/(?<!1)([123])$/ ? $1 : 0] for int shift;
+	}
+
+	for (my $i = 0; $i < $n_trees; ++$i) {
+		if ($Trees -> [$i] -> EQUIDISTANT == false) {
+			die "Error: The ", ordinal($i + 1), " tree is not equidistant.";
+		}
+	}
+
+	for (my $i = 1; $i < $n_trees; ++$i) {
+		if ($Trees -> [0] -> TAXA ne $Trees -> [$i] -> TAXA) {
+			die "Error: The trees have different taxa.";
+		}
+	}
+
+	my $n_taxa = $Trees -> [0] -> N_TAXA;
+	my $N = $n_taxa * ($n_taxa - 1) / 2;
+	my $S = new Matrix<Scalar>(zero_matrix<Scalar>($n_trees, $N));
+	my $max_entry = new Scalar(0);
+
+	for (my $k = 0; $k < $n_trees; ++$k) {
+		for (my $i = 0; $i < $n_taxa; ++$i) {
+			for (my $j = $i + 1; $j < $n_taxa; ++$j) {
+				$S -> [$k][$i*$n_taxa - ($i+1)*($i+2)/2 + $j] = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				if ($max_entry < $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j]) {
+					$max_entry = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				}
+			}
+		}
+	}
+
+	my $sol = weighted_tropical_median($S, $w);
+	my $aux = $max_entry - maximum($sol);
+	my $sol_mat = new Matrix<Scalar>($n_taxa, $n_taxa);
+
+	for (my $i = 0; $i < $n_taxa; ++$i) {
+		for (my $j = $i + 1; $j < $n_taxa; ++$j) {
+			$sol_mat -> [$i][$j] = $sol -> [$i*$n_taxa - ($i+1)*($i+2)/2 + $j] + $aux;
+			$sol_mat -> [$j][$i] = $sol_mat -> [$i][$j];
+		}
+	}
+
+	my $consensus = new graph::PhylogeneticTree<Scalar>(COPHENETIC_MATRIX => $sol_mat, TAXA => $Trees -> [0] -> TAXA);
+	return $consensus;
+}
+
+function tropical_center<Scalar>(Matrix<Scalar>) {
+	
+	my $S = new Matrix<Scalar>(@_);
+	
+	my $m = $S -> rows();
+    my $n = $S -> cols();
+
+	for (my $i = 0; $i < $m; ++$i) {
+        my $sum_row = 0;
+        for (my $j = 0; $j < $n; ++$j) {
+            $sum_row += $S -> elem($i, $j);
+        }
+        my $row_avg = $sum_row / $n;
+        for (my $j = 0; $j < $n; ++$j) {
+            $S -> elem($i, $j) -= $row_avg;
+        }
+    }
+	
+	my $c = new Vector<Scalar>($S -> row(0));
+    if (typeof Scalar == typeof Int) {
+		$c = new Vector<Rational>($S -> row(0));
+	}
+	for (my $i = 1; $i < $m; ++$i) {
+		for (my $j = 0; $j < $n; ++$j) {
+			if ($c -> [$j] < $S -> elem($i, $j)) {
+				$c -> [$j] = $S -> elem($i, $j);
+			}
+		}
+	}
+	
+	return $c;
+}
+
+function tropical_center_consensus<Scalar>(Array<graph::PhylogeneticTree<Scalar>>) {
+	my ($Trees) = @_;
+	my $n_trees = $Trees -> size();
+
+	sub ordinal {
+		return $_.(qw/th st nd rd/)[/(?<!1)([123])$/ ? $1 : 0] for int shift;
+	}
+
+	for (my $i = 0; $i < $n_trees; ++$i) {
+		if ($Trees -> [$i] -> EQUIDISTANT == false) {
+			die "Error: The ", ordinal($i + 1), " tree is not equidistant.";
+		}
+	}
+
+	for (my $i = 1; $i < $n_trees; ++$i) {
+		if ($Trees -> [0] -> TAXA ne $Trees -> [$i] -> TAXA) {
+			die "Error: The trees have different taxa.";
+		}
+	}
+
+	my $n_taxa = $Trees -> [0] -> N_TAXA;
+	my $N = $n_taxa * ($n_taxa - 1) / 2;
+	my $S = new Matrix<Scalar>(zero_matrix<Scalar>($n_trees, $N));
+	my $max_entry = new Scalar(0);
+
+	for (my $k = 0; $k < $n_trees; ++$k) {
+		for (my $i = 0; $i < $n_taxa; ++$i) {
+			for (my $j = $i + 1; $j < $n_taxa; ++$j) {
+				$S -> [$k][$i*$n_taxa - ($i+1)*($i+2)/2 + $j] = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				if ($max_entry < $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j]) {
+					$max_entry = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				}
+			}
+		}
+	}
+
+	my $sol = tropical_center($S);
+	my $aux = $max_entry - maximum($sol);
+	my $sol_mat = new Matrix<Scalar>($n_taxa, $n_taxa);
+
+	for (my $i = 0; $i < $n_taxa; ++$i) {
+		for (my $j = $i + 1; $j < $n_taxa; ++$j) {
+			$sol_mat -> [$i][$j] = $sol -> [$i*$n_taxa - ($i+1)*($i+2)/2 + $j] + $aux;
+			$sol_mat -> [$j][$i] = $sol_mat -> [$i][$j];
+		}
+	}
+
+	my $consensus = new graph::PhylogeneticTree(COPHENETIC_MATRIX => $sol_mat, TAXA => $Trees -> [0] -> TAXA);
+	return $consensus;
+}
+
+
+
+
+

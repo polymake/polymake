@@ -62,6 +62,22 @@ sub header {
                     color = {lightgray}]
 
 .
+   } elsif ($self->geometries->[0]->isa("TikZ::PhylogeneticTree")) {
+      my $maxX;
+      foreach my $coord (@{$self->geometries->[0]->source->Vertices}) {
+         assign_max($maxX, $coord->[0]);
+      }
+      my $xscale = 1/$maxX*5;
+      $result .= <<".";
+\\begin{tikzpicture}[x  = {(1cm, 0em)},
+                    y  = {(0em, 1cm)},
+                    scale = 1,
+                    xscale = $xscale,
+                    color = {lightgray}]
+
+\\tikzstyle{every node}=[font=\\small]
+
+.
    } else {
       my $xaxis = $trans->col(1);
       my $yaxis = $trans->col(2);
@@ -261,7 +277,7 @@ sub tikznode {
 
 
 sub vertexStylesToString {
-    my ($self)=@_;
+    my ($self, $labelposition)=@_;
     my $id = $self->id;
     my $text = "";
     my $number = @{$self->source->Vertices};
@@ -271,6 +287,7 @@ sub vertexStylesToString {
     my $thickness = $self->source->VertexThickness // 1;
     my $labels = $self->source->VertexLabels;
     my $label_flag = (defined($labels) && $labels !~ $Visual::hidden_re && $labels ne "") ? 1 : 0;
+    $labelposition //= "above right";
     my $alignment = $self->source->LabelAlignment;
 
     if (is_code($vcolors) || is_code($thickness) || ($label_flag && is_code($labels))) {
@@ -288,7 +305,7 @@ sub vertexStylesToString {
             if ($label_flag) {
                 my $label = is_code($labels) ? $labels->($i) : $labels;
                 $label = Utils::tikzlabel($label);
-                $optionstring .= "label={[text=black, above right, align=$alignment]:$label},"; 
+                $optionstring .= "label={[text=black, $labelposition, align=$alignment]:$label},"; 
             }
             $text .= $self->tikzstyle("vertexstyle$id\_$i",$optionstring);
         }
@@ -298,7 +315,7 @@ sub vertexStylesToString {
         if ($label_flag) {
             #labels are not code
             my $label = Utils::tikzlabel($labels);
-            $optionstring .= "label={[text=black, above right, align=$alignment]:$label}"; 
+            $optionstring .= "label={[text=black, $labelposition, align=$alignment]:$label}"; 
         }
         $text .= $self->tikzstyle("vertexstyle$id",$optionstring);
     }
@@ -387,7 +404,6 @@ sub edgesToString {
             $loopvars .= "/\\label";
             $labeltext = "\\label";
             foreach my $i (0..@$edges-1) {
-                print $i;
                 my $label = $labels->($edges->[$i]);
                 $label = Utils::tikzlabel($label);
                 $array[$i] .= "/$label";

@@ -32,8 +32,8 @@ object Cone<Rational> {
       $this->LINEALITY_SPACE = new Matrix(0, $r->cols);
    }
    weight 4.10;
-   precondition : FULL_DIM;
    precondition : POINTED;
+   precondition : CONE_AMBIENT_DIM;
    incurs VertexPerm;
 
 }

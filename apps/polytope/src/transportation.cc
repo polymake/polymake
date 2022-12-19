@@ -21,9 +21,11 @@
 
 namespace polymake { namespace polytope {
 
-template <typename Scalar>
-BigObject transportation(const Vector<Scalar>& r, const Vector<Scalar>& c)
+template <typename Scalar, typename VectorType1, typename VectorType2>
+BigObject transportation(const GenericVector<VectorType1>& r_in, const GenericVector<VectorType2>& c_in)
 {
+	auto r = convert_to<Scalar>(r_in);
+	auto c = convert_to<Scalar>(c_in);
    const Int m = r.size();
    const Int n = c.size();
   
@@ -67,7 +69,7 @@ UserFunctionTemplate4perl("# @category Producing a polytope from scratch"
                           "# @param Vector r"
                           "# @param Vector c"
                           "# @return Polytope",
-                          "transportation<Scalar>(Vector<Scalar>, Vector<Scalar>)");
+                          "transportation<Scalar>[ is_ordered_field(type_upgrade<Scalar, Rational>) ](Vector<type_upgrade<Scalar>>, Vector<type_upgrade<Scalar>>)");
 } }
 
 // Local Variables:

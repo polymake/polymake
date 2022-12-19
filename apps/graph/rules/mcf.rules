@@ -1,0 +1,111 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+CREDIT mcf
+  Network simplex algorithm for minimum cost flows.
+  Copyright by Andreas Löbel & ZIB.
+  https://www.zib.de/opt-long_projects/Software/Mcf/
+
+# path to the mcf executable
+custom $mcf;
+
+CONFIGURE {
+   find_program($mcf, "mcf") or return;
+}
+
+# For executing code only when mcf is available
+label mcf
+
+prefer mcf.otp
+
+# Computes optimal transport plan of a transportation problem.
+# Comment what mcf types are used.
+# @param Matrix m-by-n matrix containing the transportation costs
+# @param Vector m-vector containing the supply
+# @param Vector n-vector containing the demand
+# @return Matrix
+user_function mcf.otp: optimal_transport_plan<Scalar>[Scalar == Int || Scalar == Float](Matrix<Scalar>, Vector<Scalar>, Vector<Scalar>) {
+	my ($cost, $supply, $demand) = @_;
+	my $m = $cost -> rows();
+	my $n = $cost -> cols();
+	my $scalarType = typeof Scalar;
+
+	if ($supply -> dim != $m) {
+		die "Error: The size of the supply vector does not match the number of rows of the cost matrix.";
+	}
+	if ($demand -> dim != $n) {
+		die "Error: The size of the demand vector does not match the number of columns of the cost matrix.";
+	}
+
+	my $total_supply = new Scalar(0);
+	for (my $i = 0; $i < $m; ++$i) {
+		if ($supply -> [$i] <= 0) {
+			die "Error: The supply must be postive.";
+		}
+		$total_supply += $supply -> [$i];
+	}
+	my $total_demand = new Scalar(0);
+	for (my $i = 0; $i < $n; ++$i) {
+		if ($demand -> [$i] <= 0) {
+			die "Error: The demand must be positive.";
+		}
+		$total_demand += $demand -> [$i];
+	}
+	# if ($total_supply != $total_demand) {
+	if ($scalarType -> equal -> ($total_supply, $total_demand) == false) {
+		die "Error: The total supply differs from the total demand.";
+	}
+
+	my $tempname = new Tempfile;
+	open my $filePipe, ">", "$tempname.in";
+	print $filePipe "p min ".($m+$n)." ".($m*$n)."\n";
+	for (my $i = 0; $i < $m; ++$i) {
+		print $filePipe "n ".($i+1)." ".($supply -> [$i])."\n";
+	}
+	for (my $i = 0; $i < $n; ++$i) {
+		print $filePipe "n ".($i+$m+1)." -".($demand -> [$i])."\n";
+	}
+	for (my $i = 0; $i < $m; ++$i) {
+		for (my $j = 0; $j < $n; ++$j) {
+			print $filePipe "a ".($i+1)." ".($j+$m+1)." 0 free ".($cost -> elem($i, $j))."\n";
+		}
+	}
+	close($filePipe);
+
+	if ($Verbose::external) {
+		dbg_print( "running mcf: $mcf -o -w $tempname.out $tempname.in" );
+	}
+	system("$mcf -o -w $tempname.out $tempname.in".(!$DebugLevel && " >/dev/null 2>&1"))
+		and die "couldn't run mcf: $mcf -o -w $tempname.out $tempname.in\n";
+
+	open(my $outfile, "<", "$tempname.out")
+		or die "can't open output file $tempname.out: $!";
+
+	my $A = new Matrix<Scalar>($m, $n);
+	while (<$outfile>) {
+		if ($_ =~ /^f/) {
+			if (typeof Scalar == typeof Int) {
+				my ($from, $to, $flow) = ($_ =~ /f (\d+) (\d+) (\d+)/);
+				$A -> elem($from - 1, $to - $m - 1) = $flow;
+			}
+			else {
+				my ($from, $to, $flow) = ($_ =~ /f (\d+) (\d+) (\d+.\d+)/);
+				$A -> elem($from - 1, $to - $m - 1) = $flow;
+			}
+		}
+	}
+
+	return $A;
+}
