@@ -1,3 +1,27 @@
+=== polymake 4.9 ===
+
+-- distribution --
+  * perl: add error for unsupported Perl >= 5.37
+          including upcoming perl 5.38
+  * compilers: add support for LLVM 15
+
+-- interfaces --
+  * libnormaliz: detect required libs for linking
+  * jreality: disable interface by default
+              disable jogl for recent java versions
+
+-- fulton --
+  * markov_bases: add new client
+
+-- polytope --
+  * mps files: many fixes in parser and writer
+  * lp files: several fixes in file parser and writer
+  * solids: improve clients
+  * mixed_volume: bugfix
+
+-- tropical --
+  * tropical_median: various improvements
+
 === polymake 4.8 ===
 
 -- general --

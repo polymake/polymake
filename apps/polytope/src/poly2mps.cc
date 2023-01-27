@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,21 +31,10 @@ namespace polymake { namespace polytope {
 namespace {
 Int char_length(Int value, Int base){
   Int len = 1;
-  while(value>pow(base,len)){
+  while(value >= pow(base,len)){
     len++;
   }
   return len;
-}
-
-
-template<typename Scalar>
-auto start_loop(const GenericMatrix<Scalar> &M){
-  auto v = entire<indexed>(cols(M));
-  if(!v.at_end()){
-    return ++v;
-  }else{
-    return v; 
-  }
 }
 
 template<typename Vector>
@@ -103,14 +92,13 @@ void print_lp(BigObject p, BigObject lp, Set<Int> br, std::ostream& os)
 {
    // This function write the whole lp discribed by p and lp to
    // the output way os. The inequalities in br where treated as veriable bounds
-   const Int is_feasible=p.give("FEASIBLE");
    const SparseMatrix<Scalar> 
       IE = p.give("FACETS | INEQUALITIES"), // TODO find a way to remove 1>=0
       EQ = p.lookup("AFFINE_HULL | EQUATIONS");
    const SparseVector<Scalar> LO = lp.give("LINEAR_OBJECTIVE");
    const Int n_variables = IE.cols()-1;
    
-   // generate the inverse set to br
+   // generate the compliment set to br
    Set<Int> br_inv;
    for(Int i=0; i<IE.rows(); ++i){
       if(!br.contains(i)){
@@ -122,9 +110,6 @@ void print_lp(BigObject p, BigObject lp, Set<Int> br, std::ostream& os)
    const SparseMatrix<Scalar> BIE = IE.minor(br, All);
    const SparseMatrix<Scalar> AM = is_zero(EQ.cols()) ? SparseMatrix<Scalar>(LO/(IE.minor(br_inv,All))) : SparseMatrix<Scalar>(LO/(IE.minor(br_inv,All))/EQ);
    std::string name = lp.name();
-
-   if (!is_feasible)
-      throw std::runtime_error("input is not FEASIBLE");
    
    // since the length of the names are fixed we have to check
    // if we can do it with decimal or hex numbers
@@ -151,11 +136,16 @@ void print_lp(BigObject p, BigObject lp, Set<Int> br, std::ostream& os)
    }
 
    // colleced the integer variables
-   Array<bool> integers(LO.dim());
+   Array<bool> integers(1);
    if(is_lp){
       Array<bool> tmp = lp.get_attachment("INTEGER_VARIABLES");
-      integers = tmp;
+      // this attachment might omit the homogenization coordinate
+      if (tmp.size() == LO.dim()-1)
+        integers.append(tmp);
+      else
+        integers = tmp;
    } else {
+      integers.resize(LO.dim());
       Set<Int> tmp = lp.give("INTEGER_VARIABLES");
       for(const auto& e : tmp){
          integers[e] = true;
@@ -189,8 +179,8 @@ void print_lp(BigObject p, BigObject lp, Set<Int> br, std::ostream& os)
       std::stringstream stream;
       stream << "R";
       if(row_name_dec){
-        Int len = char_length(i, 10);
-        stream << std::string(rows_coding_len-len, '0') << i;
+         Int len = char_length(i, 10); 
+         stream << std::string(rows_coding_len-len, '0') << i;
       }else{
         Int len = char_length(i, 16);
         stream << std::string(rows_coding_len-len, '0') << std::hex << i << std::dec;
@@ -204,41 +194,52 @@ void print_lp(BigObject p, BigObject lp, Set<Int> br, std::ostream& os)
       }
       os << row_names[1+i] << "\n";
    }
-   
-   
+
    // write down the non zero entries for each variable
    os << "COLUMNS\n";
+
    bool intmode_on = false;
-   Int marker_nr = 0;
+   Int marker_nr = -1;
    Int marker_coding_len = std::max(Int(7), char_length(AM.cols()-1,16));
    
-   for(auto v =start_loop(AM); !v.at_end(); ++v){
+   for(auto v = entire<indexed>(cols(AM)); !v.at_end(); v++){
+      if (v.index() == 0) {
+         continue;
+      }
+
       // add integer marker
-      if(!integers.empty() && (integers[v.index()-1] != intmode_on)){ //integers[i-1] XOR intmode_on
-         //Int len = ceil(log10(marker_nr)/log10(16));
-         Int len = char_length(marker_nr, 16);
-         os <<  std::string(4, ' ') << "M" << std::string(marker_coding_len-len, '0'); 
-         os << std::hex << marker_nr << std::dec << std::string(2,' ');
-         os << "'MARKER'" << std::string(17, ' '); 
-         os << ((integers[v.index()-1] && !intmode_on)? "'INTORG'\n" : "'INTEND'\n");
-         if(intmode_on){
+      if (!integers.empty() && (integers[v.index()] != intmode_on)) {
+         // there is a change in variable type so toggle intmode
+         intmode_on = !intmode_on;
+
+         if (intmode_on) {
             marker_nr += 1;
          }
-         intmode_on = !intmode_on;
-      }
-      
-      print_col(os, variable_names[v.index()-1], *v, row_names);//AM.col(i), row_names);
-      
-   }
-   
-   // close the last Int marker if it is open
-      if(intmode_on){
+
          Int len = char_length(marker_nr, 16);
-         os <<  std::string(4, ' ') << "M" << std::string(marker_coding_len-len, '0') << std::hex << marker_nr << std::dec << std::string(2,' ');
-         os << "'MARKER'" << std::string(17, ' ') << "'INTEND'\n";
+         os << std::string(4, ' ') << "M"
+            << std::string(marker_coding_len - len, '0');
+         os << std::hex << marker_nr << std::dec << std::string(2, ' ');
+         os << "'MARKER'" << std::string(17, ' ');
+
+         // intmode_on == true when variable types are ints
+         os << ((integers[v.index()] && intmode_on) ? "'INTORG'\n"
+                : "'INTEND'\n");
       }
-   
-   
+
+      print_col(os, variable_names[v.index() - 1], *v,
+                row_names); // AM.col(i), row_names);
+   }
+
+   // close the last Int marker if it is open
+   if (intmode_on) {
+     Int len = char_length(marker_nr, 16);
+     os << std::string(4, ' ') << "M"
+        << std::string(marker_coding_len - len, '0') << std::hex << marker_nr
+        << std::dec << std::string(2, ' ');
+     os << "'MARKER'" << std::string(17, ' ') << "'INTEND'\n";
+   }
+
    // define right hand side
    os << "RHS\n";
    print_col(

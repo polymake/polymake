@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -60,7 +60,7 @@ void Rational::parse(const char* s)
          num[numerator_digits] = 0;
 #endif
       }
-      const bool bad_num = mpz_set_str(mpq_numref(this), num, 0) < 0;
+      const bool bad_num = mpz_set_str(mpq_numref(this), num[0] == '+' ? num+1 : num, 0) < 0;
       if (numerator_digits >= small_size) {
 #ifdef __gnu_linux__
          free(num);
@@ -96,7 +96,7 @@ void Rational::parse(const char* s)
       if (trailing)
          std::memcpy(num+before_pt, point, trailing);
       num[before_pt+trailing] = 0;
-      const bool bad_num = mpz_set_str(mpq_numref(this), num, 10) < 0;
+      const bool bad_num = mpz_set_str(mpq_numref(this), num[0] == '+' ? num+1 : num, 10) < 0;
       if (before_pt+trailing >= small_size) {
          delete[] num;
       }
@@ -109,7 +109,7 @@ void Rational::parse(const char* s)
          mpz_set_ui(mpq_denref(this), 1);
       }
 
-   } else if (mpz_set_str(mpq_numref(this), s, 0) >= 0) {
+   } else if (mpz_set_str(mpq_numref(this), s[0] == '+' ? s+1 : s, 0) >= 0) {
       mpz_set_ui(mpq_denref(this), 1);
    } else {
       if (s[0] == '+' ? !strcmp(s+1,"inf") : !strcmp(s,"inf"))

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -48,7 +48,7 @@ Int ranked_hermite_normal_form(const GenericMatrix<TMatrix, E>& M, Matrix<E>& hn
 
    R = unit_matrix<E>(cols);
 
-   Int current_row = 0, current_col = 0;
+   Int current_col = 0;
    Int rank = -1;
 
    for (Int i = 0; i < rows; ++i) {
@@ -73,7 +73,6 @@ Int ranked_hermite_normal_form(const GenericMatrix<TMatrix, E>& M, Matrix<E>& hn
       }
 
       if (!nonzero) {
-         ++current_row;
          continue;
       } else {
          rank = current_col;

@@ -247,9 +247,9 @@ TOMipSolver<T, TInt>::TOMipSolver(){
 template <class T, class TInt>
 typename TOMipSolver<T, TInt>::solstatus TOMipSolver<T, TInt>::BnB( const MIP<T, TInt>& mip, TOSimplex::TOSolver<T, TInt>& plex, bool allSolutions, T& optimalValue, std::vector<T>& optimalAssignment, std::vector<std::vector<T> >* allAssignments ){
 
-	unsigned int numsol = 0;
 
 	#ifndef TO_DISABLE_OUTPUT
+	   unsigned int numsol = 0;
 		std::cout << "Starte BnB" << std::endl;
 	#endif
 	std::priority_queue<BnBNode<T, TInt>*,std::vector<BnBNode<T, TInt>*>,ComparePointerPriorities<BnBNode<T, TInt>*>> queue;
@@ -461,7 +461,9 @@ typename TOMipSolver<T, TInt>::solstatus TOMipSolver<T, TInt>::BnB( const MIP<T,
 //				}
 //				std::cout << std::endl;
 //			}
-			++numsol;
+         #ifndef TO_DISABLE_OUTPUT
+            ++numsol;
+         #endif
 			delete bs;
 		} else {
 			queue.push( new BnBNode<T, TInt>( bs, 1, branchVar, 1, TOmath<T>::floor( x[branchVar] ), objval, objval, bs->depth + 1 ) );

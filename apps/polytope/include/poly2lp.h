@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -93,7 +93,8 @@ void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
       IE = p.give("FACETS | INEQUALITIES"),
       EQ = p.lookup("AFFINE_HULL | EQUATIONS");
    const SparseVector<Scalar> LO = lp.give("LINEAR_OBJECTIVE");
-   const Int n_variables = IE.cols()-1;
+   const Int amb_dim = std::max(IE.cols(), EQ.cols());
+   const Int n_variables = amb_dim-1;
 
    if (!is_feasible)
       throw std::runtime_error("input is not FEASIBLE");
@@ -108,11 +109,16 @@ void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
          variable_names[j]='x' + std::to_string(j+1);
    }
 
-   Array<bool> integers(LO.dim());
+   Array<bool> integers(1);
    if(is_lp){
       Array<bool> tmp = lp.get_attachment("INTEGER_VARIABLES");
-      integers = tmp;
+      // this attachment might omit the homogenization coordinate
+      if (tmp.size() == amb_dim-1)
+        integers.append(tmp);
+      else
+        integers = tmp;
    } else {
+      integers.resize(amb_dim);
       Set<Int> tmp = lp.give("INTEGER_VARIABLES");
       for(const auto& e : tmp){
          integers[e] = true;
@@ -139,8 +145,8 @@ void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
 
    if (!integers.empty()) {
       os << "GENERAL\n";
-      for (Int i = 0; i < integers.size(); ++i)
-         if (integers[i]) os << "  " << variable_names[i] << '\n';
+      for (Int i = 1; i < integers.size(); ++i)
+         if (integers[i]) os << "  " << variable_names[i-1] << '\n';
    }
    os << "END" << endl;
 }

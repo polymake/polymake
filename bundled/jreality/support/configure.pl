@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2022
+#  Copyright (c) 1997-2023
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -18,15 +18,18 @@
 
 sub allowed_options {
    my ($allowed_options, $allowed_with)=@_;
-   @$allowed_with{ qw( jogl jogl-native ) }=();
+   @$allowed_with{ qw( jreality jogl jogl-native ) }=();
 }
 
 sub usage {
-   print STDERR "  --with-jogl=DIR  (a copy bundled with jReality)  location of jogl.jar, Java interface to OpenGL\n",
-                "  --with-jogl-native=DIR  (",
-                ($^O eq "darwin" || $^O eq "linux") ? "a copy bundled with jReality" : "none",
-                ")  location of jogl native library\n",
-                "  --without-jogl    disable using jogl; jReality will switch to a slow software renderer.\n";
+   print STDERR "  --with-jreality=force     force enable jreality interface which is disabled by default\n",
+                "                            because it relies on discontinued and unsupported legacy code,\n",
+                "                            the software renderer might work up to Java 11, bundled JOGL requires JDK 8.\n",
+                "  --with-jogl=DIR           location of jogl.jar, Java interface to OpenGL (a copy is bundled with jReality)\n",
+                "  --with-jogl-native=DIR    location of jogl native library (",
+                ($^O eq "darwin" || $^O eq "linux") ? "a copy is bundled with jReality" : "none",
+                ")\n",
+                "  --without-jogl            disable using jogl; jReality will switch to a slow software renderer.\n";
 }
 
 sub check_jogl_native_path {
@@ -42,6 +45,14 @@ sub check_jogl_native_path {
 
 sub proceed {
    my ($options)=@_;
+   if ($options->{jreality} ne "force") {
+      return "disabled by default, see --help for details";
+   }
+   my ($java_version)= `$Polymake::Bundled::java::JAVACMD -version 2>&1` =~ /version "([\d.]+)/s;
+   if (Polymake::Configure::v_cmp($java_version, "17") >= 0) {
+      die "jreality does not work with Java version >= 17\n";
+   }
+
    if ($options->{jogl} eq ".none.") {
       # status report
       return "pure software renderer";
@@ -58,7 +69,12 @@ sub proceed {
 	 die "option --with-jogl must point to a directory\n";
       }
    } else {
-      $JoglJars="bundled";
+      if (Polymake::Configure::v_cmp($java_version, "11") < 0) {
+         $JoglJars="bundled";
+      } else {
+         # bundled jogl wont work with jdk >= 11
+         return "pure software renderer, bundled JOGL disabled for java $java_version >= 11";
+      }
    }
 
    if (defined (my $path=$options->{'jogl-native'})) {

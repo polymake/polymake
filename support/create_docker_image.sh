@@ -10,8 +10,9 @@ basisImage="$3"
 moreLabels="$4"
 imageName="$5"
 
+# 2023-01: jogl is now disabled for java 11 (in ubuntu-20)
 # stuff jni libraries for MacOS, because the image is supposed to be run on Macs too
-install -m 555 bundled/jreality/external/jreality/jni/macosx/* $installDestDir/usr/local/share/polymake/resources/java/jni/jreality/
+# install -m 555 bundled/jreality/external/jreality/jni/macosx/* $installDestDir/usr/local/share/polymake/resources/java/jni/jreality/
 # TODO: enable this when docker on Mac supports shared memory exchange between containers and host
 # install -m 555 $prebuiltDir/libpolymake_java.jnilib $installDestDir/usr/local/share/polymake/resources/java/jni/
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -31,6 +31,9 @@
 #if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wconversion"
+#if !defined(__APPLE__) && __clang_major__ >= 13
+#pragma clang diagnostic ignored "-Wunused-but-set-variable"
+#endif
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"

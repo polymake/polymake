@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -158,10 +158,10 @@ Matrix<Int> validate_moebius_strip_quads(BigObject p, bool verbose)
               << "\t vertex degrees are in {0, 3, 4} .....";
 
       const Set<Int> valid_degrees{ 0, 3, 4 };
-      Int seen_vertices = 0;
+      //Int seen_vertices = 0;
       for (Int i = 0; i < n; ++i) {
          const Int deg = G.degree(i);
-         if (deg > 0) ++seen_vertices;
+         //if (deg > 0) ++seen_vertices;
 
          if (!valid_degrees.exists(deg)) {
             if (verbose)

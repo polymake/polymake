@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2022
+#  Copyright (c) 1997-2023
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -254,7 +254,6 @@ sub new {
       }
       $line = \%permline;
    }
-   delete $self->Obj->{0};
 
    @{$self->X}=@{$self->X}[@xorder];
    @{$self->Int}=@{$self->Int}[@xorder] if @{$self->Int};
@@ -323,7 +322,13 @@ sub make_vector($$$;$$) {   # "linear expression", positive_sign => (coefficient
       $coef = parse_number($line, $positive);
       $coef.="1" if $coef eq "" or $coef eq "-";
       $i = $self->parse_name($line, $unpermuted, $prefix);
-      die "$0: invalid expression in input line '$iline'" unless defined $i;
+      if (!defined($i)) {
+         if ($line =~ /^$/) {
+            $vec{0} = $coef;
+         } else {
+            die "$0: invalid expression in input line '$iline'";
+         }
+      }
       $vec{$i} = $coef;
    }
    \%vec

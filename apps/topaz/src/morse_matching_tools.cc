@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -318,9 +318,9 @@ void processAlternatingPaths(graph::ShrinkingLattice<graph::lattice::BasicDecora
 {
 #if POLYMAKE_DEBUG
    const bool debug_print = get_debug_level() > 1;
+   Int cnt = 0; // number of alternating paths
 #endif
    const Int n = M.nodes()-2;
-   Int cnt = 0; // number of alternating paths
 
    // compute critical faces
    Bitset critical = collectCriticalFaces(M, EM);
@@ -356,7 +356,9 @@ void processAlternatingPaths(graph::ShrinkingLattice<graph::lattice::BasicDecora
                   if (w == u) {
                      // exchange path
                      exchangePath(M, EM, dfsTree, u, v, size);
+#if POLYMAKE_DEBUG
                      ++cnt;
+#endif
 
                      critical -= u;  // remove u and v
                      critical -= v;

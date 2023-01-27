@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -84,11 +84,11 @@ struct pair<T1, pm::nothing> {
 
    template <typename U1, typename=typename enable_if<is_constructible<T1, polymake::pure_type_t<U1>>::value>::type>
    explicit pair(U1&& first_arg)
-      : first(forward<U1>(first_arg)) {}
+      : first(std::forward<U1>(first_arg)) {}
 
    template <typename U1, typename=typename enable_if<is_constructible<T1, polymake::pure_type_t<U1>>::value>::type>
    pair(U1&& first_arg, const pm::nothing&)
-      : first(forward<U1>(first_arg)) {}
+      : first(std::forward<U1>(first_arg)) {}
 
    template <typename U1, typename U2, typename=typename enable_if<is_constructible<T1, polymake::pure_type_t<U1>>::value>::type>
    explicit pair(const pair<U1, U2>& u)
@@ -133,11 +133,11 @@ struct pair<pm::nothing, T2> {
 
    template <typename U2, typename=typename enable_if<is_constructible<T2, polymake::pure_type_t<U2>>::value>::type>
    explicit pair(U2&& second_arg)
-      : second(forward<U2>(second_arg)) {}
+      : second(std::forward<U2>(second_arg)) {}
 
    template <typename U2, typename=typename enable_if<is_constructible<T2, polymake::pure_type_t<U2>>::value>::type>
    pair(const pm::nothing&, U2&& second_arg)
-      : second(forward<U2>(second_arg)) {}
+      : second(std::forward<U2>(second_arg)) {}
 
    template <typename U1, typename U2, typename=typename enable_if<is_constructible<T2, polymake::pure_type_t<U2>>::value>::type>
    explicit pair(const pair<U1, U2>& u)

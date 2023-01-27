@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2022
+#  Copyright (c) 1997-2023
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -94,14 +94,14 @@ user_function mcf.otp: optimal_transport_plan<Scalar>[Scalar == Int || Scalar ==
 		or die "can't open output file $tempname.out: $!";
 
 	my $A = new Matrix<Scalar>($m, $n);
-	while (<$outfile>) {
-		if ($_ =~ /^f/) {
+	while (my $line = <$outfile>) {
+		if ($line =~ /^f/) {
 			if (typeof Scalar == typeof Int) {
-				my ($from, $to, $flow) = ($_ =~ /f (\d+) (\d+) (\d+)/);
+				my ($from, $to, $flow) = ($line =~ /f (\d+) (\d+) (\d+)/);
 				$A -> elem($from - 1, $to - $m - 1) = $flow;
 			}
 			else {
-				my ($from, $to, $flow) = ($_ =~ /f (\d+) (\d+) (\d+.\d+)/);
+				my ($from, $to, $flow) = ($line =~ /f (\d+) (\d+) (\d+.\d+)/);
 				$A -> elem($from - 1, $to - $m - 1) = $flow;
 			}
 		}

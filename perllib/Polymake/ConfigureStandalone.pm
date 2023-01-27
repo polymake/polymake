@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2022
+#  Copyright (c) 1997-2023
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -265,10 +265,12 @@ sub build_test_program {
       close C;
       if ($_[1]) {
          # compile only
-         `$CXX $CXXFLAGS -c -o $dir/polymake_${$}_configure.o $dir/polymake_${$}_configure.cc 2>&1`
+         my $command = "$CXX $CXXFLAGS -c -o $dir/polymake_${$}_configure.o $dir/polymake_${$}_configure.cc";
+         return "$command\n".`$command 2>&1`;
       } else {
          # compile and link
-         `$CXX $CXXFLAGS -o $dir/polymake_${$}_configure $dir/polymake_${$}_configure.cc $LDFLAGS $LIBS 2>&1`
+         my $command = "$CXX $CXXFLAGS -o $dir/polymake_${$}_configure $dir/polymake_${$}_configure.cc $LDFLAGS $LIBS";
+         return "$command\n".`$command 2>&1`;
       }
    }
 }

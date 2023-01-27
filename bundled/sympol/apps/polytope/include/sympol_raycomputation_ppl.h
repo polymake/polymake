@@ -27,6 +27,9 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#if !defined(__APPLE__) && __clang_major__ >= 13
+#pragma clang diagnostic ignored "-Wunused-but-set-variable"
+#endif
 #else // gcc
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wshadow"

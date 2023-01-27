@@ -1,4 +1,4 @@
-/*  Copyright (c) 1997-2022
+/*  Copyright (c) 1997-2023
 Ewgenij Gawrilow, Michael Joswig, and the polymake team
 Technische Universität Berlin, Germany
 https://polymake.org
@@ -154,7 +154,7 @@ namespace polymake { namespace ideal {
 	}
 	
 	template <typename Scalar>
-	Array<Polynomial<Scalar, Int>> pluecker_ideal_matroid_generators(BigObject matroid) {
+	Array<Polynomial<Scalar, Int>> bracket_ideal_pluecker_generators(BigObject matroid) {
 		
 		Array<Set<Int>> subsets = matroid.give("BASES");
 		Int d = matroid.give("RANK");
@@ -177,7 +177,7 @@ namespace polymake { namespace ideal {
 	}
 	
 	template <typename Scalar>
-	void pluecker_ideal_matroid_set_varnames(BigObject matroid) {
+	void bracket_ideal_pluecker_set_varnames(BigObject matroid) {
 		
 		Array<Set<Int>> subsets = matroid.give("BASES");
 		
@@ -200,7 +200,7 @@ namespace polymake { namespace ideal {
 		
 	}
 	
-	BigObject pluecker_ideal_matroid(BigObject matroid) {
+	BigObject bracket_ideal_pluecker(BigObject matroid) {
 		
 		Array<Set<Int>> subsets = matroid.give("BASES");
 		Int d = matroid.give("RANK");
@@ -238,6 +238,62 @@ namespace polymake { namespace ideal {
 		
 	}
 	
+	Matrix<Polynomial<Rational, Int>> bases_matrix_coordinates(BigObject matroid, const Set<Int>& b) {
+		
+		Array<Set<Int>> bs = matroid.give("BASES");
+		Int n = bs.size();
+		Int d = b.size();
+		Int ne = matroid.give("N_ELEMENTS");
+		
+		// determine indices of non-zero entries of the matrix without identity
+		Array<std::pair<Int, Int>> indices(n - 1);
+		Int j = 0;
+		for (Int i = 0; i < n; ++i) {
+			Set<Int> temp = bs[i]^b;
+			if (temp.size() == 2) {
+				Int row_b_cmp = *((b - bs[i]).begin());
+				Int row_b = 0;
+				for (auto e = entire(b); !e.at_end(); ++e) {
+					row_b += *e < row_b_cmp;
+				}
+				Int col_b_cmp = *((bs[i] - b).begin());
+				Int col_b = col_b_cmp;
+				for (auto e = entire(b); !e.at_end(); ++e) {
+					col_b -= *e <= col_b_cmp;
+				}
+				std::pair<Int, Int> inds(row_b, col_b);
+				indices[j++] = inds;
+			}
+		}
+		indices.resize(j);
+		
+		Matrix<Polynomial<Rational, Int>> mat(same_element_matrix(Polynomial<Rational, Int>(0, j), d, ne));
+		Array<Int> shft(ne - d);	// used to easily "merge" the matrices
+		Int k = 0;
+		for (Int i = 0; i < ne; ++i) {
+			if (!b.contains(i)) shft[k++] = i;
+		}
+		// non-identity submatrix
+		for (Int i = 0; i < j; ++i) {
+			mat(indices[i].first, shft[indices[i].second]) = Polynomial<Rational, Int>::monomial(i, j);
+		}
+		
+		// identity submatrix
+		k = 0;
+		for (auto e = entire(b); !e.at_end(); ++e) {
+			mat(k++, *e) = Polynomial<Rational, Int>(1, j);
+		}
+		
+		return mat;
+	}
+	
+	Matrix<Polynomial<Rational, Int>> bases_matrix_coordinates_index(BigObject matroid, Int bi) {
+	
+		Array<Set<Int>> bs = matroid.give("BASES");
+		return bases_matrix_coordinates(matroid, bs[bi]);
+	
+	}
+	
 	UserFunction4perl("# @category Producing an ideal from scratch"
 							"# Generates the ideal of all Grassmann-Plücker relations of dxd minors of an dxn matrix."
 							"# For the algorithm see Sturmfels: Algorithms in invariant theory, Springer, 2nd ed., 2008"
@@ -258,11 +314,14 @@ namespace polymake { namespace ideal {
 							"# For the algorithm see Sturmfels: Algorithms in invariant theory, Springer, 2nd ed., 2008"
 							"# @param matroid::Matroid m"
 							"# @return Ideal the Grassmann-Plücker ideal",
-	&pluecker_ideal_matroid, "pluecker_ideal(matroid::Matroid)");
+	&bracket_ideal_pluecker, "bracket_ideal_pluecker(matroid::Matroid)");
 	
-	FunctionTemplate4perl("pluecker_ideal_matroid_generators<Scalar>(matroid::Matroid)");
+	FunctionTemplate4perl("bracket_ideal_pluecker_generators<Scalar>(matroid::Matroid)");
 	
-	FunctionTemplate4perl("pluecker_ideal_matroid_set_varnames<Scalar>(matroid::Matroid)");
+	FunctionTemplate4perl("bracket_ideal_pluecker_set_varnames<Scalar>(matroid::Matroid)");
+	
+	Function4perl(&bases_matrix_coordinates, "bases_matrix_coordinates");
+	Function4perl(&bases_matrix_coordinates_index, "bases_matrix_coordinates_index");
 	
 }
 }

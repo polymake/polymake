@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -17,22 +17,30 @@
 
 #include "polymake/client.h"
 
+#include "polymake/Rational.h"
 #include "polymake/SparseMatrix.h"
+#include "polymake/ListMatrix.h"
 #include "polymake/SparseVector.h"
 #include "polymake/Array.h"
 #include "polymake/Set.h"
-#include "polymake/Map.h"
+#include "polymake/hash_map"
+#include "polymake/linalg.h"
 #include <fstream>
 #include <cmath> /* isnan */
 
 
 namespace polymake { namespace polytope {
+
+namespace {
+
 // &variable_bound
-bool set_bound(Array<double> &variable_bound, std::string &bound_type, double value = NAN){
+// value is not used for FR, MI, PL and BV
+template <typename Scalar>
+bool set_bound(Array<Scalar> &variable_bound, const std::string &bound_type, Scalar value = zero_value<Scalar>()){
   if(variable_bound.empty()){
-    variable_bound = Array<double>(2);
+    variable_bound = Array<Scalar>(2);
     variable_bound[0] = 0;
-    variable_bound[1] = INFINITY;
+    variable_bound[1] = std::numeric_limits<Scalar>::infinity();
   }
   if(bound_type == "LO"){
     variable_bound[0] = value; // lower bound
@@ -44,12 +52,12 @@ bool set_bound(Array<double> &variable_bound, std::string &bound_type, double va
     variable_bound[1] = value;
   }else if(bound_type == "FR"){  
     // free variable 
-    variable_bound[0] = -INFINITY;
-    variable_bound[1] = INFINITY;
+    variable_bound[0] = -std::numeric_limits<Scalar>::infinity();
+    variable_bound[1] = std::numeric_limits<Scalar>::infinity();
   }else if(bound_type == "MI"){ 
-    variable_bound[0] = -INFINITY; // now lower bound
+    variable_bound[0] = -std::numeric_limits<Scalar>::infinity(); // no lower bound
   }else if(bound_type == "PL"){ 
-    variable_bound[1] = INFINITY; // now upper bound
+    variable_bound[1] = std::numeric_limits<Scalar>::infinity(); // no upper bound
   }else if(bound_type == "BV"){  
     // binary variable
     variable_bound[0] = 0;
@@ -69,6 +77,27 @@ bool set_bound(Array<double> &variable_bound, std::string &bound_type, double va
   
   return false;
 } 
+
+std::string string_to_lower(const std::string& str) {
+   std::string res;
+   std::transform(str.begin(), str.end(), std::back_inserter(res), ::tolower);
+   return res;
+}
+
+template <typename T>
+void parse_scalar(std::istream& is, T& d) {
+   is >> d;
+}
+
+template <>
+__attribute__((used))
+void parse_scalar(std::istream& is, Rational& r) {
+   std::string str;
+   is >> str;
+   r.set(str.c_str());
+}
+
+}
 
 template<typename Scalar>
 BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
@@ -93,30 +122,31 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
   }
   
   std::string poly_name;
-  if((line.substr(0,4)=="NAME") && (line.find_last_not_of(WHITESPACE)>=14)){
-    poly_name = line.substr(14, line.find_last_not_of(WHITESPACE)-14);
+  if((string_to_lower(line.substr(0,4))=="name")) {
+    if (line.find_last_not_of(WHITESPACE)>=14)
+      poly_name = line.substr(14, line.find_last_not_of(WHITESPACE)-13);
     std::getline(input, line);
   }
   
   // go over comments
-  while (std::getline(input, line)){
+  do {
     if(line[0] != '*'){ break;}
-  }
+  } while (std::getline(input, line));
   
   //get rows
-  if(line.substr(0,4) != "ROWS"){
+  if(string_to_lower(line.substr(0,4)) != "rows"){
     throw std::runtime_error("Can't find the rows");
   }
   
   // define a map from the names of the rows to the index and type
-  Map<std::string,std::pair<Int,std::string>> Rows;
+  hash_map<std::string,std::pair<Int,std::string>> Rows;
   
   // tools to deal with the different types of "rows"
   Array<Int> counter(3);
   counter[0] = 0;
   counter[1] = 0;
   counter[2] = 0;
-  Map<std::string,Int> letter2index;
+  hash_map<std::string,Int> letter2index;
   letter2index[std::string("N")] = 0;
   letter2index[std::string("G")] = 1;
   letter2index[std::string("L")] = 1;
@@ -140,7 +170,6 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
       stream_line >> row_name;
       Int index = counter[letter2index[type]];
       counter[letter2index[type]] += 1;
-      
       
       // check if the row name already exists
       if( Rows.find(row_name) != Rows.end() ){
@@ -176,7 +205,7 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
   }
   
   // define a map from the names of the cols to the index
-  Map<std::string,Int> Cols;
+  hash_map<std::string,size_t> Cols;
   Set<Int> integer_variables;
   
   // Build constrains and costfunction from COLUMNS
@@ -195,7 +224,7 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
     stream_line << line;
     std::string col;
     std::string row;
-    double value; 
+    Scalar value;
     stream_line >> col;
     stream_line >> row;
     
@@ -217,7 +246,9 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
     
     // get the entries
     do{
-      stream_line >> value;
+      if (row[0] == '$')
+         break;
+      parse_scalar(stream_line, value);
       Int pos = Rows[row].first;
       
       std::string letter = Rows[row].second;
@@ -225,7 +256,7 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
       
       // add columns until we reach the needed number for this entry
       // the first column with index 0 is for the right hand side
-      while(Int(cols_Matrices[index].size())<=Cols[col]){
+      while (cols_Matrices[index].size() <= Cols[col]) {
         SparseVector<Scalar> v(counter[index]);
         cols_Matrices[index].push_back(v);
       }
@@ -234,16 +265,6 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
     }while(stream_line >> row);
   }
 
-  // makes shure the number of columns is for all the same if it exist
-  for(Int index=0; index<3; ++index){
-    if(counter[index]>0){
-      while(Int(cols_Matrices[index].size())<=Cols.size()){
-        SparseVector<Scalar> v(counter[index]);
-        cols_Matrices[index].push_back(v);
-      }
-    }
-  }
-  
   
   if(line.substr(0,3) != "RHS"){
     throw std::runtime_error("The definition of the right hand sight (RHS) is not in the right place. The definition has to come after the declaration of the columns.");
@@ -260,11 +281,11 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
     stream_line << line;
     std::string name;
     std::string row;
-    double value; 
+    Scalar value;
     stream_line >> name; // can be ignored
     stream_line >> row;
     do{
-      stream_line >> value;
+      parse_scalar(stream_line, value);
       Int pos = Rows[row].first;
       
       std::string letter = Rows[row].second;
@@ -281,7 +302,7 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
   }
   
   //first read
-  Array<Array<double>> variable_bounds(Cols.size());
+  Array<Array<Scalar>> variable_bounds(Cols.size());
   // get right hand side and objective of set
   while(std::getline(input,line)){
     if(line[0] == '*'){
@@ -296,105 +317,120 @@ BigObject mps2poly(std::string file, std::string prefix, bool use_lazy){
     std::string bound_type;
     std::string name;
     std::string col;
-    double value;
+    Scalar value;
     
     stream_line >> bound_type;
     stream_line >> name; // will be ignored
-    stream_line >> col;
+    stream_line >> col;    // check if variable name is known and if not add it to the map
+    // we might have variables that only appear in the bounds
+    if(Cols.find(col) == Cols.end()){
+      Int size = Cols.size() + 1;
+      Cols[col] = size;
+      variable_bounds.resize(size);
+    }
     if((bound_type == "FR")||(bound_type == "MI")||(bound_type == "PL")||(bound_type == "BV")){
       if(set_bound(variable_bounds[Cols[col]-1], bound_type)){
-        integer_variables += Cols[col];
+        integer_variables += Int(Cols[col]);
       }
     }else{
-      stream_line >> value;
+      parse_scalar(stream_line, value);
       if(set_bound(variable_bounds[Cols[col]-1], bound_type, value)){
-        integer_variables += Cols[col];
+        integer_variables += Int(Cols[col]);
       }
     }
   }
   
+  // makes shure the number of columns is for all the same if it exist
+  // adjusting for new variables from the bounds section now
+  for (Int index=0; index<3; ++index){
+    if(counter[index]>0){
+      while (cols_Matrices[index].size() <= Cols.size()) {
+        SparseVector<Scalar> v(counter[index]);
+        cols_Matrices[index].push_back(v);
+      }
+    }
+  }
   
   // build matrix out of bounds
   // here the entries of the c++ vector are the rows of the matrices
-  Array<std::vector<SparseVector<Scalar>>> bound_Matrices(2);
+  Array<ListMatrix<SparseVector<Scalar>>> bound_Matrices(2);
   for(Int i = 0; i<variable_bounds.size(); ++i){
     SparseVector<Scalar> v(Cols.size()+1);
     if(variable_bounds[i].empty()){
       // 0 <= x <= inf
       v[i+1] = 1;
-      bound_Matrices[0].push_back(v);
+      bound_Matrices[0] /= v;
     }else if(variable_bounds[i][0] == variable_bounds[i][1]){
       // x = a
       v[i+1] = -1;
       v[0] = variable_bounds[i][0];
-      bound_Matrices[1].push_back(v);
+      bound_Matrices[1] /= v;
     }else{
       // a <= x <= b
       if(!isinf(variable_bounds[i][0])){
         // set lower bound
         v[i+1] = 1;
         v[0] = - variable_bounds[i][0];
-        bound_Matrices[0].push_back(v);
+        bound_Matrices[0] /= v;
       }
       if(!isinf(variable_bounds[i][1])){
         // set upper bound
         v[i+1] = -1;
         v[0] =  variable_bounds[i][1];
-        bound_Matrices[0].push_back(v);
+        bound_Matrices[0] /= v;
       }
     }
   }
   
   BigObject p("Polytope", mlist<Scalar>());
+  if (!poly_name.empty())
+    p.set_name(poly_name);
   
   // compose inequality matrix
-  SparseMatrix<Scalar> INEQUALITIES(0,Cols.size()+1);
-  if(cols_Matrices[1].size()>0){
-    INEQUALITIES = INEQUALITIES/T(SparseMatrix<Scalar>(cols_Matrices[1]));
+  ListMatrix<SparseVector<Scalar>> ineq(0, Cols.size()+1);
+  if (cols_Matrices[1].size() > 0) {
+    ineq /= T(SparseMatrix<Scalar>(cols_Matrices[1]));
   }
-  if(bound_Matrices[0].size()>0){
-    INEQUALITIES = INEQUALITIES/SparseMatrix<Scalar>(bound_Matrices[0]);
+  if (bound_Matrices[0].rows() > 0) {
+    ineq /= bound_Matrices[0];
   }
-  if(INEQUALITIES.rows()>0){ 
-    p.take("INEQUALITIES") << INEQUALITIES;
-  }
+  p.take("INEQUALITIES") << remove_zero_rows(ineq);
   
   // compose equation matrix
-  SparseMatrix<Scalar> EQUATIONS(0,Cols.size()+1);
-  if(cols_Matrices[2].size()>0){
-    EQUATIONS = EQUATIONS/T(SparseMatrix<Scalar>(cols_Matrices[2]));
+  SparseMatrix<Scalar> eq(0, Cols.size()+1);
+  if (cols_Matrices[2].size() > 0) {
+    eq /= remove_zero_rows(T(SparseMatrix<Scalar>(cols_Matrices[2])));
   }
-  if(bound_Matrices[1].size()>0){
-    EQUATIONS = EQUATIONS/SparseMatrix<Scalar>(bound_Matrices[1]);
+  if(bound_Matrices[1].rows() > 0){
+    eq /= remove_zero_rows(bound_Matrices[1]);
   }
-  if(EQUATIONS.rows()>0){
-    p.take("EQUATIONS") << EQUATIONS;
+  if (eq.rows() > 0) {
+    p.take("EQUATIONS") << eq;
   }
   
-  if(counter[0] == 1){
-    SparseVector<Scalar> LINEAR_OBJECTIVE = SparseMatrix<Scalar>(cols_Matrices[0]).col(0);
-    if(integer_variables.size()>0){
+  if (counter[0] == 1){
+    SparseVector<Scalar> obj(SparseMatrix<Scalar>(cols_Matrices[0]).col(0));
+    if (integer_variables.size() > 0){
       BigObject milp("MixedIntegerLinearProgram", mlist<Scalar>());
-      milp.take("LINEAR_OBJECTIVE") << LINEAR_OBJECTIVE;
+      milp.take("LINEAR_OBJECTIVE") << obj;
       milp.take("INTEGER_VARIABLES") << integer_variables;
       p.take("MILP") << milp;
-    }else{
+    } else {
       BigObject lp("LinearProgram", mlist<Scalar>());
-      lp.take("LINEAR_OBJECTIVE") << LINEAR_OBJECTIVE;
+      lp.take("LINEAR_OBJECTIVE") << obj;
       p.take("LP") << lp;
     }
-  }else if(counter[0]>1){
-    Matrix<Scalar> LINEAR_OBJECTIVE = T(SparseMatrix<Scalar>(cols_Matrices[0]));
-    
-    if(integer_variables.size()>0){
-      for(auto v = entire<indexed>(rows(LINEAR_OBJECTIVE)); !v.at_end(); ++v){
+  } else if (counter[0] > 1) {
+    SparseMatrix<Scalar> objs(cols_Matrices[0]);
+    if (integer_variables.size() > 0) {
+      for (auto v = entire(cols(objs)); !v.at_end(); ++v){
         BigObject milp("MixedIntegerLinearProgram", mlist<Scalar>());
         milp.take("LINEAR_OBJECTIVE") << *v;
         milp.take("INTEGER_VARIABLES") << integer_variables;
         p.add("MILP", milp);
       }
-    }else{
-      for(auto v = entire<indexed>(rows(LINEAR_OBJECTIVE)); !v.at_end(); ++v){
+    } else {
+      for (auto v = entire(cols(objs)); !v.at_end(); ++v) {
         BigObject lp("LinearProgram", mlist<Scalar>());
         lp.take("LINEAR_OBJECTIVE") << *v;
         p.add("LP", lp);

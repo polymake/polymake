@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2022
+#  Copyright (c) 1997-2023
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -65,13 +65,19 @@ sub proceed {
 int main (int argc, char *argv[])
 {
 #ifdef ENFNORMALIZ
-   std::cout << " -leantic";
+   std::cout << " -leanticxx -leantic";
 #endif
 #ifdef NMZ_FLINT
    std::cout << " -lflint";
 #endif
 #ifdef NMZ_NAUTY
    std::cout << " -lnauty";
+#endif
+#ifdef NMZ_HASHLIBRARY
+   std::cout << " -lsha256";
+#endif
+#ifdef NMZ_COCOA
+   std::cout << " -lcocoa";
 #endif
    std::cout << std::endl;
    return 0;

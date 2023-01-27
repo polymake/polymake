@@ -2,7 +2,7 @@
 
 if ($ConfigFlags{'bundled.sympol.UseBundled'}) {
   my $no_warnings="-Wno-deprecated-declarations";
-  foreach (qw(shadow conversion zero-as-null-pointer-constant)) {
+  foreach (qw(shadow conversion zero-as-null-pointer-constant unused-but-set-variable)) {
      if ($ConfigFlags{CXXFLAGS} =~ /-W$_\b/) {
 	$no_warnings .= " -Wno-$_";
      }

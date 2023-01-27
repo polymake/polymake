@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2022
+#  Copyright (c) 1997-2023
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -13,6 +13,26 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
 #-------------------------------------------------------------------------------
+
+sub dfs_initialize_mult {
+
+        my ($G, $node, $lab, $labList, $mult, $edgeCosts, $N) = @_;
+        $labList -> [$node] = $lab;
+
+        my @neighbours = @{$G -> adjacent_nodes($node)};
+        for (my $u = 0; $u < scalar @neighbours; ++$u) {
+            my $next = $neighbours[$u];
+            if ($labList -> [$next] == -1) {
+                my $i = 0;
+				my $j = 0;
+                if ($node < $N) { $j = $node; $i = $next - $N; }
+                else { $i = $node - $N; $j = $next; }
+				
+                $mult -> [$next] = $edgeCosts -> elem($i, $j) - $mult -> [$node];
+                dfs_initialize_mult($G, $next, $lab, $labList, $mult, $edgeCosts, $N);
+            }
+        }
+    }
 
 function facets_matrix<Scalar>(Matrix<Scalar>, Matrix<Scalar>) {
     my ($costMatrix, $flowMatrix) = @_;
@@ -49,33 +69,13 @@ function facets_matrix<Scalar>(Matrix<Scalar>, Matrix<Scalar>) {
 
     my $d = 0;
 
-    sub dfs_initialize_mult {
-
-        my ($G, $node, $lab, $labList, $mult, $edgeCosts, $N) = @_;
-        $labList -> [$node] = $lab;
-
-        my @neighbours = @{$G -> adjacent_nodes($node)};
-        for (my $u = 0; $u < scalar @neighbours; ++$u) {
-            my $next = $neighbours[$u];
-            if ($labList -> [$next] == -1) {
-                my $i = 0;
-				my $j = 0;
-                if ($node < $N) { $j = $node; $i = $next - $N; }
-                else { $i = $node - $N; $j = $next; }
-				
-                $mult -> [$next] = $edgeCosts -> elem($i, $j) - $mult -> [$node];
-                dfs_initialize_mult($G, $next, $lab, $labList, $mult, $edgeCosts, $N);
-            }
-        }
-    }
-
     for (my $j = 0; $j < $n; ++$j) {
         if ($labels -> [$j] == -1) {
             ++$d;
             dfs_initialize_mult($g, $j, $d - 1, $labels, $multip, $costMatrix, $n);
         }
     }
-   
+	
     my $delta = new Matrix<Scalar>($d, $d);
     my $bigM = new Scalar(0);
     for (my $i = 0; $i < $m; ++$i) {
@@ -101,7 +101,7 @@ function facets_matrix<Scalar>(Matrix<Scalar>, Matrix<Scalar>) {
             }
         }
     }
-
+	
 	# Floyd-Warshall algorithm
     for (my $k = 0; $k < $d; ++$k) {
         for (my $i = 0; $i < $d; ++$i) {
@@ -165,7 +165,7 @@ user_function fw_set<Scalar>(Matrix<Scalar>) {
 		}
 	}
 	
-	my $P = new polytope::Polytope(INEQUALITIES=>$ineq_matrix);
+	my $P = new polytope::Polytope<Scalar>(INEQUALITIES=>$ineq_matrix);
 	
 	return $P;
 }
@@ -468,6 +468,11 @@ function tropical_center<Scalar>(Matrix<Scalar>) {
 	return $c;
 }
 
+function tropical_center_consensus<Scalar>(PhylogeneticTree<Scalar>+) {
+	my $Trees = new Array<graph::PhylogeneticTree<Scalar>>($_[0]);
+	return tropical_center_consensus($Trees);
+}
+
 function tropical_center_consensus<Scalar>(Array<graph::PhylogeneticTree<Scalar>>) {
 	my ($Trees) = @_;
 	my $n_trees = $Trees -> size();
@@ -515,10 +520,160 @@ function tropical_center_consensus<Scalar>(Array<graph::PhylogeneticTree<Scalar>
 		}
 	}
 
-	my $consensus = new graph::PhylogeneticTree(COPHENETIC_MATRIX => $sol_mat, TAXA => $Trees -> [0] -> TAXA);
+	my $consensus = new graph::PhylogeneticTree<Scalar>(COPHENETIC_MATRIX => $sol_mat, TAXA => $Trees -> [0] -> TAXA);
 	return $consensus;
 }
 
+function sym_tropical_fw_set<Scalar>(Matrix<Scalar>) {
+	
+	my ($S) = @_;
+	my $m = $S -> rows();
+    my $n = $S -> cols();
+	my $N = $n * ($n - 1);
+	
+	# we will assume that x_1 = 0
+	my $Ineq = new Matrix<Scalar>($m * $N, $m + $n);
+    for (my $k = 0; $k < $m; ++$k) {
+		my $counter = 0;
+        for (my $i = 0; $i < $n; ++$i) {
+			for (my $j = $i + 1; $j < $n; ++$j) {
+				$Ineq -> elem($k * $N + $counter, 0) = $S -> elem($k, $i) - $S -> elem($k, $j);
+				if ($i != 0) { $Ineq -> elem($k * $N + $counter, $i) = -1; }
+				$Ineq -> elem($k * $N + $counter, $j) = 1;
+				$Ineq -> elem($k * $N + $counter, $n + $k) = 1;
+				++$counter;
+				
+				$Ineq -> elem($k * $N + $counter, 0) = $S -> elem($k, $j) - $S -> elem($k, $i);
+				$Ineq -> elem($k * $N + $counter, $j) = -1;
+				if ($i != 0) { $Ineq -> elem($k * $N + $counter, $i) = 1; }
+				$Ineq -> elem($k * $N + $counter, $n + $k) = 1;
+				++$counter;
+			}
+		}
+    }
+	
+	my $ObjVec = new Vector<Scalar>(new Vector<Scalar>([new Scalar(0)]) | zero_vector<Scalar>($n-1) | ones_vector<Scalar>($m));
+	
+    my $LPpoly = new polytope::Polytope<Scalar>(INEQUALITIES => $Ineq);
+	$LPpoly -> LP(LINEAR_OBJECTIVE => $ObjVec);
+	
+	#my $FWset = new polytope::Polytope<Scalar>(VERTICES => $LPpoly -> VERTICES -> minor($LPpoly -> LP -> MINIMAL_FACE, [0..($n)]));
+    my $FWset = new polytope::Polytope<Scalar>(VERTICES => $LPpoly -> VERTICES -> minor($LPpoly -> LP -> MINIMAL_FACE, [0..($n-1)]));
+	return $FWset;
+}
+
+function sym_fw_set<Scalar>(Matrix<Scalar>) {
+	my ($S) = @_;
+	my $m = $S -> rows();
+        my $n = $S -> cols();
+	my $N = $n * ($n - 1);
+	
+	# we will assume that x_1 = 0
+	my $Ineq = new Matrix<Scalar>($m * $N, $m + $n);
+        for (my $k = 0; $k < $m; ++$k) {
+	        my $counter = 0;
+                for (my $i = 0; $i < $n; ++$i) {
+			for (my $j = $i + 1; $j < $n; ++$j) {
+				$Ineq -> elem($k * $N + $counter, 0) = $S -> elem($k, $i) - $S -> elem($k, $j);
+				if ($i != 0) { $Ineq -> elem($k * $N + $counter, $i) = -1; }
+				$Ineq -> elem($k * $N + $counter, $j) = 1;
+				$Ineq -> elem($k * $N + $counter, $n + $k) = 1;
+				++$counter;
+				
+				$Ineq -> elem($k * $N + $counter, 0) = $S -> elem($k, $j) - $S -> elem($k, $i);
+				$Ineq -> elem($k * $N + $counter, $j) = -1;
+				if ($i != 0) { $Ineq -> elem($k * $N + $counter, $i) = 1; }
+				$Ineq -> elem($k * $N + $counter, $n + $k) = 1;
+				++$counter;
+			}
+		}
+        }
+	
+	my $ObjVec = new Vector<Scalar>(new Vector<Scalar>([new Scalar(0)]) | zero_vector<Scalar>($n-1) | ones_vector<Scalar>($m));
+	
+        my $LPpoly = new polytope::Polytope<Scalar>(INEQUALITIES => $Ineq);
+	$LPpoly -> LP(LINEAR_OBJECTIVE => $ObjVec);
+	
+	my $distance = $LPpoly -> LP -> MINIMAL_VALUE;
+	my $Eq = new Vector<Scalar>(new Vector<Scalar>([new Scalar(-$distance)]) | zero_vector<Scalar>($n-1) | ones_vector<Scalar>($m));
+	my $LPpoly2 = new polytope::Polytope<Scalar>(INEQUALITIES => $Ineq, EQUATIONS => $Eq);
+	
+	for (my $i = 0; $i < $n; ++$i) {
+		for (my $j = 0; $j < $n; ++$j) {
+			if ($i != $j) {
+				my $arr = new Vector<Scalar>($m+$n);
+				if ($i != 0) { $arr -> [$i] = 1; }
+				if ($j != 0) { $arr -> [$j] = -1; }
+				
+				$LPpoly2 -> add("LP", LINEAR_OBJECTIVE => $arr);
+			}
+		}
+	}
+	
+	my $facets = new Matrix<Scalar>($n, $n); # will contain max x_i - x_j over FW set
+	my $counter = 0;
+	for (my $i = 0; $i < $n; ++$i) {
+		for (my $j = 0; $j < $n; ++$j) {
+			if ($i != $j) {
+				my $maxV = $LPpoly2 -> LP -> [$counter] -> MAXIMAL_VALUE;
+				$facets -> elem($i, $j) = $maxV;
+				++$counter;
+			}
+		}
+	}
+	
+	my $ineq_matrix = new Matrix<Scalar>(($n-1)*$n, $n+1);
+	$counter = 0;
+	for (my $i = 0; $i < $n; ++$i) {
+		for (my $j = 0; $j < $n; ++$j) {
+			if ($i != $j) {
+				$ineq_matrix -> elem($counter, 0) = $facets -> elem($i, $j);
+				$ineq_matrix -> elem($counter, $i + 1) = -1;
+				$ineq_matrix -> elem($counter, $j + 1) = 1;
+				++$counter;
+			}
+		}
+	}
+	
+	my $P = new polytope::Polytope<Scalar>(INEQUALITIES=>$ineq_matrix);
+	
+	return $P;
+}
+
+function vectorize_trees<Scalar>(PhylogeneticTree<Scalar>+) {
+	my $Trees = new Array<graph::PhylogeneticTree<Scalar>>($_[0]);
+	return vectorize_trees($Trees);
+}
+
+function vectorize_trees<Scalar>(Array<PhylogeneticTree<Scalar>>) {
+	
+	my ($Trees) = @_;
+	my $n_trees = $Trees -> size();
+
+	for (my $i = 1; $i < $n_trees; ++$i) {
+		if ($Trees -> [0] -> TAXA ne $Trees -> [$i] -> TAXA) {
+			die "Error: The trees have different taxa.";
+		}
+	}
+	
+	my $n_taxa = $Trees -> [0] -> N_TAXA;
+	my $N = $n_taxa * ($n_taxa - 1) / 2;
+	my $S = new Matrix<Scalar>(zero_matrix<Scalar>($n_trees, $N));
+	my $max_entry = new Scalar(0);
+
+	for (my $k = 0; $k < $n_trees; ++$k) {
+		for (my $i = 0; $i < $n_taxa; ++$i) {
+			for (my $j = $i + 1; $j < $n_taxa; ++$j) {
+				$S -> [$k][$i*$n_taxa - ($i+1)*($i+2)/2 + $j] = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				if ($max_entry < $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j]) {
+					$max_entry = $Trees -> [$k] -> COPHENETIC_MATRIX -> [$i][$j];
+				}
+			}
+		}
+	}
+	
+	return $S;
+}
 
 
 

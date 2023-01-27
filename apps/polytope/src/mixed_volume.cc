@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -24,7 +24,9 @@
 #include "polymake/RandomPoints.h"
 
 /*
-  The algorithm employs ideas of Reinhard Steffens:
+  The algorithm employs ideas of Reinhard Steffens. See his thesis 
+  "Mixed Volumes, Mixed Ehrhart Theory and Applications to Tropical Geometry and Linkage Configurations":
+  Especially Algorithm 1, where solving the LP (1.17) is done via the matrix representation discussed in section 2.2.
   http://publikationen.ub.uni-frankfurt.de/frontdoor/index/index/docId/7253                           [1]
 */
 
@@ -116,7 +118,7 @@ E mixed_volume(const Array<BigObject>& summands)
 {
    E vol(0);             // mixedVolume
    const Int n = summands.size();      // number of (input)polytopes
-   matrix_list<E> polytopes(n);      // stores matrices s.t. the i-th entry is a discribtion of P_j by vertices
+   matrix_list<E> polytopes(n);      // stores matrices s.t. the j-th entry is a description of P_j by vertices
    vector_list<E> lifted_edges(n);
    graph_list graphs(n);         // stores all graphs from the input polytopes P_j
    Array<Int> node(n);
@@ -128,27 +130,29 @@ E mixed_volume(const Array<BigObject>& summands)
       //initialization:
       UniformlyRandom<AccurateFloat> rng;
       Int j = 0;
-      Vector<E> Lift(n+1);
+      Vector<E> Lift(n+1); // n = dim(P_j) so the vertices have n+1 entries
       Lift[0] = 0;
       for (const BigObject& s : summands) {
          const Matrix<E> m = s.give("VERTICES");
          polytopes[j] = m;
          r[j] = m.rows();
-         for (Int k = 1; k <= n; ++k) {       //LIFT
-            Lift[k] = 1 + j*(1 - j*(1 - k*j)); //1 + j - j*j + k*j*j*j;
-            if (tried > 0) {
-               // If first try didn't produce a generic lift, perturbate with random number
-               E tmp(rng.get()); // the casting could produce issues
-               Lift[k] += tmp;
-            }
-         }
-         lifted_edges[j] = m*Lift;
          const Graph<Undirected> graph=s.give("GRAPH.ADJACENCY");
          graphs[j]=graph;
+         if (n != m.cols()-1)
+            throw std::runtime_error("mixed_volume: dimension and number of input polytopes mismatch");
+
+         for (Int k = 1; k <= n  ; ++k) {       //LIFT
+            Lift[k] = 1 + j*(1 - j*(1 - k*j)); //1 + j - j*j + k*j*j*j;
+            //if (tried > 0) {
+               // If first try didn't produce a generic lift, perturbate with random number
+               // QUICKFIX: always perturbate
+               E tmp(rng.get()); // the casting could produce issues
+               Lift[k] += tmp;
+            //}
+         }
+         lifted_edges[j] = m*Lift;
          ++j;
       }
-      if (n != polytopes[0].cols()-1)
-         throw std::runtime_error("mixed_volume: dimension and number of input polytopes mismatch");
       Matrix<E> A = construct_A(n, r, polytopes, lifted_edges);
       A = ones_vector<E>(A.rows()) | A;
    
@@ -160,9 +164,9 @@ E mixed_volume(const Array<BigObject>& summands)
       j = 0;
       try 
       {
-         for (Int i = 0; i < polytopes[j].rows(); ++i) {
+         for (Int i = 0; i < r[j]; ++i) {
             auto it = entire(graphs[j].adjacent_nodes(i));
-            for (count = 0; count < polytopes[j].rows()-1; ++count) {
+            for (count = 0; count < r[j]-1; ++count) {
                if (*it > i) {
                   temp = ((polytopes[j].row(i) + polytopes[j].row(*it))/2).slice(range_from(1))
                        | (lifted_edges[j][i] + lifted_edges[j][*it])/2;
@@ -171,16 +175,16 @@ E mixed_volume(const Array<BigObject>& summands)
                      next[j] = count;
                      if (j == n-1) {
                         vol += volume(n, node, next, polytopes, graphs);
-                     } else {
+                     } else { // consider next polytope
                         ++j;
                         m += temp;
-                        count = polytopes[j].rows();  //jump out of loop
+                        count = r[j];  //jump out of loop
                         i = -1;
                      }
                   }
                }
                ++it;
-               if (j > 0 && it.at_end()&& i == polytopes[j].rows()-1) {
+               if (j > 0 && it.at_end() && i == r[j]-1) { // No valid edges left in current polytope so consider next edge of earlier polytope
                   --j;
                   i = node[j];
                   it = entire(graphs[j].adjacent_nodes(i));

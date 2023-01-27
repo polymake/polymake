@@ -1,4 +1,4 @@
-#  Copyright (c) 1997-2022
+#  Copyright (c) 1997-2023
 #  Ewgenij Gawrilow, Michael Joswig, and the polymake team
 #  Technische Universität Berlin, Germany
 #  https://polymake.org
@@ -25,6 +25,30 @@ if you already have an up-to-date perl interpreter somewhere else,
 you can specify its location on the command line:
 
 ./configure PERL=/path/to/my/new/perl [other options ...]
+.
+      exit(1);
+   } elsif ($] >= 5.037) {
+      print STDERR <<".";
+*************
+*** ERROR ***
+*************
+
+polymake does not work with perl 5.37 or newer;
+your perl interpreter says it is $].
+
+Access to various functions that are required to hook into the perl interpreter
+has been restricted to the perl core, which unfortunately breaks polymake.
+
+If you already have another (older) perl interpreter somewhere else, you can
+specify its location on the command line:
+
+./configure PERL=/path/to/my/new/perl [other options ...]
+
+You can install a custom perl version in your home directory using perlbrew
+(https://perlbrew.pl). Make sure to append '-Duseshrplib' to the install
+command if you want to use libpolymake (e.g. for the jupyter interface) and to
+install all required perl modules which are listed after running configure
+again with the new perl.
 .
       exit(1);
    }
@@ -1624,6 +1648,9 @@ sub configure_enabled_bundled_extensions {
                print "failed";
                bundled_ext_error_msg($ext, $@);
                $enable=0;
+            } elsif ($result =~ /^disabled/) {
+               $enable=0;
+               print $result;
             } else {
                print "ok", $result ? " ($result)":"";
             }

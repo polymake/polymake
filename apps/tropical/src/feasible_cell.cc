@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -65,7 +65,7 @@ template <typename Addition, typename Scalar>
 std::pair<Vector<TropicalNumber<Addition, Scalar>>, Int>
 trop_witness(const Matrix<TropicalNumber<Addition,Scalar>>& coeff, const Array<Int>& negative_indices, Int start_coord = 0)
 {
-   Int counter = 0;
+   //Int counter = 0;
 
    // initialization
    using TNumber = TropicalNumber<Addition, Scalar>;
@@ -88,7 +88,7 @@ trop_witness(const Matrix<TropicalNumber<Addition,Scalar>>& coeff, const Array<I
 
    // the loop terminates if a certificate of feasibility or infeasibility is returned
    while (true) { 
-      ++counter;
+      //++counter;
 
       // set the variable check;
       // determines the degree of feasibility

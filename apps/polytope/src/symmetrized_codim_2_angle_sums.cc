@@ -1,4 +1,4 @@
-/* Copyright (c) 1997-2022
+/* Copyright (c) 1997-2023
    Ewgenij Gawrilow, Michael Joswig, and the polymake team
    Technische Universität Berlin, Germany
    https://polymake.org
@@ -203,7 +203,7 @@ simplexity_ilp_with_angles(Int d,
                "FEASIBLE", true,
                "EQUATIONS", Equations,
                "INEQUALITIES", Inequalities);
-   BigObject lp = q.add("LP", "LINEAR_OBJECTIVE", 0 | ones_vector<Scalar>(facet_reps.size()));
+   BigObject lp = q.add("LP", "LINEAR_OBJECTIVE", 0 | ones_vector<Scalar>(facet_reps.size()) | zero_vector<Scalar>(ae_cols-facet_reps.size()));
    lp.attach("INTEGER_VARIABLES") << Array<bool>(ae_cols, true);
    return q;
 }

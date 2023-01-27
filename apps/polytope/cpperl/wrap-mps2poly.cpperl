@@ -1,5 +1,6 @@
 {"app": "polytope", "embed": "mps2poly.cc",
  "inst": [
   {"args": ["Rational", "std::string(std::string)", "std::string(std::string)", "bool(Int)"], "func": "mps2poly", "include": ["polymake/Rational.h"], "sig": "mps2poly:T1.std::string.std::string.bool", "tp": 1},
+  {"args": ["double", "std::string(std::string)", "std::string(std::string)", "bool(Int)"], "func": "mps2poly", "sig": "mps2poly:T1.std::string.std::string.bool", "tp": 1},
  null ],
 "version": 3}
