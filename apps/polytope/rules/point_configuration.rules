@@ -297,6 +297,14 @@ rule TRIANGULATION.FACETS : POINTS, TRIANGULATION.WEIGHTS {
 weight 3.10;
 incurs TRIANGULATION.FacetPerm;
 
+rule TRIANGULATION.REGULAR, TRIANGULATION.WEIGHTS : POINTS, TRIANGULATION.FACETS {
+    my $pair = is_regular($this->POINTS,$this->TRIANGULATION->FACETS);
+    if ($this->TRIANGULATION->REGULAR = $pair->first) {
+        $this->TRIANGULATION->WEIGHTS = $pair->second;
+    }
+}
+
+
 } # end object_specialization ExactCoord
 
 # @category Producing a point configuration

@@ -68,6 +68,11 @@ void compress_incidence_primal(BigObject p)
       V = V.minor(scalar2set(c), All);                            // FIXME selection of the first zero entry of VIF.row(0) should be easier?
       VIF.resize(1, 1);
       VIF(0, 0) = 0;
+   } else {
+      // Boundary case: VIF.rows() == 0, so there are no facets.
+      L /= V;
+      V.resize(0, V.cols());
+      VIF.resize(0,0);
    }
    
    // finally take care of the lineality space

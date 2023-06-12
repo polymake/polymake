@@ -1,3 +1,24 @@
+=== polymake 4.10 ===
+
+-- interfaces --
+  * topcom:
+    - extend interface to access other combinations of connected, fine, and regular
+    - support for topcom 1.x
+
+-- fulton --
+  * weighted_projective_space: fix rays computation
+
+-- group --
+  * action_functions: migrate some code to C++
+
+-- polytope --
+  * compress incidence: fix lineality dim for some trivial polytopes
+    https://github.com/oscar-system/Oscar.jl/issues/2403
+  * TRIANGULATION: fix weights computation
+  * poly2{lp,mps}:
+    - better handling of infeasible polytopes
+    - improve compatibility with other parsers
+
 === polymake 4.9 ===
 
 -- distribution --

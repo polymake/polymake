@@ -51,12 +51,31 @@ user_function projective_space( $ ) {
 # @param Vector<Int> a the weights
 # @return NormalToricVariety
 user_function weighted_projective_space( Vector<Int> ) {
-   my $a = shift;
-   $a->dim > 2 or die "weighted_projective_space: require at least 3 weights\n";
-   my $rays = transpose(primitive(null_space($a)));
-   my $maxcones = all_subsets_of_k(sequence(0,$a->dim), $a->dim-1);
-   my $result = new NormalToricVariety(RAYS=>$rays, MAXIMAL_CONES=>$maxcones, COMPLETE=>true, PROJECTIVE=>true);
-   $result->description = "weighted projective space for weights $a";
+   my $d = shift;
+   $d->dim > 2 or die "weighted_projective_space: require at least 3 weights\n";
+   my $n = $d->dim();
+
+   # We use the construction described on p35 of
+   # Fulton -- Introduction to Toric Varities.
+   # 
+   # Since we cannot work with lattices finer than ZZ^n, we instead coarsen
+   # everything accordingly.
+   my $lcms = new Vector<Integer>(map(lcm($d->[0],$d->[$_]), 1..$n-1));
+   my $ray_gens = new Matrix<Rational>($n, $n-1);
+   my $lattice_gens = new Matrix<Integer>($n, $n-1);
+   $ray_gens->row(0) = -$lcms;
+   $lattice_gens->row(0) = new Vector<Integer>(map(-div($lcms->[$_], $d->[0])->quot, 0..$n-2));
+   foreach my $i (0..$n-2){
+      $lattice_gens->elem($i+1, $i) = div($lcms->[$i], $d->[$i+1])->quot;
+      $ray_gens->elem($i+1, $i) = $lcms->[$i];
+   }
+   $lattice_gens = transpose(hermite_normal_form(transpose($lattice_gens))->hnf);
+   $lattice_gens = new Matrix<Rational>($lattice_gens->minor(sequence(0,$n-1), All));
+   my $lginv = inv($lattice_gens);
+   $ray_gens = $ray_gens * $lginv;
+   my $maxcones = all_subsets_of_k(sequence(0,$d->dim), $d->dim-1);
+   my $result = new NormalToricVariety(RAYS=>$ray_gens, MAXIMAL_CONES=>$maxcones, COMPLETE=>true, PROJECTIVE=>true);
+   $result->description = "weighted projective space for weights $d";
    return $result;
 }
 

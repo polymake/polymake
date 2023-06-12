@@ -135,7 +135,7 @@ int main (int argc, char *argv[])
                    "The complete error log follows:\n\n$message\n",
                    "Please investigate the reasons and fix the installation.\n";
          } else {
-            ($nmz_version) = $message =~ /version ([0-9]\.[0-9]\.[0-9])/;
+            ($nmz_version) = $message =~ /version ([0-9]+\.[0-9]+\.[0-9]+)/;
             my $minversion = "3.6.0";
             if (Polymake::Configure::v_cmp($nmz_version,$minversion) >= 0 && $nmz_version ne "3.7.0") {
                $UseBundled = 0;
@@ -173,6 +173,9 @@ int main (int argc, char *argv[])
 
       foreach (qw(shadow conversion unused-variable)) {
          $BundledNoWarnings .= " -Wno-$_";
+      }
+      if (defined($Polymake::Configure::GCCversion) && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "8.0.0") > 0 && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "9.0.0") < 0) {
+         $BundledNoWarnings .= " -Wno-maybe-uninitialized";
       }
       $BundledNoWarnings .= " -Wno-unused-but-set-variable"
          unless (defined($Polymake::Configure::CLANGversion) &&

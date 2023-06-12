@@ -247,7 +247,9 @@ sub backup {
 ######################################################################
 # private:
 sub find_instance {
-   my $self = shift;  shift; # parent
+   my $self = shift;
+   # maybe parent:
+   shift if instanceof Core::BigObject($_[0]);
    my $proto = $self->property->type;
    my (@paths, @values);
    if (is_string($_[0])) {

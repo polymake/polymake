@@ -9,5 +9,6 @@
   {"args": ["Bitset", "perl::Canned<const Set<Int>&>"], "include": ["polymake/Bitset.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
   {"args": ["perl::Canned<Bitset&>", "Int"], "include": ["polymake/Bitset.h"], "op": "Xor", "ret": "lvalue", "sig": "Xor:O.X1.X"},
   {"args": ["perl::Canned<const Bitset&>", "perl::Canned<const Bitset&>"], "include": ["polymake/Bitset.h"], "op": "xor", "sig": "xor:O.X.X"},
+  {"args": ["Bitset", "perl::Canned<const Set<Int>&>"], "include": ["polymake/Bitset.h", "polymake/Set.h"], "op": "assign", "ret": "empty", "sig": "assign:O"},
  null ],
 "version": 3}

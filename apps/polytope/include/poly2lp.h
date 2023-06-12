@@ -88,7 +88,6 @@ void print_row(std::ostream& os,
 template<typename Scalar, bool is_lp>
 void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
 {
-   const Int is_feasible=p.give("FEASIBLE");
    const SparseMatrix<Scalar> 
       IE = p.give("FACETS | INEQUALITIES"),
       EQ = p.lookup("AFFINE_HULL | EQUATIONS");
@@ -96,8 +95,13 @@ void print_lp(BigObject p, BigObject lp, const bool maximize, std::ostream& os)
    const Int amb_dim = std::max(IE.cols(), EQ.cols());
    const Int n_variables = amb_dim-1;
 
-   if (!is_feasible)
-      throw std::runtime_error("input is not FEASIBLE");
+   // Empty inequality matrix implies that these are facets.
+   // In polymake this only appears for the empty polytope
+   // but this cannot be encoded properly in an LP file.
+   // Note: this will not trigger a feasibility check
+   if (p.exists("FEASIBLE") && !p.lookup("FEASIBLE") ||
+       IE.rows() == 0 && EQ.rows() == 0)
+      throw std::runtime_error("poly2lp: input is not known to be infeasible");
 
    Array<std::string> variable_names;
    if (lp.get_attachment("COORDINATE_LABELS") >> variable_names) {

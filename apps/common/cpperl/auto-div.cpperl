@@ -2,5 +2,6 @@
  "inst": [
   {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>", "perl::Canned<const UniPolynomial<Rational, Int>&>"], "func": "div", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "sig": "div.X.X"},
   {"args": ["Int", "Int"], "func": "div", "include": ["polymake/numerical_functions.h"], "sig": "div.X.X"},
+  {"args": ["perl::Canned<const Integer&>", "Int"], "func": "div", "include": ["polymake/Integer.h", "polymake/numerical_functions.h"], "sig": "div.X.X"},
  null ],
 "version": 3}

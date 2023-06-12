@@ -124,6 +124,10 @@ property TRIANGULATION : topaz::GeometricSimplicialComplex<Scalar> : multiple {
    property GKZ_VECTOR : Vector<Scalar>;
 
    # @category Triangulation and volume
+   # Checks regularity of [[TRIANGULATION]].
+   property REGULAR : Bool;
+
+   # @category Triangulation and volume
    # Weight vector to construct a regular [[TRIANGULATION]].
    # Must be generic.
    property WEIGHTS : Vector<Scalar>;

@@ -364,5 +364,7 @@
   {"args": ["Matrix<Rational>", "perl::Canned<const pm::MatrixMinor<pm::Matrix<pm::Rational> const&, pm::Set<long, pm::operations::cmp> const&, pm::Array<long> const&>&>"], "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
   {"args": ["Matrix<Polynomial<Rational, Int>>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Polynomial.h", "polymake/Rational.h"], "op": "new", "sig": "new"},
   {"args": ["perl::Canned<const Wary<Matrix<Polynomial<Rational, Int>>>&>", "perl::Canned<const Matrix<Polynomial<Rational, Int>>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Polynomial.h", "polymake/Rational.h"], "op": "_eq", "sig": "_eq:O.X4.X"},
+  {"args": ["Matrix<Rational>", "perl::Canned<const pm::MatrixMinor<pm::Transposed<pm::Matrix<pm::Integer> >&, pm::Series<long, true> const, pm::all_selector const&>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "op": "new", "sig": "new.X"},
+  {"args": ["perl::Canned<const Wary<pm::Transposed<pm::Matrix<pm::Integer> >>&>", "perl::Canned<const Vector<Int>&>"], "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/Vector.h"], "op": "mul", "sig": "mul:O.X4.X16"},
  null ],
 "version": 3}

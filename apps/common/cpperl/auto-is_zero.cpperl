@@ -18,5 +18,6 @@
   {"args": ["perl::Canned<const Vector<double>&>"], "func": "is_zero", "include": ["polymake/Vector.h", "polymake/internal/comparators.h"], "sig": "is_zero.X"},
   {"args": ["perl::Canned<const pm::sparse_matrix_line<pm::AVL::tree<pm::sparse2d::traits<pm::sparse2d::traits_base<double, true, false, (pm::sparse2d::restriction_kind)0>, false, (pm::sparse2d::restriction_kind)0> >&, pm::NonSymmetric>&>"], "func": "is_zero", "include": ["polymake/IncidenceMatrix.h", "polymake/SparseMatrix.h", "polymake/internal/comparators.h"], "sig": "is_zero.X"},
   {"args": ["perl::Canned<const UniPolynomial<Rational, Int>&>"], "func": "is_zero", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/internal/comparators.h"], "sig": "is_zero.X"},
+  {"args": ["perl::Canned<const Vector<Integer>&>"], "func": "is_zero", "include": ["polymake/Integer.h", "polymake/Vector.h", "polymake/internal/comparators.h"], "sig": "is_zero.X"},
  null ],
 "version": 3}

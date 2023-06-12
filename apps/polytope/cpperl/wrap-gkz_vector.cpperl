@@ -1,5 +1,6 @@
 {"app": "polytope", "embed": "gkz_vector.cc",
  "inst": [
   {"args": ["Rational", "Array<Set<Int>>", "perl::Canned<const Matrix<Rational>&>", "Array<Set<Int>>(perl::Canned<const Array<Set<Int>>&>)"], "func": "gkz_vector", "include": ["polymake/Array.h", "polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "gkz_vector:T2.X.C1", "tp": 2},
+  {"args": ["Rational", "Set<Set<Int>>", "perl::Canned<const Matrix<Rational>&>", "Set<Set<Int>>(perl::Canned<const Set<Set<Int>>&>)"], "func": "gkz_vector", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h", "polymake/Set.h"], "sig": "gkz_vector:T2.X.C1", "tp": 2},
  null ],
 "version": 3}

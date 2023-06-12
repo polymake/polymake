@@ -1,5 +1,6 @@
 {"app": "common",
  "inst": [
   {"args": ["perl::Canned<const Matrix<Integer>&>", "void"], "func": "hermite_normal_form", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/integer_linalg.h"], "sig": "hermite_normal_form.X.x"},
+  {"args": ["perl::Canned<const pm::Transposed<pm::Matrix<pm::Integer> >&>", "void"], "func": "hermite_normal_form", "include": ["polymake/IncidenceMatrix.h", "polymake/Integer.h", "polymake/Matrix.h", "polymake/integer_linalg.h"], "sig": "hermite_normal_form.X.x"},
  null ],
 "version": 3}

@@ -1,0 +1,12 @@
+{"app": "group", "embed": "action_functions.cc",
+ "inst": [
+  {"args": ["Bitset", "void", "void", "perl::Canned<const Array<Bitset>&>", "void"], "func": "induce_implicit_action", "include": ["polymake/Array.h", "polymake/Bitset.h"], "sig": "induce_implicit_action:T1.x.x.X.x", "tp": 1},
+  {"args": ["Set<Int>", "void", "void", "perl::Canned<const Array<Set<Int>>&>", "void"], "func": "induce_implicit_action", "include": ["polymake/Array.h", "polymake/Set.h"], "sig": "induce_implicit_action:T1.x.x.X.x", "tp": 1},
+  {"args": ["Rational", "void", "void", "void", "void", "perl::Canned<const Matrix<Rational>&>"], "func": "induce_matrix_action_conjugacy_class_representatives", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "induce_matrix_action_conjugacy_class_representatives:T1.x.x.x.x.X", "tp": 1},
+  {"args": ["Rational", "void", "void", "void", "void", "perl::Canned<const Matrix<Rational>&>"], "func": "induce_matrix_action_generators", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "induce_matrix_action_generators:T1.x.x.x.x.X", "tp": 1},
+  {"args": ["QuadraticExtension<Rational>", "void", "void", "void", "void", "perl::Canned<const Matrix<QuadraticExtension<Rational>>&>"], "func": "induce_matrix_action_generators", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "induce_matrix_action_generators:T1.x.x.x.x.X", "tp": 1},
+  {"args": ["void", "void", "std::string(std::string)", "void"], "func": "induce_set_action", "sig": "induce_set_action.x.x.std::string.o"},
+  {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "automorphism_group", "include": ["polymake/Graph.h"], "sig": "automorphism_group.X"},
+  {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "automorphism_group", "include": ["polymake/IncidenceMatrix.h"], "sig": "automorphism_group.X.x"},
+ null ],
+"version": 3}

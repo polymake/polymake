@@ -95,6 +95,15 @@ void print_lp(BigObject p, BigObject lp, Set<Int> br, std::ostream& os)
    const SparseMatrix<Scalar> 
       IE = p.give("FACETS | INEQUALITIES"), // TODO find a way to remove 1>=0
       EQ = p.lookup("AFFINE_HULL | EQUATIONS");
+
+   // Empty inequality matrix implies that these are facets.
+   // In polymake this only appears for the empty polytope
+   // but this cannot be encoded properly in an LP file.
+   // Note: this will not trigger a feasibility check
+   if (p.exists("FEASIBLE") && !p.lookup("FEASIBLE") ||
+       IE.rows() == 0 && EQ.rows() == 0)
+      throw std::runtime_error("poly2mps: input is not known to be infeasible");
+
    const SparseVector<Scalar> LO = lp.give("LINEAR_OBJECTIVE");
    const Int n_variables = IE.cols()-1;
    
@@ -160,7 +169,7 @@ void print_lp(BigObject p, BigObject lp, Set<Int> br, std::ostream& os)
    os << "* Format:\tMPS\n*\n";
    
    // output the name
-   os << "Name" << std::string(10, ' ') << name << "\n";
+   os << "NAME" << std::string(10, ' ') << name << "\n";
    
    // define a name fo each row and the cost function
    // the write it to the output
@@ -343,7 +352,7 @@ UserFunctionTemplate4perl("# @category Optimization"
                           "# the output will contain markers for them."
                           "# You can give the indices rows, which are just variable bounds (x_i>=b_i or x_i<=b_i)," 
                           "# as a Set. If you do so, the will be in this way."
-                          "# If the polytope is not FEASIBLE, the function will throw a runtime error."
+                          "# If the polytope is already known to be infeasible, the function will throw a runtime error."
                           "# Alternatively one can also provide a //MILP//, instead of a //LP// with 'INTEGER_VARIABLES' attachment."
                           "# @param Polytope P"
                           "# @param LinearProgram LP default value: //P//->LP"

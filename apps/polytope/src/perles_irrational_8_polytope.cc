@@ -192,6 +192,7 @@ BigObject perles_irrational_8_polytope()
 
 UserFunction4perl("# @category Producing a polytope from scratch"
                   "# Create an 8-dimensional polytope without rational realizations due to Perles"
+                  "# See Grünbaum, Convex polytopes, 2nd ed., Springer (2003), p.94f"
                   "# @return Polytope",
                   &perles_irrational_8_polytope, "perles_irrational_8_polytope()");
 

@@ -3,5 +3,6 @@
   {"args": ["perl::Canned<const Graph<Undirected>&>"], "func": "automorphisms", "include": ["polymake/Graph.h", "polymake/graph/compare.h"], "sig": "automorphisms.X"},
   {"args": ["perl::Canned<const IncidenceMatrix<NonSymmetric>&>"], "func": "automorphisms", "include": ["polymake/IncidenceMatrix.h", "polymake/graph/compare.h"], "sig": "automorphisms.X"},
   {"args": ["perl::Canned<const Graph<Undirected>&>", "perl::Canned<const Array<Int>&>"], "func": "automorphisms", "include": ["polymake/Array.h", "polymake/Graph.h", "polymake/graph/compare.h"], "sig": "automorphisms.X.X"},
+  {"args": ["perl::Canned<const Graph<Directed>&>"], "func": "automorphisms", "include": ["polymake/Graph.h", "polymake/graph/compare.h"], "sig": "automorphisms.X"},
  null ],
 "version": 3}

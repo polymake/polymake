@@ -1477,7 +1477,7 @@ sub complete_user_variable_name {
    if ((my $pkg_end = rindex($prefix,"::")) > 0) {
       my $pkg = substr($prefix, 0, $pkg_end);
       my $symtab = eval { get_symtab("Polymake::User::$pkg") } or return;
-      map { "$pkg\::$_" } complete_variable_name_in_pkg($symtab, $sigil, substr($prefix, $pkg_end+2));
+      map { $sigil."$pkg\::".substr($_,1) } complete_variable_name_in_pkg($symtab, $sigil, substr($prefix, $pkg_end+2));
    } else {
       complete_variable_name_in_pkg(\%Polymake::User::, @_);
    }

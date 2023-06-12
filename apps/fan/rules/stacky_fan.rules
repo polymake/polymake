@@ -96,8 +96,9 @@ property ORIGINAL_RAYS_ACTION_GENERATORS : Array<Array<Int>>;
 }
 
 # @category Symmetry
-# Calculate the stacky fan associated to a Cone and a group acting on homogeneous coordinates.
+# Calculate the stacky, locally embedded fan associated to a Cone and a group acting on homogeneous coordinates.
 # This function turns the input Cone C into a PolyhedralFan PF, calculates the orbit_fan OF of PF, and packages the data in OF into the data for a DisjointStackyFan. No additional computation is executed at this point.
+# The terminology 'locally embedded' references the fact that each constituent cone comes with a local embedding into the ambient space of the original Cone, but the faces of the constituent cones may intersect in complicated ways due to the identifications induced by the group action.
 # 
 # @param Cone C the input cone, equipped with a GROUP->HOMOGENEOUS_COORDINATE_ACTION
 # @return DisjointStackyFan F representing the quotient of C by its group
@@ -106,13 +107,13 @@ property ORIGINAL_RAYS_ACTION_GENERATORS : Array<Array<Int>>;
 # > $c = new Cone(RAYS=>[[1,0,0],[0,1,0],[0,0,1]], GROUP=>new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>new group::PermutationAction(GENERATORS=>[[1,0,2]])));
 # The stacky fan defined by this cone identifies the rays 0 and 1.
 # The property STACKY_FACES records the orbits under the group action:
-# > $sf = stacky_fan($c);
+# > $sf = stacky_le_fan($c);
 # > print $sf->STACKY_FACES;
 # | {{{0} {1}} {{2}}}
 # | {{{0 1}} {{0 2} {1 2}}}
 # > print $sf->STACKY_F_VECTOR;
 # | 2 2
-user_function stacky_fan<Scalar>(Cone<Scalar>) {
+user_function stacky_le_fan<Scalar>(Cone<Scalar>) {
     my ($c) = @_;
     if ($c->lookup("GROUP")) {
         my $f = new PolyhedralFan(RAYS=>$c->RAYS, MAXIMAL_CONES=>$c->RAYS_IN_FACETS, GROUP=>$c->GROUP);

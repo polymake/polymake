@@ -3,5 +3,6 @@
   {"guard_name": "CORE_WRAPPERS_numerical_functions", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::Div", "wrapper_file": "include/core-wrappers/polymake/numerical_functions.h"},
   {"class": "Div<UniPolynomial<Rational, Int>>", "include": ["polymake/Rational.h", "polymake/RationalFunction.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__UniPolynomial_A_Rational_I_Int_Z"},
   {"class": "Div<Int>", "include": ["polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__Int"},
+  {"class": "Div<Integer>", "include": ["polymake/Integer.h", "polymake/numerical_functions.h"], "pkg": "Polymake::common::Div__Integer"},
  null ],
 "version": 3}

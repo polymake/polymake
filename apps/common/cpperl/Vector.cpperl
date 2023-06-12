@@ -295,5 +295,6 @@
   {"args": ["double", "perl::Canned<const Wary<pm::SameElementVector<double const&>>&>"], "include": ["polymake/linalg.h"], "op": "mul", "sig": "mul:O.X4.X16"},
   {"args": ["perl::Canned<Wary<Vector<double>>&>", "perl::Canned<const Vector<double>&>"], "include": ["polymake/Vector.h"], "op": "Sub", "ret": "lvalue", "sig": "Sub:O.X5.X16"},
   {"args": ["perl::Canned<Wary<Vector<double>>&>", "perl::Canned<const Vector<double>&>"], "include": ["polymake/Vector.h"], "op": "Add", "ret": "lvalue", "sig": "Add:O.X5.X16"},
+  {"args": ["perl::Canned<const Vector<Integer>&>"], "include": ["polymake/Integer.h", "polymake/Vector.h"], "op": "neg", "sig": "neg:O.X"},
  null ],
 "version": 3}

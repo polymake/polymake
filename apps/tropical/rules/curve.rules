@@ -121,9 +121,9 @@ weight 0.10;
 # > $skeleton = new IncidenceMatrix([[$u,$v,$x],[$v,$w,$z],[$u,$w,$y],[$x,$y,$z]]);
 # > $g = new Curve(EDGES_THROUGH_VERTICES=>$skeleton, INEQUALITIES=>$D_ineqs);
 # Now we are ready to compute the stacky f-vector:
-# > print stacky_fan($g)->STACKY_F_VECTOR;
+# > print stacky_le_fan($g)->STACKY_F_VECTOR;
 # | 7 18 25 21 8
-user_function stacky_fan(Curve) {
+user_function stacky_le_fan(Curve) {
     my ($tg) = @_;
     my $autos = auto_group_on_coordinates($tg);
     my $n_marked_edges = $tg->MARKED_EDGES->size();
@@ -134,8 +134,8 @@ user_function stacky_fan(Curve) {
     }
     
     my $sf = ($autos->size() != 0)
-        ? fan::stacky_fan(new polytope::Cone(INEQUALITIES=>$ineqs, GROUP=>new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>new group::PermutationAction(GENERATORS=>$autos))))
-        : fan::stacky_fan(new polytope::Cone(INEQUALITIES=>$ineqs));
+        ? fan::stacky_le_fan(new polytope::Cone(INEQUALITIES=>$ineqs, GROUP=>new group::Group(HOMOGENEOUS_COORDINATE_ACTION=>new group::PermutationAction(GENERATORS=>$autos))))
+        : fan::stacky_le_fan(new polytope::Cone(INEQUALITIES=>$ineqs));
     return $sf;
 }
 
@@ -169,7 +169,7 @@ user_function stacky_fan(Curve) {
 
 user_function moduli_cell(Curve, { verbosity=>0 }) {
     my ($tg, $options) = @_;
-    return moduli_cell_of_curve(fan::stacky_fundamental_domain(stacky_fan($tg), $options), $tg, $options);
+    return moduli_cell_of_curve(fan::stacky_fundamental_domain(stacky_le_fan($tg), $options), $tg, $options);
 }
 
 

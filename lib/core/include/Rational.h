@@ -1646,7 +1646,8 @@ public:
       } else {
          if (!k)
             throw GMP::NaN();
-         set_inf(&result, k%2 ? mpq_sgn(&a) : 1);
+         if (k > 0)
+            set_inf(&result, k%2 ? mpq_sgn(&a) : 1);
       }
       return result;
    }
@@ -1692,7 +1693,8 @@ public:
       } else {
          if (!k)
             throw GMP::NaN();
-         set_inf(&result, k%2 ? mpz_sgn(a.get_rep()) : 1);
+         else if (k > 0)
+            set_inf(&result, k%2 ? mpz_sgn(a.get_rep()) : 1);
       }
       return result;
    }
