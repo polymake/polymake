@@ -35,6 +35,7 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 
+#include <flint/fmpq.h>
 #include <flint/fmpq_poly.h>
 
 #if defined(__clang__)
@@ -58,6 +59,7 @@ class FlintPolynomial {
    private:
       fmpq_poly_t flintPolynomial;
       Int shift;
+      mutable fmpq_t fqtmp;
 
       static slong safe_cast(Int x)
       {
@@ -100,7 +102,8 @@ class FlintPolynomial {
             return 0;
          Int expshift = in.lower_deg();
          for (auto t = entire(in.get_terms()); !t.at_end(); ++t){
-            fmpq_poly_set_coeff_mpq(out, safe_cast(t->first-expshift), t->second.get_rep());
+            fmpq_set_mpq(fqtmp, t->second.get_rep());
+            fmpq_poly_set_coeff_fmpq(out, safe_cast(t->first-expshift), fqtmp);
          }
          return expshift;
       }
@@ -133,7 +136,8 @@ class FlintPolynomial {
             }
          }
          for (auto t = entire(src); !t.at_end(); ++t){
-            fmpq_poly_set_coeff_mpq(flintPolynomial, safe_cast(t->first-shift), convert_to<Rational>(t->second).get_rep());
+            fmpq_set_mpq(fqtmp, convert_to<Rational>(t->second).get_rep());
+            fmpq_poly_set_coeff_fmpq(flintPolynomial, safe_cast(t->first-shift), fqtmp);
          }
       }
 
@@ -152,23 +156,27 @@ class FlintPolynomial {
       // Constructors
       FlintPolynomial(){
          shift = 0;
+         fmpq_init(fqtmp);
          fmpq_poly_init(flintPolynomial);
       }
 
       explicit FlintPolynomial(Int n_vars){
          if (n_vars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
+         fmpq_init(fqtmp);
          fmpq_poly_init(flintPolynomial);
          shift = 0;
       }
 
       FlintPolynomial(Int c, Int n_vars) {
          if (n_vars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
+         fmpq_init(fqtmp);
          fmpq_poly_init(flintPolynomial);
          fmpq_poly_set_si(flintPolynomial, c);
          shift = 0;
       }
 
       FlintPolynomial(const FlintPolynomial& p) {
+         fmpq_init(fqtmp);
          fmpq_poly_init(flintPolynomial);
          fmpq_poly_set(flintPolynomial, p.flintPolynomial);
          shift = p.shift;
@@ -176,13 +184,16 @@ class FlintPolynomial {
 
       FlintPolynomial(const Rational& c, Int n_vars) {
          if (n_vars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
+         fmpq_init(fqtmp);
          fmpq_poly_init(flintPolynomial);
-         fmpq_poly_set_mpq(flintPolynomial,c.get_rep());
+         fmpq_set_mpq(fqtmp, c.get_rep());
+         fmpq_poly_set_fmpq(flintPolynomial, fqtmp);
          shift = 0;
       }
 
       explicit FlintPolynomial(const typename FlintPolynomial::generic_impl& in)
       {
+         fmpq_init(fqtmp);
          shift = convertUniPolynomial2Flint(flintPolynomial, in);
       }
 
@@ -192,6 +203,7 @@ class FlintPolynomial {
       {  
          if (n_vars != 1)
            throw std::runtime_error("FlintPolynomial: univariate only");
+         fmpq_init(fqtmp);
          fmpq_poly_init(flintPolynomial);
          shift = 0;
          for (auto m = entire(monomials); !m.at_end(); ++m){
@@ -201,19 +213,24 @@ class FlintPolynomial {
          }
          auto c = entire(coefficients);
          for (auto e = entire(monomials); !e.at_end(); ++e, ++c){
-            fmpq_poly_set_coeff_mpq(flintPolynomial, safe_cast(*e-shift), convert_to<Rational>(*c).get_rep());
+            fmpq_set_mpq(fqtmp, convert_to<Rational>(*c).get_rep());
+            fmpq_poly_set_coeff_fmpq(flintPolynomial, safe_cast(*e-shift), fqtmp);
          }
       }
 
       explicit FlintPolynomial(const term_hash& terms, Int nvars = 1)
       {
          if (nvars != 1) throw std::runtime_error("FlintPolynomial: univariate only");
+         fmpq_init(fqtmp);
          fmpq_poly_init(flintPolynomial);
          this->set_terms(terms);
       }
 
       // destruction
-      ~FlintPolynomial(){fmpq_poly_clear(flintPolynomial);}
+      ~FlintPolynomial() {
+         fmpq_poly_clear(flintPolynomial);
+         fmpq_clear(fqtmp);
+      }
 
       void clear()
       {
@@ -292,21 +309,26 @@ class FlintPolynomial {
       {
          FlintPolynomial tmp;
          if (__builtin_expect(pm::is_zero(exponent),0)) {
-            mpq_t res;
-            mpq_init(res);
-            fmpq_poly_evaluate_mpz(res, flintPolynomial, Integer(1).get_rep());
-            fmpq_poly_set_mpq(tmp.flintPolynomial,res);
-            mpq_clear(res);
+            fmpq_t res;
+            fmpq_init(res);
+            fmpq_set_mpq(fqtmp, Rational(1).get_rep());
+            fmpq_poly_evaluate_fmpq(res, flintPolynomial, fqtmp);
+            fmpq_poly_set_fmpq(tmp.flintPolynomial,res);
+            fmpq_clear(res);
          } else if (exponent < 0) {
             tmp.shift = safe_cast(Int(deg() * exponent));
             for (Int i = 0; i <= deg() - shift; ++i)
-               if (exists(i+shift))
-                 fmpq_poly_set_coeff_mpq(tmp.flintPolynomial, safe_cast(Int((deg()-shift-i)*abs(exponent))), get_coefficient(i+shift).get_rep());
+               if (exists(i+shift)) {
+                 fmpq_set_mpq(fqtmp, get_coefficient(i+shift).get_rep());
+                 fmpq_poly_set_coeff_fmpq(tmp.flintPolynomial, safe_cast(Int((deg()-shift-i)*abs(exponent))), fqtmp);
+               }
          } else {
             tmp.shift = Int(shift * exponent);
             for (Int i = 0; i <= deg()-shift; ++i)
-               if (exists(i+shift))
-                 fmpq_poly_set_coeff_mpq(tmp.flintPolynomial, safe_cast(Int(i*exponent)), get_coefficient(i+shift).get_rep());
+               if (exists(i+shift)) {
+                 fmpq_set_mpq(fqtmp, get_coefficient(i+shift).get_rep());
+                 fmpq_poly_set_coeff_fmpq(tmp.flintPolynomial, safe_cast(Int(i*exponent)), fqtmp);
+               }
          }
          return tmp;
       }
@@ -315,11 +337,8 @@ class FlintPolynomial {
       FlintPolynomial& operator+= (const Rational& c)
       {
          if (shift == 0) {
-            fmpq_t tmp;
-            fmpq_init(tmp);
-            fmpq_set_mpq(tmp,c.get_rep());
-            fmpq_poly_add_fmpq(flintPolynomial,flintPolynomial, tmp);
-            fmpq_clear(tmp);
+            fmpq_set_mpq(fqtmp,c.get_rep());
+            fmpq_poly_add_fmpq(flintPolynomial,flintPolynomial, fqtmp);
          } else {
             FlintPolynomial C(c,1);
             *this += C;
@@ -409,8 +428,10 @@ class FlintPolynomial {
       {
          if (__builtin_expect(is_zero(c), 0))
             fmpq_poly_zero(flintPolynomial);
-         else
-            fmpq_poly_scalar_mul_mpq(flintPolynomial,flintPolynomial,c.get_rep());
+         else {
+            fmpq_set_mpq(fqtmp, c.get_rep());
+            fmpq_poly_scalar_mul_fmpq(flintPolynomial, flintPolynomial, fqtmp);
+         }
          generic_impl_cache.reset(nullptr);
          return *this;
       }
@@ -455,7 +476,8 @@ class FlintPolynomial {
             tmp.shift = (d-shift)*e;
             Rational c(get_coefficient(d));
             c = pm::Rational::pow(c, e);
-            fmpq_poly_set_coeff_mpq(tmp.flintPolynomial, safe_cast(shift*e), c.get_rep());
+            fmpq_set_mpq(fqtmp, c.get_rep());
+            fmpq_poly_set_coeff_fmpq(tmp.flintPolynomial, safe_cast(shift*e), fqtmp);
          } else {
             fmpq_poly_pow(tmp.flintPolynomial,flintPolynomial,e);
             tmp.shift = shift*e;
@@ -504,7 +526,8 @@ class FlintPolynomial {
       FlintPolynomial& operator/= (const Rational& c) {
          if (__builtin_expect(is_zero(c), 0))
             throw GMP::ZeroDivide();
-         fmpq_poly_scalar_div_mpq(flintPolynomial,flintPolynomial,c.get_rep());
+         fmpq_set_mpq(fqtmp, c.get_rep());
+         fmpq_poly_scalar_div_fmpq(flintPolynomial,flintPolynomial,fqtmp);
          generic_impl_cache.reset(nullptr);
          return *this;
       }
@@ -582,7 +605,8 @@ class FlintPolynomial {
             return zero_value<Rational>();
          mpq_t tmp;
          mpq_init(tmp);
-         fmpq_poly_get_coeff_mpq(tmp,flintPolynomial,safe_cast(i-shift));
+         fmpq_poly_get_coeff_fmpq(fqtmp,flintPolynomial,safe_cast(i-shift));
+         fmpq_get_mpq(tmp, fqtmp);
          Rational rat(std::move(tmp));
          return rat;
       }

@@ -800,7 +800,7 @@ OP* cpp_helem(pTHX_ HV* hv, const MAGIC* mg)
    PUTBACK;
    PL_op->op_flags |= OPf_STACKED;
    PL_op->op_private=0;
-   OP* next=Perl_pp_entersub(aTHX);
+   OP* next = def_pp_ENTERSUB(aTHX);
    PL_op->op_private=save_private;
    return next;
 }
@@ -847,7 +847,7 @@ OP* cpp_exists(pTHX_ HV* hv, const MAGIC* mg)
    PUTBACK;
    PL_op->op_flags |= OPf_STACKED;
    PL_op->op_private = 0;
-   OP* next = Perl_pp_entersub(aTHX);
+   OP* next = def_pp_ENTERSUB(aTHX);
    PL_op->op_private = save_private;
    return next;
 }
@@ -897,7 +897,7 @@ OP* cpp_delete_helem(pTHX_ HV* hv, const MAGIC* mg)
    PUTBACK;
    PL_op->op_flags |= OPf_STACKED;
    PL_op->op_private = 0;
-   OP* next = Perl_pp_entersub(aTHX);
+   OP* next = def_pp_ENTERSUB(aTHX);
    PL_op->op_private = save_private;
    return next;
 }

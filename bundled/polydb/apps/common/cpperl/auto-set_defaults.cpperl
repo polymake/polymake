@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>", "void", "void", "void", "void", "void"], "func": "set_defaults", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "set_defaults:M.x.x.x.x.x"},
+ null ],
+"version": 3}

@@ -51,17 +51,17 @@ void local_do(pTHX_ Args&&... args)
 
 struct local_ref_handler {
    SV* var;
+   SV* value;
    void* orig_any;
    U32 orig_flags;
    char* orig_pv;       // as a representative for SV_HEAD_UNION
-   SV* temp_owner;
 
-   local_ref_handler(pTHX_ SV* var_, SV* value)
+   local_ref_handler(pTHX_ SV* var_, SV* value_)
       : var(var_)
+      , value(value_)
       , orig_any(SvANY(var_))
       , orig_flags(SvFLAGS(var_) & ~SVs_TEMP)
       , orig_pv(var_->sv_u.svu_pv)
-      , temp_owner(value)
    {
       var->sv_u.svu_pv = value->sv_u.svu_pv;
       SvANY(var) = SvANY(value);
@@ -72,13 +72,14 @@ struct local_ref_handler {
 
    void undo(pTHX) const
    {
+      SvANY(value) = SvANY(var);
       SvANY(var) = orig_any;
-      SvFLAGS(temp_owner) = SvFLAGS(var);
-      temp_owner->sv_u.svu_pv = var->sv_u.svu_pv;
-      var->sv_u.svu_pv = orig_pv;
+      SvFLAGS(value) = SvFLAGS(var);
       SvFLAGS(var) = orig_flags;
+      value->sv_u.svu_pv = var->sv_u.svu_pv;
+      var->sv_u.svu_pv = orig_pv;
       SvREFCNT_dec(var);
-      SvREFCNT_dec(temp_owner);
+      SvREFCNT_dec(value);
    }
 };
 
@@ -164,8 +165,14 @@ int parse_local_ref(pTHX_ OP** op_ptr)
    op_keeper<OP> o(aTHX_ parse_termexpr(0));
    if (!o || o->op_type != OP_SASSIGN)
       return KEYWORD_PLUGIN_DECLINE;
-   o->op_ppaddr = ops::local_ref;
-   *op_ptr = o.release();
+   OP* op = o.release();
+#if PerlVersion >= 5380
+   // hinder optimizer from converting it to PAD_STORE
+   if (cBINOPx(op)->op_last->op_type == OP_PADSV)
+      op->op_private |= OPpASSIGN_CV_TO_GV;
+#endif
+   op->op_ppaddr = ops::local_ref;
+   *op_ptr = op;
    PL_hints |= HINT_BLOCK_SCOPE;
    return KEYWORD_PLUGIN_EXPR;
 }
@@ -241,6 +248,20 @@ OP* local_save_scalar_op(pTHX)
    RETURN;
 }
 
+OP* local_save_lex_var_op(pTHX)
+{
+   ops::localize_scalar(aTHX_ PAD_SV(PL_op->op_targ));
+   return NORMAL;
+}
+
+OP* preempt_lex_var_change(pTHX_ OP* change_op, OP* padsv_op)
+{
+   OP* save_op = PmNewCustomOP(OP, 0);
+   save_op->op_targ = padsv_op->op_targ;
+   save_op->op_ppaddr = local_save_lex_var_op;
+   return newBINOP(OP_NULL, 0, save_op, change_op);
+}
+
 // --------------------
 
 struct local_incr_handler {
@@ -274,43 +295,65 @@ int parse_local_scalar(pTHX_ OP** op_ptr)
 {
    op_keeper<OP> o(aTHX_ parse_termexpr(0));
    if (!o) return KEYWORD_PLUGIN_DECLINE;
-   if (o->op_type == OP_SASSIGN) {
-      OP* left = ((BINOP*)o.operator->())->op_last;
-      if (left->op_type != OP_PADSV && left->op_type != OP_ENTERSUB && left->op_type != OP_RV2SV) {
-         report_parse_error("local scalar applicable to lexical variables, scalars delivered by dereferencing or returned from subs");
-         return KEYWORD_PLUGIN_DECLINE;
-      }
-      o->op_ppaddr = local_scalar_op;
-   } else {
-      OP* var = o.release();
-      switch (var->op_type) {
-      case OP_PREINC:
-      case OP_I_PREINC:
-         o = PmNewCustomOP(UNOP, 0, var);
-         o->op_ppaddr = local_incr_op;
-         o->op_private = 0;
-         break;
-      case OP_PREDEC:
-      case OP_I_PREDEC:
-         o = PmNewCustomOP(UNOP, 0, var);
-         o->op_ppaddr = local_incr_op;
-         o->op_private = 2;
-         break;
-      case OP_POSTINC:
-      case OP_I_POSTINC:
-         report_parse_error("local scalar not compatible with post-increment");
-         return KEYWORD_PLUGIN_DECLINE;
-      case OP_POSTDEC:
-      case OP_I_POSTDEC:
-         report_parse_error("local scalar not compatible with post-decrement");
-         return KEYWORD_PLUGIN_DECLINE;
-      default:
-         o = PmNewCustomOP(UNOP, 0, op_lvalue(var, var->op_type));
-         o->op_ppaddr = local_save_scalar_op;
-         break;
-      }
+   OP* var = nullptr;
+   const auto t = o->op_type;
+   switch (t) {
+     case OP_SASSIGN:
+        var = ((BINOP*)o.operator->())->op_last;
+        if (var->op_type == OP_PADSV) {
+           if (var->op_private & OPpLVAL_INTRO) {
+              report_parse_error("local scalar is not applicable to lexical variables at introduction point");
+              return KEYWORD_PLUGIN_DECLINE;
+           }
+           // during optimization the assignment can be replaced with various specialized ops
+           // which ia hard to predict and even harder to prevent
+           *op_ptr = preempt_lex_var_change(aTHX_ o.release(), var);
+        } else if (var->op_type == OP_ENTERSUB || var->op_type == OP_RV2SV) {
+           o->op_ppaddr = local_scalar_op;
+           *op_ptr = o.release();
+        } else {
+           report_parse_error("local scalar is only applicable to lexical variables, scalars delivered by dereferencing or returned from subs");
+           return KEYWORD_PLUGIN_DECLINE;
+        }
+        break;
+     case OP_PREINC:
+     case OP_I_PREINC:
+        var = PmNewCustomOP(UNOP, 0, o.release());
+        var->op_ppaddr = local_incr_op;
+        var->op_private = 0;
+        *op_ptr = var;
+        break;
+     case OP_PREDEC:
+     case OP_I_PREDEC:
+        var = PmNewCustomOP(UNOP, 0, o.release());
+        var->op_ppaddr = local_incr_op;
+        var->op_private = 2;
+        *op_ptr = var;
+        break;
+     case OP_POSTINC:
+     case OP_I_POSTINC:
+        report_parse_error("local scalar not compatible with post-increment");
+        return KEYWORD_PLUGIN_DECLINE;
+     case OP_POSTDEC:
+     case OP_I_POSTDEC:
+        report_parse_error("local scalar not compatible with post-decrement");
+        return KEYWORD_PLUGIN_DECLINE;
+#if PerlVersion >= 5380
+     case OP_EMPTYAVHV:
+        if ((o->op_private & (OPpTARGET_MY | OPpLVAL_INTRO)) != OPpTARGET_MY) {
+           report_parse_error(o->op_private & OPpTARGET_MY ? "local scalar is not applicable to lexical variables at introduction point" : "local scalar is only applicable to lexical variables");
+           return KEYWORD_PLUGIN_DECLINE;
+        }
+        var = o.release();
+        *op_ptr = preempt_lex_var_change(aTHX_ var, var);
+        break;
+#endif
+     default:
+        var = PmNewCustomOP(UNOP, 0, op_lvalue(o.release(), t));
+        var->op_ppaddr = local_save_scalar_op;
+        *op_ptr = var;
+        break;
    }
-   *op_ptr = o.release();
    PL_hints |= HINT_BLOCK_SCOPE;
    return KEYWORD_PLUGIN_EXPR;
 }
@@ -928,7 +971,7 @@ int parse_local_caller(pTHX_ OP** op_ptr)
 {
    OP* expr = parse_termexpr(0);
    if (!expr) return KEYWORD_PLUGIN_DECLINE;
-   OP* o = PmNewCustomOP(UNOP, 0, Perl_scalar(aTHX_ expr));
+   OP* o = PmNewCustomOP(UNOP, 0, op_scalar_context(expr));
    o->op_ppaddr = local_caller_op;
    *op_ptr = o;
    return KEYWORD_PLUGIN_EXPR;

@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBCollection&>", "std::string(std::string)", "void"], "func": "find", "include": ["polymake/common/PolyDBCollection.h"], "kind": "meth", "sig": "find:M.std::string.o"},
+ null ],
+"version": 3}

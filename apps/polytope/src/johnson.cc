@@ -468,7 +468,7 @@ BigObject pentagonal_pyramid()
 BigObject triangular_cupola()
 {
   BigObject cub = call_function("cuboctahedron");
-  Matrix<QE> V = cub.give("VERTICES");
+  Matrix<Rational> V = cub.give("VERTICES");
   V = V.minor(sequence(0,9),All);
 
   BigObject p=build_from_vertices(V);
@@ -1141,30 +1141,29 @@ BigObject pentagonal_orthobicupola()
 {
    BigObject p = pentagonal_cupola();
    p = augment(p, Set<Int>{2,4,5,7,8,10,11,12,13,14});
-   p = rotate_facet(p, Set<Int>{0,1,3,6,9}, M_PI/5);
 
-   IncidenceMatrix<> VIF{{0,2,15,16},
-                          {0,2,10},
-                          {15,16,17,18,19},
-                          {0,1,10,14},
-                          {0,1,16},
-                          {1,4,16,18},
-                          {1,4,14},
-                          {4,5,13,14},
-                          {4,5,18},
-                          {5,8,13},
-                          {8,9,19},
-                          {5,8,18,19},
-                          {8,9,12,13},
-                          {7,9,12},
-                          {7,9,17,19},
-                          {10,11,12,13,14},
-                          {6,7,17},
-                          {6,7,11,12},
-                          {3,6,11},
-                          {2,3,15},
-                          {3,6,15,17},
-                          {2,3,10,11}};
+   IncidenceMatrix<> VIF{{0,2,5},
+                         {2,5,15},
+                         {0,1,3,6,9},
+                         {0,1,2,4},
+                         {6,9,13,14},
+                         {1,6,8,10},
+                         {1,4,8},
+                         {8,10,18,19},
+                         {6,10,13},
+                         {10,13,18},
+                         {4,8,19},
+                         {13,14,17,18},
+                         {12,14,17},
+                         {9,12,14},
+                         {2,4,15,19},
+                         {15,16,17,18,19},
+                         {11,12,16,17},
+                         {3,9,11,12},
+                         {3,7,11},
+                         {7,11,16},
+                         {5,7,15,16},
+                         {0,3,5,7}};
 
    p.take("VERTICES_IN_FACETS") << VIF;
 
@@ -1185,7 +1184,7 @@ BigObject pentagonal_gyrobicupola()
 }
 
 //FIXME: coordinates #830
-BigObject pentagonal_orthocupolarotunda()
+BigObject pentagonal_gyrocupolarotunda()
 {
    BigObject p = pentagonal_rotunda();
    p = augment(p, Set<Int>{7,9,10,12,13,15,16,17,18,19});
@@ -1221,15 +1220,15 @@ BigObject pentagonal_orthocupolarotunda()
    p.take("VERTICES_IN_FACETS") << VIF;
 
    centralize<double>(p);
-   p.set_description() << "Johnson solid J32: Pentagonal orthocupolarotunda" << endl;
+   p.set_description() << "Johnson solid J33: Pentagonal gyrocupolarotunda" << endl;
 
    return p;
 }
 
 //FIXME: coordinates #830
-BigObject pentagonal_gyrocupolarotunda()
+BigObject pentagonal_orthocupolarotunda()
 {
-   BigObject p = pentagonal_orthocupolarotunda();
+   BigObject p = pentagonal_gyrocupolarotunda();
    p = rotate_facet(p, sequence(20,5), M_PI/5);
 
    IncidenceMatrix<> VIF{ {4,8,14,16,17},
@@ -1263,7 +1262,7 @@ BigObject pentagonal_gyrocupolarotunda()
    p.take("VERTICES_IN_FACETS") << VIF;
 
    centralize<double>(p);
-   p.set_description() << "Johnson solid J33: Pentagonal gyrocupolarotunda" << endl;
+   p.set_description() << "Johnson solid J32: Pentagonal orthocupolarotunda" << endl;
 
    return p;
 }
@@ -1369,7 +1368,7 @@ BigObject elongated_square_gyrobicupola()
 }
 
 //FIXME: coordinates #830
-BigObject elongated_pentagonal_orthobicupola()
+BigObject elongated_pentagonal_gyrobicupola()
 {
    BigObject p = elongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
@@ -1411,13 +1410,13 @@ BigObject elongated_pentagonal_orthobicupola()
    p.take("VERTICES_IN_FACETS") << VIF;
 
    centralize<double>(p);
-   p.set_description() << "Johnson solid J38: Elongated pentagonal orthobicupola" << endl;
+   p.set_description() << "Johnson solid J39: Elongated pentagonal gyrobicupola" << endl;
 
    return p;
 }
 
 //FIXME: coordinates #830
-BigObject elongated_pentagonal_gyrobicupola()
+BigObject elongated_pentagonal_orthobicupola()
 {
    BigObject p = elongated_pentagonal_cupola();
    p = augment(p,sequence(15,10));
@@ -1458,7 +1457,7 @@ BigObject elongated_pentagonal_gyrobicupola()
    p.take("VERTICES_IN_FACETS") << VIF;
 
    centralize<double>(p);
-   p.set_description() << "Johnson solid J39: Elongated pentagonal gyrobicupola" << endl;
+   p.set_description() << "Johnson solid J38: Elongated pentagonal orthobicupola" << endl;
 
    return p;
 }
@@ -2485,18 +2484,23 @@ BigObject augmented_truncated_dodecahedron()
 
    p = augment(p, Set<Int>{0,1,5,7,9,11,13,16,18,21});
 
+   p = rotate_facet(p, sequence(60,5), M_PI/5);
+
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19,61},
+                          {7,13,19},
                           {41,46,52},
-                          {5,7,60,61},
+                          {5,7,61},
+                          {0,5,60,61},
                           {43,46,48,50,52,54,56,57,58,59},
-                          {13,16,61,62},
-                          {0,1,60,64},
+                          {13,16,62},
+                          {7,13,61,62},
+                          {0,1,60},
+                          {1,9,60,64},
                           {10,15,26},
                           {29,36,42},
                           {12,15,20,23,26,29,37,40,42,45},
-                          {1,4,9,64},
+                          {1,4,9},
                           {55,57,59},
                           {4,6,9,11,20,23,25,28,30,33},
                           {6,12,20},
@@ -2505,15 +2509,17 @@ BigObject augmented_truncated_dodecahedron()
                           {23,30,37},
                           {28,33,44},
                           {47,50,56},
-                          {11,18,25,63},
-                          {9,11,63,64},
+                          {11,18,25},
+                          {9,11,64},
+                          {11,18,63,64},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {18,21,62,63},
+                          {18,21,63},
+                          {16,21,62,63},
                           {35,43,48},
-                          {16,21,32,62},
+                          {16,21,32},
                           {60,61,62,63,64},
                           {51,54,58},
-                          {0,2,5,60},
+                          {0,2,5},
                           {36,39,42,45,49,51,53,55,58,59},
                           {0,1,2,3,4,6,8,10,12,15},
                           {34,39,49},
@@ -2537,43 +2543,55 @@ BigObject parabiaugmented_truncated_dodecahedron()
    BigObject p = augmented_truncated_dodecahedron();
    p = augment(p, Set<Int>{36,39,42,45,49,51,53,55,58,59});
 
+   p = rotate_facet(p, sequence(65,5), M_PI/5);
+
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19,61},
+                          {7,13,19},
                           {41,46,52},
-                          {5,7,60,61},
+                          {5,7,61},
+                          {0,5,60,61},
                           {43,46,48,50,52,54,56,57,58,59},
-                          {13,16,61,62},
+                          {13,16,62},
+                          {7,13,61,62},
                           {65,66,67,68,69},
-                          {16,21,32,62},
+                          {16,21,32},
                           {35,43,48},
                           {12,15,20,23,26,29,37,40,42,45},
-                          {42,45,65,66},
-                          {9,11,63,64},
-                          {40,45,53,66},
+                          {42,45,66},
+                          {36,42,65,66},
+                          {9,11,64},
+                          {11,18,63,64},
+                          {40,45,53},
                           {47,50,56},
                           {28,33,44},
                           {23,30,37},
                           {30,33,37,40,44,47,53,55,56,57},
                           {6,12,20},
                           {4,6,9,11,20,23,25,28,30,33},
-                          {11,18,25,63},
-                          {53,55,66,67},
-                          {55,57,59,67},
-                          {1,4,9,64},
+                          {11,18,25},
+                          {53,55,67},
+                          {45,53,66,67},
+                          {55,57,59},
+                          {1,4,9},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {18,21,62,63},
-                          {58,59,67,68},
-                          {29,36,42,65},
+                          {18,21,63},
+                          {16,21,62,63},
+                          {58,59,68},
+                          {55,59,67,68},
+                          {29,36,42},
                           {10,15,26},
-                          {0,1,60,64},
+                          {0,1,60},
+                          {1,9,60,64},
                           {60,61,62,63,64},
-                          {51,54,58,68},
-                          {36,39,65,69},
-                          {0,2,5,60},
-                          {49,51,68,69},
+                          {51,54,58},
+                          {36,39,65},
+                          {39,49,65,69},
+                          {0,2,5},
+                          {49,51,69},
+                          {51,58,68,69},
                           {0,1,2,3,4,6,8,10,12,15},
-                          {34,39,49,69},
+                          {34,39,49},
                           {3,8,14},
                           {8,10,14,17,26,29,31,34,36,39},
                           {17,24,31},
@@ -2594,40 +2612,52 @@ BigObject metabiaugmented_truncated_dodecahedron()
    BigObject p = augmented_truncated_dodecahedron();
    p = augment(p, Set<Int>{43,46,48,50,52,54,56,57,58,59});
 
+   p = rotate_facet(p, sequence(65,5), M_PI/5);
+
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19,61},
-                          {41,46,52,69},
-                          {5,7,60,61},
-                          {52,54,68,69},
-                          {13,16,61,62},
-                          {43,46,65,69},
+                          {7,13,19},
+                          {41,46,52},
+                          {5,7,61},
+                          {0,5,60,61},
+                          {52,54,68},
+                          {46,52,68,69},
+                          {13,16,62},
+                          {7,13,61,62},
+                          {43,46,69},
+                          {43,48,65,69},
                           {65,66,67,68,69},
-                          {16,21,32,62},
-                          {35,43,48,65},
+                          {16,21,32},
+                          {35,43,48},
                           {12,15,20,23,26,29,37,40,42,45},
-                          {48,50,65,66},
-                          {9,11,63,64},
-                          {56,57,66,67},
-                          {47,50,56,66},
+                          {48,50,65},
+                          {50,56,65,66},
+                          {9,11,64},
+                          {11,18,63,64},
+                          {56,57,66},
+                          {57,59,66,67},
+                          {47,50,56},
                           {28,33,44},
                           {23,30,37},
                           {30,33,37,40,44,47,53,55,56,57},
                           {40,45,53},
                           {6,12,20},
                           {4,6,9,11,20,23,25,28,30,33},
-                          {11,18,25,63},
-                          {55,57,59,67},
-                          {1,4,9,64},
+                          {11,18,25},
+                          {55,57,59},
+                          {1,4,9},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {18,21,62,63},
-                          {58,59,67,68},
+                          {18,21,63},
+                          {16,21,62,63},
+                          {58,59,67},
+                          {54,58,67,68},
                           {29,36,42},
                           {10,15,26},
-                          {0,1,60,64},
+                          {0,1,60},
+                          {1,9,60,64},
                           {60,61,62,63,64},
-                          {51,54,58,68},
-                          {0,2,5,60},
+                          {51,54,58},
+                          {0,2,5},
                           {36,39,42,45,49,51,53,55,58,59},
                           {0,1,2,3,4,6,8,10,12,15},
                           {34,39,49},
@@ -2651,45 +2681,62 @@ BigObject triaugmented_truncated_dodecahedron()
    BigObject p = metabiaugmented_truncated_dodecahedron();
    p = augment(p, Set<Int>{12,15,20,23,26,29,37,40,42,45});
 
+   p = rotate_facet(p, sequence(70,5), M_PI/5);
+
    IncidenceMatrix<> VIF{ {22,27,38},
                           {13,16,19,22,32,35,38,41,43,46},
-                          {7,13,19,61},
-                          {41,46,52,69},
-                          {5,7,60,61},
-                          {52,54,68,69},
-                          {13,16,61,62},
-                          {43,46,65,69},
+                          {7,13,19},
+                          {41,46,52},
+                          {5,7,61},
+                          {0,5,60,61},
+                          {52,54,68},
+                          {46,52,68,69},
+                          {13,16,62},
+                          {7,13,61,62},
+                          {43,46,69},
+                          {43,48,65,69},
                           {65,66,67,68,69},
-                          {16,21,32,62},
-                          {35,43,48,65},
-                          {26,29,73,74},
-                          {48,50,65,66},
-                          {9,11,63,64},
-                          {56,57,66,67},
-                          {47,50,56,66},
-                          {37,40,71,72},
+                          {16,21,32},
+                          {35,43,48},
+                          {26,29,74},
+                          {29,42,73,74},
+                          {48,50,65},
+                          {50,56,65,66},
+                          {9,11,64},
+                          {11,18,63,64},
+                          {56,57,66},
+                          {57,59,66,67},
+                          {47,50,56},
+                          {37,40,72},
+                          {23,37,71,72},
                           {28,33,44},
-                          {23,30,37,71},
-                          {20,23,70,71},
+                          {23,30,37},
+                          {20,23,71},
+                          {12,20,70,71},
                           {30,33,37,40,44,47,53,55,56,57},
-                          {40,45,53,72},
-                          {6,12,20,70},
+                          {40,45,53},
+                          {6,12,20},
                           {4,6,9,11,20,23,25,28,30,33},
                           {70,71,72,73,74},
-                          {11,18,25,63},
-                          {55,57,59,67},
-                          {42,45,72,73},
-                          {12,15,70,74},
-                          {1,4,9,64},
+                          {11,18,25},
+                          {55,57,59},
+                          {42,45,73},
+                          {40,45,72,73},
+                          {12,15,70},
+                          {15,26,70,74},
+                          {1,4,9},
                           {18,21,25,28,32,35,44,47,48,50},
-                          {18,21,62,63},
-                          {58,59,67,68},
-                          {29,36,42,73},
-                          {10,15,26,74},
-                          {0,1,60,64},
+                          {18,21,63},
+                          {16,21,62,63},
+                          {58,59,67},
+                          {54,58,67,68},
+                          {29,36,42},
+                          {10,15,26},
+                          {0,1,60},
+                          {1,9,60,64},
                           {60,61,62,63,64},
-                          {51,54,58,68},
-                          {0,2,5,60},
+                          {51,54,58},
+                          {0,2,5},
                           {36,39,42,45,49,51,53,55,58,59},
                           {0,1,2,3,4,6,8,10,12,15},
                           {34,39,49},

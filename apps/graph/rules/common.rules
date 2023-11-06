@@ -109,6 +109,10 @@ rule MAX_CLIQUES : ADJACENCY {
    $this->MAX_CLIQUES=max_cliques($this->ADJACENCY);
 }
 
+rule MAX_INDEPENDENT_SETS : ADJACENCY {
+   $this->MAX_INDEPENDENT_SETS=max_independent_sets($this->ADJACENCY);
+}
+
 rule DEGREE_SEQUENCE, AVERAGE_DEGREE : ADJACENCY {
    degree_sequence($this);
 }
@@ -362,6 +366,8 @@ function component_connectivity(GraphAdjacency, IncidenceMatrix) : c++ (include=
 function biconnected_components(GraphAdjacency<Undirected>) : c++ (include=>["polymake/graph/biconnected.h"]);
 
 function max_cliques(GraphAdjacency<Undirected>) : c++ (include=>["polymake/graph/max_cliques.h"]);
+
+function max_independent_sets(GraphAdjacency<Undirected>) : c++ (include=>["polymake/graph/max_cliques.h"]);
 
 function diameter(GraphAdjacency) : c++ (include=>["polymake/graph/diameter.h"]);
 

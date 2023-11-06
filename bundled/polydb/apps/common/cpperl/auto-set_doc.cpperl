@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBSection&>", "void", "void"], "func": "set_doc", "include": ["polymake/common/PolyDBSection.h"], "kind": "meth", "sig": "set_doc:M.x.x"},
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBCollection&>", "void", "void"], "func": "set_doc", "include": ["polymake/common/PolyDBCollection.h"], "kind": "meth", "sig": "set_doc:M.x.x"},
+ null ],
+"version": 3}

@@ -27,17 +27,14 @@ you can specify its location on the command line:
 ./configure PERL=/path/to/my/new/perl [other options ...]
 .
       exit(1);
-   } elsif ($] >= 5.037) {
+   } elsif ($] >= 5.040) {
       print STDERR <<".";
 *************
 *** ERROR ***
 *************
 
-polymake does not work with perl 5.37 or newer;
+polymake has not been checkced for compatibility with perl 5.40 or newer;
 your perl interpreter says it is $].
-
-Access to various functions that are required to hook into the perl interpreter
-has been restricted to the perl core, which unfortunately breaks polymake.
 
 If you already have another (older) perl interpreter somewhere else, you can
 specify its location on the command line:
@@ -882,7 +879,7 @@ sub check_brew {
       foreach (@perl_paths) {
          $ADDITIONAL_PERL_INCLUDES .= " -I$_";
       }
-      $BrewBase = '/usr/local';
+      $BrewBase = '#{HOMEBREW_PREFIX}';
    } else {
       if (-d $BrewBase) {
          unless (-f "$BrewBase/bin/brew") {

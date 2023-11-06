@@ -1,7 +1,11 @@
 {"app": "fan", "embed": "check_fan.cc",
  "inst": [
-  {"args": ["Rational", "void", "void"], "func": "check_fan_objects", "include": ["polymake/Rational.h"], "sig": "check_fan_objects:T1.B.o", "tp": "1"},
   {"args": ["Rational", "perl::Canned<const Matrix<Rational>&>", "perl::Canned<const IncidenceMatrix<NonSymmetric>&>", "void"], "func": "check_fan", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/Rational.h"], "sig": "check_fan:T1.X.X.o", "tp": 1},
+  {"args": ["Rational", "void", "void"], "func": "fan_from_objects", "include": ["polymake/Rational.h"], "sig": "fan_from_objects:T1.B.o", "tp": 1},
+  {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "fan_from_objects", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "fan_from_objects:T1.B.o", "tp": 1},
+  {"args": ["Rational", "void", "void"], "func": "check_fan_objects", "include": ["polymake/Rational.h"], "sig": "check_fan_objects:T1.B.o", "tp": 1},
   {"args": ["QuadraticExtension<Rational>", "void", "void"], "func": "check_fan_objects", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "check_fan_objects:T1.B.o", "tp": 1},
+  {"args": ["Rational", "void", "void"], "func": "check_complex_objects", "include": ["polymake/Rational.h"], "sig": "check_complex_objects:T1.B.o", "tp": 1},
+  {"args": ["Rational", "void", "void"], "func": "complex_from_polytopes", "include": ["polymake/Rational.h"], "sig": "complex_from_polytopes:T1.B.o", "tp": 1},
  null ],
 "version": 3}

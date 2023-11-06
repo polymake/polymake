@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "order_polytope.cc",
+ "inst": [
+  {"args": ["graph::lattice::BasicDecoration", "void"], "func": "order_polytope", "include": ["polymake/graph/Decoration.h"], "sig": "order_polytope:T1.B", "tp": 1},
+ null ],
+"version": 3}

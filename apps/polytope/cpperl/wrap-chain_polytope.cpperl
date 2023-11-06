@@ -1,0 +1,5 @@
+{"app": "polytope", "embed": "chain_polytope.cc",
+ "inst": [
+  {"args": ["graph::lattice::BasicDecoration", "void"], "func": "chain_polytope", "include": ["polymake/graph/Decoration.h"], "sig": "chain_polytope:T1.B", "tp": 1},
+ null ],
+"version": 3}

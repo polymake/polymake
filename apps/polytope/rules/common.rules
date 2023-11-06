@@ -517,11 +517,25 @@ precondition : FULL_DIM;
 weight 2.40;
 
 rule VOLUME : {
-   $this->VOLUME=0;
+   $this->VOLUME = 0;
 }
-precondition : BOUNDED;
-precondition : CONE_DIM, CONE_AMBIENT_DIM {
-   $this->CONE_DIM < max($this->CONE_AMBIENT_DIM, 2);
+precondition : !FULL_DIM;
+weight 0.1;
+
+rule VOLUME : {
+   $this->VOLUME = 0;
+}
+precondition : CONE_AMBIENT_DIM {
+   $this->CONE_AMBIENT_DIM == 0;
+}
+weight 0.1;
+
+rule VOLUME : {
+   $this->VOLUME = 1;
+}
+precondition : FULL_DIM;
+precondition : CONE_AMBIENT_DIM {
+   $this->CONE_AMBIENT_DIM == 1;
 }
 weight 0.1;
 

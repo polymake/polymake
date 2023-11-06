@@ -3,7 +3,8 @@
 CREDIT cddlib
   Implementation of the double description method of Motzkin et al.
   Copyright by Komei Fukuda.
-  http://www-oldurls.inf.ethz.ch/personal/fukudak/cdd_home/
+  https://people.inf.ethz.ch/fukudak/cdd_home/
+  https://github.com/cddlib
 
 # REQUIRE
 # Names of other bundled extensions which are prerequisite for this one

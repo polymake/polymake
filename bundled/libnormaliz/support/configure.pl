@@ -174,8 +174,12 @@ int main (int argc, char *argv[])
       foreach (qw(shadow conversion unused-variable)) {
          $BundledNoWarnings .= " -Wno-$_";
       }
-      if (defined($Polymake::Configure::GCCversion) && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "8.0.0") > 0 && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "9.0.0") < 0) {
-         $BundledNoWarnings .= " -Wno-maybe-uninitialized";
+      if (defined($Polymake::Configure::GCCversion)) {
+         if (Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "8.0.0") > 0 && Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "9.0.0") < 0) {
+            $BundledNoWarnings .= " -Wno-maybe-uninitialized";
+         } elsif (Polymake::Configure::v_cmp($Polymake::Configure::GCCversion, "13.0.0") > 0) {
+            $BundledNoWarnings .= " -Wno-uninitialized";
+         }
       }
       $BundledNoWarnings .= " -Wno-unused-but-set-variable"
          unless (defined($Polymake::Configure::CLANGversion) &&

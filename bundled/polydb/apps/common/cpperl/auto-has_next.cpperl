@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBCursor&>"], "func": "has_next", "include": ["polymake/common/PolyDBCursor.h"], "kind": "meth", "sig": "has_next:M"},
+ null ],
+"version": 3}

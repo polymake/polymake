@@ -589,7 +589,7 @@ sub install_bin_scripts {
       s{^\#!\S+}{#!$Config::Config{perlpath}}s;
    }
 
-   s{=Version(?=;)}{=$Version};
+   s{=Version(?=;)}{="$Version"};
    s{=InstallTop(?=;)}{='$ConfigFlags{InstallTop}'};
    s{=InstallArch(?=;)}{='$ConfigFlags{InstallArch}'};
 

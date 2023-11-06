@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>"], "func": "create_default_user_and_role", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "create_default_user_and_role:M"},
+ null ],
+"version": 3}

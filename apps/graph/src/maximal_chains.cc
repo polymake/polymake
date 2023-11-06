@@ -30,7 +30,7 @@ IncidenceMatrix<> maximal_chains_of_lattice(BigObject face_lattice_obj, OptionSe
   Lattice<Decoration, SeqType> lattice(face_lattice_obj);
   bool ignore_bottom_node = options["ignore_bottom_node"];
   bool ignore_top_node = options["ignore_top_node"];
-  const Array<Set<Int>> max_chains = maximal_chains( lattice, ignore_bottom_node, ignore_top_node);
+  const Array<Set<Int>> max_chains = maximal_chains(lattice, ignore_bottom_node, ignore_top_node);
   return IncidenceMatrix<>(max_chains);
 }
 
@@ -38,11 +38,12 @@ template <typename Decoration, typename SeqType>
 BigObject lattice_of_chains(BigObject lattice_obj)
 {
   Lattice<Decoration, SeqType> lattice(lattice_obj);
-  Array<Set<Int>> max_chains = maximal_chains(lattice,false, false);
+  const Array<Set<Int>> max_chains = maximal_chains(lattice, false, false);
   BigObject chains_complex("topaz::SimplicialComplex", "FACETS", max_chains);
   BigObject chain_hasse = chains_complex.give("HASSE_DIAGRAM");
   return chain_hasse;
 }
+
 
 UserFunctionTemplate4perl("# @category Combinatorics"
                           "# For a given lattice, this computes the lattice of chains from bottom to top node."
@@ -61,7 +62,7 @@ UserFunctionTemplate4perl("# @category Combinatorics"
                           "lattice_of_chains<Decoration, SeqType>(Lattice<Decoration, SeqType>)");
 
 UserFunctionTemplate4perl("# @category Combinatorics"
-                          "# Computes the set of maximal chains of a Lattice object."
+                          "# Computes the set of maximal chains of a lattice."
                           "# @param Lattice F"
                           "# @option Bool ignore_bottom_node If true, the bottom node is not included in the chains. False by default"
                           "# @option Bool ignore_top_node If true, the top node is not included in the chains. False by default"

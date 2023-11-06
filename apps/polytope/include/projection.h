@@ -33,18 +33,24 @@ namespace polymake { namespace polytope {
 namespace {
 
 template<typename Scalar>
-Set<Int> coordinates_to_eliminate(const Array<Int>& indices, Int first_coord, Int last_coord, Int codim, const Matrix<Scalar>& linear_span, bool revert)
+Set<Int> coordinates_to_eliminate(const Array<Int>& indices, Int ambient_dim, Int codim, BigObject p_in, bool revert)
 {
    Set<Int> coords_to_eliminate;
+   const Int first_coord = p_in.isa("Polytope") ||
+      p_in.isa("PointConfiguration") ? 1 : 0;
+   const Int last_coord = ambient_dim-1;
    if (indices.empty()) {
-      bool found = false;
-      for (auto i = entire(all_subsets_of_k(range(first_coord, last_coord), codim)); !found && !i.at_end(); ++i) {
-         if (det(linear_span.minor(All,*i)) != 0) {
-            coords_to_eliminate = *i;
-            found=true;
-         }
+      Matrix<Scalar> linear_span;
+      if(p_in.isa("PolyhedralFan") || p_in.isa("PolyhedralComplex")){
+         const Matrix<Scalar> rays = p_in.give("RAYS | INPUT_RAYS");
+         const Matrix<Scalar> lineality = p_in.give("LINEALITY_SPACE | INPUT_LINEALITY");
+         linear_span = null_space(rays/lineality);
       }
-      if (!found) throw std::runtime_error("projection: no non-singular minor in LINEAR_SPAN!");
+      else p_in.give("LINEAR_SPAN") >> linear_span;
+      for(const auto e: basis_cols(linear_span.minor(All, range(first_coord, last_coord)))){
+         coords_to_eliminate += e+first_coord;
+      }
+      if(coords_to_eliminate.size() == 0 && linear_span.rows()>0) throw std::runtime_error("projection: no non-singular minor in LINEAR_SPAN!");
    } else {
       for (auto i = entire(indices); !i.at_end(); ++i) {
          if (*i < first_coord || *i > last_coord)
@@ -58,35 +64,31 @@ Set<Int> coordinates_to_eliminate(const Array<Int>& indices, Int first_coord, In
 }
 
 template<typename Scalar>
-void process_rays(BigObject& p_in, Int first_coord, const Array<Int>& indices, OptionSet& options, const Matrix<Scalar>& linear_span, const Set<Int>& coords_to_eliminate, BigObject& p_out)
+void process_rays(BigObject& p_in, const Array<Int>& indices, OptionSet& options, const Set<Int>& coords_to_eliminate, BigObject& p_out)
 {
    Matrix<Scalar> Rays, lineality;
-   bool points_read=false;
    std::string got_property;
   
    if (p_in.lookup_with_property_name("RAYS | INPUT_RAYS", got_property) >> Rays) {
-      points_read=true;
+      bool minimal_rep = false;
+      // Process rays
       if ( indices.empty() )  { // if we do a full projection then vertices remain vertices, so we write back whatever we got
          p_out.take(got_property) << Rays.minor(All,~coords_to_eliminate);
-         if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0)
-            p_out.take( got_property=="RAYS" || got_property=="VERTICES" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << lineality.minor(All,~coords_to_eliminate);
-         else {
-            Matrix<Rational> empty(0, Rays.cols() - coords_to_eliminate.size());
-            p_out.take( got_property=="RAYS" || got_property=="VERTICES" ? "LINEALITY_SPACE" : "INPUT_LINEALITY") << empty;
-         }
+         minimal_rep = got_property=="RAYS" || got_property=="VERTICES";
       } else {
          p_out.take("INPUT_RAYS") << remove_zero_rows(Rays.minor(All,~coords_to_eliminate));
-         if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0) 
-            p_out.take("INPUT_LINEALITY") << lineality.minor(All,~coords_to_eliminate);  
-         else {
-            Matrix<Rational> empty(0, Rays.cols() - coords_to_eliminate.size());
-            p_out.take("INPUT_LINEALITY") << empty;
-         }
+      }
+
+      // Process lineality
+      std::string lineality_target = minimal_rep ? "LINEALITY_SPACE" : "INPUT_LINEALITY";
+      if (p_in.lookup("LINEALITY_SPACE | INPUT_LINEALITY") >> lineality && lineality.rows() > 0)
+         p_out.take(lineality_target) << remove_zero_rows(lineality.minor(All,~coords_to_eliminate));
+      else {
+         Matrix<Rational> empty(0, Rays.cols() - coords_to_eliminate.size());
+         p_out.take(lineality_target) << empty;
       }
    }
   
-   if (!points_read && options["nofm"])
-      throw std::runtime_error("projection: no rays found and Fourier-Motzkin elimination excluded");
    if ( indices.empty() && !options["no_labels"]) {
       // here we assume that, if VERTEX_LABELS are present in the object, then also VERTICES are known
       // otherwise this will trigger a convex hull computation

@@ -1235,11 +1235,8 @@ sub take {
 }
 ####################################################################################
 sub add_twin_backref {
-   my ($self, $prop, $parent)=@_;
-   push @{$self->contents},
-        defined($parent) && $parent != $self->parent
-        ? new PropertyValue($prop, $parent, PropertyValue::Flags::is_weak_ref)
-        : new PropertyValue::BackRefToParent($self);
+   my ($self, $prop) = @_;
+   push @{$self->contents}, new PropertyValue::BackRefToParent($self);
    $self->dictionary->{$prop->key} = $#{$self->contents};
 }
 ####################################################################################

@@ -95,6 +95,12 @@ declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, Bas
    # | {(0 (0 0)) (1 (1 3)) (2 (4 6)) (3 (7 7))}
    property INVERSE_RANK_MAP : InverseRankMap<SeqType>;
 
+   rule INVERSE_RANK_MAP : ADJACENCY, DECORATION {
+     my $irm = new InverseRankMap<Nonsequential>();
+     for my $i (@{nodes($this->ADJACENCY)}) { $irm->set_rank($i, $this->DECORATION->[$i]->rank) }
+     $this->INVERSE_RANK_MAP = $irm;
+   }
+
    # @category Combinatorics
    # The index of the top node
    # @example [application polytope] The following prints the top node of the face lattice of the 2-simplex (triangle):
@@ -131,7 +137,45 @@ declare object Lattice<Decoration, SeqType = Nonsequential> [isa(Decoration, Bas
    # FaceLattice objects prior to 3.0.7
    property DIMS : Array<Int>;
 
+   # @category Combinatorics
+   # Maximal chains (without top and bottom).
+   property MAXIMAL_CHAINS : Array<Set<Int>>;
 
+   rule MAXIMAL_CHAINS : ADJACENCY, DECORATION, INVERSE_RANK_MAP {
+     $this->MAXIMAL_CHAINS = lattice_maximal_chains($this);
+   }
+
+   # @category Combinatorics
+   # An edge signals the comparability among poset elements (without top and bottom).
+   # Index shift by -1 since bottom and top are missing.
+   # This is required per specification of the GraphAdjacency class
+   property COMPARABILITY_GRAPH : GraphAdjacency<Undirected>;
+
+   rule COMPARABILITY_GRAPH : ADJACENCY, DECORATION, MAXIMAL_CHAINS {
+     $this->COMPARABILITY_GRAPH = lattice_comparability_graph($this);
+   }
+   
+   # @category Combinatorics
+   # Maximal anti-chains (without top and bottom).
+   property MAXIMAL_ANTI_CHAINS : Array<Set<Int>>;
+
+   rule MAXIMAL_ANTI_CHAINS : COMPARABILITY_GRAPH {
+     # FIXME: the following should replace the first two lines
+     #   $mc = max_independent_sets($this->COMPARABILITY_GRAPH);
+     my $CG = new Graph<Undirected>(ADJACENCY=>$this->COMPARABILITY_GRAPH);
+     my $mc = new Array<Set<Int>>(max_cliques(complement_graph($CG)->ADJACENCY));
+     my $n = $mc->size();
+     # index shift by +1; see COMPARABILITY_GRAPH
+     for (my $i=0; $i<$n; ++$i) {
+       my $this_set = new Set<Int>();
+       for (my $e=entire($mc->[$i]); $e; ++$e) {
+         $this_set += ($$e)+1;
+       }
+       $mc->[$i] = $this_set;
+     }
+     $this->MAXIMAL_ANTI_CHAINS = $mc;
+   }
+   
    # @category Combinatorics
    # @param Int r
    # @return List<Int> All indices of nodes of rank r

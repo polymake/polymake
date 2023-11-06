@@ -1,3 +1,30 @@
+=== polymake 4.11 ===
+
+-- distribution --
+  * perl:
+    - support for perl 5.38
+    - error for perl >= 5.40
+
+-- interfaces --
+  * polydb:
+    - new libmongoc interface to polydb (bundled:polydb)
+    - perl-interface removed
+
+-- fan --
+  * check_fan:
+    - several fixes, including for trivial fans
+    - add unchecked version
+
+-- matroid --
+  * random_matroid: new client
+
+-- polytope --
+  * johnson solids: several small fixes
+  * chain_polytope: new client
+  * projection: major improvements and fixes
+  * order_polytope: new client
+  * volume: fixed for 0-dimensional polytopes
+
 === polymake 4.10 ===
 
 -- interfaces --

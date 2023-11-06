@@ -184,6 +184,9 @@ property CONNECTIVITY : Int;
 # | {{0 1 2} {2 3} {3 4 5}}
 property MAX_CLIQUES : Set<Set<Int>>;
 
+# The maximal independent sets of the graph, encoded as node sets.
+property MAX_INDEPENDENT_SETS : Set<Set<Int>>;
+
 # How many times a node of a given degree occurs
 # @example The following prints how often each degree of a node in the complete bipartite graph
 # with 1 and 3 nodes occurs, whereby the first entry of a tuple represents the degree:

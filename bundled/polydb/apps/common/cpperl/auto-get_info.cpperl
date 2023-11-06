@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBCollection&>"], "func": "get_info", "include": ["polymake/common/PolyDBCollection.h"], "kind": "meth", "sig": "get_info:M"},
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBSection&>", "void"], "func": "get_info", "include": ["polymake/common/PolyDBSection.h"], "kind": "meth", "sig": "get_info:M.x"},
+ null ],
+"version": 3}

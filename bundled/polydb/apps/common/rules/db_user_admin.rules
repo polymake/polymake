@@ -1,0 +1,176 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Andreas Paffenholz
+#   (c) 2015 - 2023
+#   https://polydb.org
+#   https://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
+package PolyDB::Client;
+
+sub _auth_polyDB {
+   my ($host,$options) = @_;
+   $options->{db_name} = $options->{auth_db} // $PolyDB::default::db_auth_db;
+   new PolyDB::Client($host, $options);
+}
+
+## Database commands that require admin access
+
+# @category Database Administration
+# options for creating a user
+options %create_user_options = (
+   #Bool public_read_access whether the new user should have read access to all public collections, default true
+   public_read_access => true, 
+   # ARRAY collections a list of collections the user should have read access to
+   canChangeOwnAccount => true, 
+   # ARRAY collections a list of collections the user should have read access to
+   collections => [],
+   # ARRAY admin_collections a list of collections the user should have read and write access to
+   admin_collections => []
+);
+
+
+# @category Database Administration
+# add a user to the database
+# @param String user the username
+# @param String password the password
+# @option Bool public_read_access whether the new user should have access to all public collections, default true
+# @option Bool canChangeOwnAccount whether the user can change his/her password and custom data 
+# @option Array<String> collections a list of collections the user should have read access to
+# @option Array<String> admin_collections a list of collections the user should have read and write access to
+# @return Bool true on success 
+user_method create_user ($,$;%create_user_options) {
+   my ($self, $user, $password, $options) = @_;
+   $self->client->create_user($user, $password, $options);
+}
+
+
+# @category Database Administration
+# remove a user from the database
+# @param String user the username
+# @return Bool true on success 
+user_method remove_user($) {
+   my ($self,$user) = @_;
+   $self->client->remove_user($user);
+}
+
+# @category Database Administration
+# checks whether a user is already defined
+# @param String username
+# return Bool true on success
+user_method user_exists($) {
+   my ($self, $user) = @_;
+   return $self->client->user_exists($user);
+}
+
+
+# @category Database Administration
+# get all users
+# @param ARRAY usernames list of usernames
+# return HASH
+user_method get_users({ usernames=>undef } ) {
+   my ($self, $options ) = @_;
+
+   my $json = JSON->new();
+   if ( defined($options->{usernames})) {
+     $json->decode($self->client->get_users($options->{usernames} ));
+   } else {
+      $json->decode($self->client->get_users([]));
+   }
+}
+
+# @category Database Administration
+# get a list of all user names
+# return ARRAY the user names
+user_method get_user_names() {
+   my $self = $_;
+   return $self->client->get_user_names();
+}
+
+# @category Database Administration
+# create a database administrator
+# @option String user the username
+# @return Bool true on success 
+user_method make_user_database_admin($) {
+   my ($self, $user) = @_;
+
+   croak("User does not exist\n") if !$self->user_exists($user);
+   $self->client->add_role_to_user($user, "userAdmin");
+   $self->client->add_role_to_user($user,"readWrite");
+
+   return true;
+}
+
+## Database commands that require admin access to the collection 
+
+# @category Database Administration
+# add a user to a collection
+# @param String user the username
+# @option String collection the collection, default the default collection
+# @option Bool admin whether the user should get write access, default false
+# @return Bool true on success
+user_method add_user_to_collection($; { collection=>$default::db_collection_name, admin=>false } ) {
+   my ($self, $user, $options) = @_;
+
+   my $collection = $options->{collection};
+   croak "no collection name specified and PolyDB::default::db_collection_name not set\n" if !$collection;
+   if ($collection !~ /\./) {
+      $collection = disambiguate_collection_name($self, $collection);
+   }
+
+
+   return $self->client->add_collection_for_user($user, $collection, $options);
+}
+
+# @category Database Administration
+# remove a user to a collection
+# note: access to public collections is not removed by this
+# @param String user the username
+# @option String collection the collection
+# @return Bool true on success
+user_method remove_user_from_collection($; { collection => $default::db_collection_name }) {
+   my ($self, $user, $options) = @_;
+
+   my $collection = $options->{collection};
+   die "collection must be given\n" if !defined($collection);
+   if ($collection !~ /\./) {
+      $collection = disambiguate_collection_name($self, $collection);
+   }
+
+   return $self->client->remove_collection_for_user($user,$collection);
+}
+
+
+## Database commands that require only user access
+
+# @category Database Administration
+# change own password
+# @param String password the new password
+# @return Bool true on success 
+user_method change_password($) {
+   my ($self,$password) = @_;
+   $self->client->change_password($password);
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

@@ -14,5 +14,6 @@
   {"args": ["perl::Canned<const Matrix<PuiseuxFraction<Max, Rational, Rational>>&>", "void"], "func": "placing_triangulation", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/PuiseuxFraction.h", "polymake/Rational.h", "polymake/TropicalNumber.h"], "sig": "placing_triangulation.X.o"},
   {"args": ["QuadraticExtension<Rational>", "void"], "func": "create_beneath_beyond_solver", "include": ["polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "create_convex_hull_solver#beneath_beyond.convex_hull:T1.x", "tp": 1},
   {"args": ["perl::Canned<const Matrix<QuadraticExtension<Rational>>&>", "void"], "func": "placing_triangulation", "include": ["polymake/IncidenceMatrix.h", "polymake/Matrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h"], "sig": "placing_triangulation.X.o"},
+  {"args": ["perl::Canned<const SparseMatrix<QuadraticExtension<Rational>, NonSymmetric>&>", "void"], "func": "placing_triangulation", "include": ["polymake/IncidenceMatrix.h", "polymake/QuadraticExtension.h", "polymake/Rational.h", "polymake/SparseMatrix.h"], "sig": "placing_triangulation.X.o"},
  null ],
 "version": 3}

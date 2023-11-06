@@ -875,11 +875,13 @@ PPCODE:
 void stop_here_gdb(...)
 PPCODE:
 {
-   if (items > 0) {
-      SV* x = ST(0);
-      assert(SvANY(x));
-      PERL_UNUSED_VAR(x);
-      ++SP;
+   for (int i = 0; i < items; ++i) {
+      SV* x = ST(i);
+#if PerlVersion >= 5380
+      Perl_sv_dump_depth(aTHX_ x, SvROK(x) ? 1 : 0);
+#else
+      Perl_do_sv_dump(aTHX_ 0, Perl_debug_log, x, 0, SvROK(x) ? 1 : 0, 0, 0);
+#endif
    }
 }
 

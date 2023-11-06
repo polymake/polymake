@@ -48,6 +48,9 @@
 #endif
 #endif
 
+#if PerlVersion >= 5380
+# define PERL_USE_VOLATILE_API
+#endif
 #include <EXTERN.h>
 #include <perl.h>
 START_EXTERN_C
@@ -135,6 +138,12 @@ END_EXTERN_C
 
 namespace pm { namespace perl { namespace glue {
 
+#if PerlVersion >= 5380
+I32 Perl_keyword (pTHX_ const char *name, I32 len, bool all_keywords);
+#else
+using ::Perl_keyword;
+#endif
+
 // public export from Ext
 extern bool skip_debug_cx;
 
@@ -164,6 +173,7 @@ enum is_lvalue_kind { no_lvalue, magic_lvalue, pure_lvalue };
 
 // public export from RefHash
 HE* refhash_fetch_ent(pTHX_ HV* hv, SV* keysv, I32 lval);
+extern Perl_ppaddr_t def_pp_CONST, def_pp_ENTERSUB;
 
 // public export from namespaces
 SV* namespace_try_lookup(pTHX_ HV* stash, SV* name, I32 type);
@@ -201,6 +211,14 @@ inline bool is_well_defined_sub(CV* x)
 {
    return CvROOT(x) != nullptr;
 }
+
+#if PerlVersion >= 5380
+# define op_scalar_context(o) Perl_op_contextualize(aTHX_ o, G_SCALAR)
+# define op_list_context(o) Perl_op_contextualize(aTHX_ o, G_LIST)
+#else
+# define op_scalar_context(o) Perl_scalar(aTHX_ o)
+# define op_list_context(o) Perl_list(aTHX_ o)
+#endif
 
 inline
 void write_protect_on(pTHX_ SV* x)

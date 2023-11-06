@@ -76,35 +76,6 @@ INCLUDE
 #  year =         {2000}
 # }
 
-# @topic core/install_mongodb
-# To install the perl-MongoDB module please either try via your package-manager:
-#   libmongodb-perl on ubuntu
-#
-# Or use the below guide to install it via cpan in a custom directory:
-#
-# Insert the following lines into your .bashrc (or .profile or ).
-# (Note that you should adapt the path in the first line to your needs.)
-#
-#   MYCPANSTUFF=/some/path/for/cpan/installation
-#   export PERL_LOCAL_LIB_ROOT="$PERL_LOCAL_LIB_ROOT:$MYCPANSTUFF";
-#   export PERL5LIB="$MYCPANSTUFF/lib/perl5:$PERL5LIB";
-#   export PATH="$MYCPANSTUFF/bin:$PATH";
-#
-# Now start a new shell and run
-#   env PERL_MB_OPT="--install_base $MYCPANSTUFF" \
-#     PERL_MM_OPT="INSTALL_BASE=$MYCPANSTUFF" \
-#     cpan
-#
-# Inside cpan (answer "yes" everywhere) and enter the following lines:
-#   o conf build_dir "/tmp/cpanstuff"
-#   o conf commit
-#   install Params::Validate
-#
-# Exit and restart cpan with the above command.
-#   install MongoDB
-#
-# (Installing Params::Validate separately first avoids some dependency problems.)
-
 
 # @topic core/polymake
 #       MM                            ,,

@@ -22,14 +22,16 @@
 
 namespace pm { namespace perl { namespace glue {
 
+Perl_ppaddr_t def_pp_CONST, def_pp_ENTERSUB;
+
 namespace {
 
 HV* my_pkg;
 AV* allowed_pkgs;
 
-Perl_check_t def_ck_PUSH;
-Perl_ppaddr_t def_pp_CONST, def_pp_HELEM, def_pp_HSLICE, def_pp_EXISTS, def_pp_DELETE, def_pp_EACH, def_pp_KEYS,
-              def_pp_RV2HV, def_pp_PADHV, def_pp_ANONHASH;
+Perl_check_t def_ck_PUSH, def_ck_fun;
+Perl_ppaddr_t def_pp_HELEM, def_pp_HSLICE, def_pp_EXISTS, def_pp_DELETE, def_pp_EACH, def_pp_KEYS,
+              def_pp_RV2HV, def_pp_PADHV, def_pp_ANONHASH, def_pp_AASSIGN;
 
 #if PerlVersion >= 5180
 Perl_ppaddr_t def_pp_PADRANGE;
@@ -164,7 +166,7 @@ OP* intercept_pp_helem(pTHX)
       return cpp_helem(aTHX_ hv, mg);
    }
    if (MAGIC* mg = hash_is_monitored_class(hv, stash)) {
-      OP* next = Perl_pp_helem(aTHX);
+      OP* next = def_pp_HELEM(aTHX);
       if (!(PL_op->op_private & OPpLVAL_INTRO) && (PL_op->op_flags & OPf_MOD || LVRET)) {
          if ((PL_op->op_private & OPpLVAL_DEFER) ||
              next != nullptr && (next->op_type == OP_ORASSIGN ||
@@ -203,7 +205,7 @@ OP* intercept_pp_helem(pTHX)
       if (HvFILL(hv)) return ErrNoRef(aTHX_ keysv);
       MarkAsNormalHash(hv);
    }
-   return Perl_pp_helem(aTHX);
+   return def_pp_HELEM(aTHX);
 }
 
 OP* intercept_pp_hslice(pTHX)
@@ -257,7 +259,7 @@ OP* intercept_pp_hslice(pTHX)
          if (HvFILL(hv)) return ErrNoRef(aTHX_ *firstkey);
          MarkAsNormalHash(hv);
       }
-      return Perl_pp_hslice(aTHX);
+      return def_pp_HSLICE(aTHX);
    }
    RETURN;
 }
@@ -286,13 +288,13 @@ OP* intercept_pp_exists(pTHX)
          RETPUSHNO;
       }
    }
-   return Perl_pp_exists(aTHX);
+   return def_pp_EXISTS(aTHX);
 }
 
 bool delete_special_cases(pTHX_ HV* hv, HV* stash, OP*& ret)
 {
    if (SvTYPE(hv) != SVt_PVHV) {
-      ret = Perl_pp_delete(aTHX);
+      ret = def_pp_DELETE(aTHX);
       return true;
    }
    if (MAGIC* mg = hash_is_monitored_class(hv, stash)) {
@@ -301,7 +303,7 @@ bool delete_special_cases(pTHX_ HV* hv, HV* stash, OP*& ret)
       SvRMAGICAL_off(hv);
 #endif
       const auto had_keys = HvKEYS(hv);
-      ret = Perl_pp_delete(aTHX);
+      ret = def_pp_DELETE(aTHX);
 #if PerlVersion < 5180
       SvRMAGICAL_on(hv);
 #endif
@@ -392,7 +394,7 @@ OP* intercept_pp_delete(pTHX)
          MarkAsNormalHash(hv);
       }
    }
-   return Perl_pp_delete(aTHX);
+   return def_pp_DELETE(aTHX);
 }
 
 void key2ref(pTHX_ SV* keysv)
@@ -424,12 +426,12 @@ OP* intercept_pp_each(pTHX)
    HV* stash = SvSTASH(hv);
    if (stash == my_pkg || (stash && ref_key_allowed(stash))) {
       SSize_t sp_dist = SP - PL_stack_base;
-      OP* ret = Perl_pp_each(aTHX);
+      OP* ret = def_pp_EACH(aTHX);
       sp = PL_stack_base + sp_dist;
       if (PL_stack_sp >= sp) key2ref(aTHX_ *sp);
       return ret;
    }
-   return Perl_pp_each(aTHX);
+   return def_pp_EACH(aTHX);
 }
 
 OP* intercept_pp_keys(pTHX)
@@ -510,12 +512,12 @@ OP* ref_assign(pTHX)
 
    } else {
       if (stash==my_pkg) MarkAsNormalHash(hv);
-      return Perl_pp_aassign(aTHX);
+      return def_pp_AASSIGN(aTHX);
    }
 
    if (assign_other) {
       PUTBACK;
-      OP* ret = Perl_pp_aassign(aTHX);
+      OP* ret = def_pp_AASSIGN(aTHX);
       if (gimme == G_ARRAY) {
          SP = PL_stack_base + lastR;
          PUTBACK;
@@ -591,7 +593,7 @@ OP* pp_padhv_ref_retrieve(pTHX)
 {
    dSP;
    SSize_t sp_dist = SP - PL_stack_base+1;
-   OP* ret = Perl_pp_padhv(aTHX);
+   OP* ret = def_pp_PADHV(aTHX);
    SV** last = PL_stack_sp;
    for (SP = PL_stack_base + sp_dist; SP < last; SP += 2)
       key2ref(aTHX_ *SP);
@@ -643,7 +645,7 @@ OP* intercept_pp_padhv(pTHX)
 {
    if (PL_op->op_flags & OPf_REF) {
       if (PL_op->op_next->op_type == OP_AASSIGN) {
-         PL_op=Perl_pp_padhv(aTHX);
+         PL_op = def_pp_PADHV(aTHX);
          return ref_assign(aTHX);
       }
    } else if (GIMME_V == G_ARRAY) {
@@ -654,13 +656,13 @@ OP* intercept_pp_padhv(pTHX)
          return pp_padhv_ref_retrieve(aTHX);
       }
    }
-   return Perl_pp_padhv(aTHX);
+   return def_pp_PADHV(aTHX);
 }
 
 #if PerlVersion >= 5180
 OP* intercept_pp_padrange_known(pTHX)
 {
-   PL_op=Perl_pp_padrange(aTHX);
+   PL_op = def_pp_PADRANGE(aTHX);
    return ref_assign(aTHX);
 }
 
@@ -668,7 +670,7 @@ OP* intercept_pp_padrange_unknown(pTHX)
 {
    OP* o=PL_op;
    OP* sib=OpSIBLING(o);
-   OP* next=Perl_pp_padrange(aTHX);
+   OP* next = def_pp_PADRANGE(aTHX);
    if (next->op_type == OP_AASSIGN) {
       while (sib) {
          if (sib->op_type == OP_PADHV && (sib->op_flags & OPf_REF)) {
@@ -709,7 +711,7 @@ OP* intercept_pp_anonhash(pTHX)
    SV **firstkey=PL_stack_base+TOPMARK+1;
    if (firstkey<SP && SvROK(*firstkey))
       return pp_ref_anonhash(aTHX);
-   return Perl_pp_anonhash(aTHX);
+   return def_pp_ANONHASH(aTHX);
 }
 
 OP* check_pushhv(pTHX_ OP *o)
@@ -724,9 +726,9 @@ OP* check_pushhv(pTHX_ OP *o)
          op_lvalue(kid, o->op_type);
          while ((kid=OpSIBLING(kid))) {
             if (kid->op_type == OP_RV2HV || kid->op_type == OP_PADHV) {
-               Perl_list(aTHX_ kid);
+               op_list_context(kid);
             } else {
-               Perl_yyerror(aTHX_ Perl_form(aTHX_ "Type of arg %d to push must be hash (not %s)", arg_cnt, OP_DESC(kid)));
+               report_parse_error("Type of arg %d to push must be hash (not %s)", arg_cnt, OP_DESC(kid));
             }
             ++arg_cnt;
          }
@@ -734,7 +736,7 @@ OP* check_pushhv(pTHX_ OP *o)
          return o;
       }
    }
-   return Perl_ck_fun(aTHX_ o);
+   return def_ck_fun(aTHX_ o);
 }
 
 #if PerlVersion >= 5220
@@ -791,8 +793,8 @@ OP* intercept_pp_const(pTHX)
    SV* sv = cSVOP_sv;
    if ((PL_op->op_private & OPpCONST_BARE)  &&  SvTYPE(sv) == SVt_PV)
       SvIsUV_on(sv);
-   PL_op->op_ppaddr = &Perl_pp_const;
-   return Perl_pp_const(aTHX);
+   PL_op->op_ppaddr = def_pp_CONST;
+   return def_pp_CONST(aTHX);
 }
 
 void catch_ptrs(pTHX_ SV *dummy)
@@ -901,6 +903,7 @@ BOOT:
    my_pkg=gv_stashpv("Polymake::RefHash", FALSE);
    allowed_pkgs=newAV();
    def_pp_CONST=PL_ppaddr[OP_CONST];
+   def_pp_ENTERSUB=PL_ppaddr[OP_ENTERSUB];
    def_pp_HELEM=PL_ppaddr[OP_HELEM];
    def_pp_HSLICE=PL_ppaddr[OP_HSLICE];
    def_pp_EXISTS=PL_ppaddr[OP_EXISTS];
@@ -913,11 +916,17 @@ BOOT:
    def_pp_PADRANGE=PL_ppaddr[OP_PADRANGE];
 #endif
    def_pp_ANONHASH=PL_ppaddr[OP_ANONHASH];
+   def_pp_AASSIGN=PL_ppaddr[OP_AASSIGN];
    def_ck_PUSH=PL_check[OP_PUSH];
 #if PerlVersion >= 5220
    def_ck_HELEM=PL_check[OP_HELEM];
    def_ck_EXISTS=PL_check[OP_EXISTS];
    def_ck_DELETE=PL_check[OP_DELETE];
+#endif
+#if PerlVersion >= 5380
+   def_ck_fun = PL_check[OP_SCALAR];
+#else
+   def_ck_fun = &Perl_ck_fun;
 #endif
    namespace_register_plugin(aTHX_ catch_ptrs, reset_ptrs, &PL_sv_undef);
 }

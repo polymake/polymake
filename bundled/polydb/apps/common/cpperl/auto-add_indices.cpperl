@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBCollection&>", "void"], "func": "add_indices", "include": ["polymake/common/PolyDBCollection.h"], "kind": "meth", "sig": "add_indices:M.x"},
+ null ],
+"version": 3}

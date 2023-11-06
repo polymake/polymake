@@ -71,7 +71,7 @@ rule FAN_DIM : RAYS, MAXIMAL_CONES, LINEALITY_SPACE {
       $this->FAN_DIM = $this->LINEALITY_SPACE->rows();
    }
    else {
-      $this->FAN_DIM = (new polytope::Cone(RAYS=>$this->RAYS->minor($this->MAXIMAL_CONES->row(0),All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->CONE_DIM;
+      $this->FAN_DIM = (new polytope::Cone<Scalar>(RAYS=>$this->RAYS->minor($this->MAXIMAL_CONES->row(0),All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->CONE_DIM;
    }
 }
 precondition : PURE;
@@ -117,7 +117,7 @@ rule ORTH_LINEALITY_SPACE : LINEALITY_SPACE {
 weight 0.10;
 
 rule MAXIMAL_CONES_COMBINATORIAL_DIMS : RAYS, MAXIMAL_CONES, LINEALITY_SPACE {
-   my @dims = map { (new polytope::Cone(RAYS=>$this->RAYS->minor($_,All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->COMBINATORIAL_DIM } @{$this->MAXIMAL_CONES};
+   my @dims = map { (new polytope::Cone<Scalar>(RAYS=>$this->RAYS->minor($_,All),LINEALITY_SPACE=>$this->LINEALITY_SPACE))->COMBINATORIAL_DIM } @{$this->MAXIMAL_CONES};
    $this->MAXIMAL_CONES_COMBINATORIAL_DIMS=\@dims;
 }
 weight 3.10;

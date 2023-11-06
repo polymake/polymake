@@ -59,9 +59,9 @@ const MGVTBL reset_state_vtbl = { nullptr, nullptr, nullptr, nullptr, &reset_sta
 const MGVTBL handle_deferred_vtbl = { nullptr, nullptr, nullptr, nullptr, &handle_deferred };
 
 #if (PerlVersion < 5310 ? defined(HAS_SIGACTION) && defined(SA_SIGINFO) : defined(PERL_USE_3ARG_SIGHANDLER))
-#  define PmCallPerl_sighandler(sig) Perl_sighandler(sig, nullptr, nullptr)
+#  define PmCallPerl_sighandler(sig) Perl_csighandler(sig, nullptr, nullptr)
 #else
-#  define PmCallPerl_sighandler(sig) Perl_sighandler(sig)
+#  define PmCallPerl_sighandler(sig) Perl_csighandler(sig)
 #endif
 
 void interrupt_handler(int)
@@ -194,7 +194,7 @@ int parse_interrupts_op(pTHX_ const bool localize, OP** op_ptr)
       }
       value_op = newSVOP(OP_CONST, 0, new_value);
    }
-   OP* set_op = newUNOP(OP_NULL, 0, Perl_scalar(aTHX_ value_op));
+   OP* set_op = newUNOP(OP_NULL, 0, op_scalar_context(value_op));
    set_op->op_type = OP_CUSTOM;
    set_op->op_ppaddr = localize ? pp_local_set_handler : pp_set_handler;
    *op_ptr = set_op;

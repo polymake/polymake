@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"class": "polymake::common::polydb::PolyDBCollection", "guard_name": "APP_WRAPPERS_common_PolyDBCollection", "include": ["polymake/common/PolyDBCollection.h"], "pkg": "Polymake::common::PolyDBCollection", "wrapper_file": "bundled/polydb/include/app-wrappers/polymake/common/PolyDBCollection.h"},
+ null ],
+"version": 3}

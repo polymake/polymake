@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>", "void", "void", "void"], "func": "create_user", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "create_user:M.x.x.x"},
+ null ],
+"version": 3}

@@ -23,6 +23,7 @@ namespace {
 
 HV* secret_pkg;
 
+Perl_ppaddr_t def_pp_METHOD_NAMED;
 Perl_check_t def_ck_AASSIGN;
 
 #if PerlVersion >= 5220
@@ -168,7 +169,7 @@ OP* pp_access(pTHX)
          }
       } while ((mg = mg->mg_moremagic));
    }
-   return Perl_pp_method_named(aTHX);
+   return def_pp_METHOD_NAMED(aTHX);
 }
 
 OP* pp_swap(pTHX)
@@ -184,7 +185,8 @@ OP* pp_method_access(pTHX)
 {
    dSP; dTOPss;
    SV* obj;
-   if (!SvROK(sv) || (obj = SvRV(sv), !SvOBJECT(obj))) return Perl_pp_method_named(aTHX);
+   if (!SvROK(sv) || (obj = SvRV(sv), !SvOBJECT(obj)))
+      return def_pp_METHOD_NAMED(aTHX);
 
    HV* stash = SvSTASH(obj);
    SV* method_name = cSVOP_sv;
@@ -199,14 +201,15 @@ OP* pp_method_access(pTHX)
       }
    } while ((mg = mg->mg_moremagic));
 
-   return Perl_pp_method_named(aTHX);
+   return def_pp_METHOD_NAMED(aTHX);
 }
 
 OP* pp_method_defined(pTHX)
 {
    dSP; dTOPss;
    SV* obj;
-   if (!SvROK(sv) || (obj = SvRV(sv), !SvOBJECT(obj))) return Perl_pp_method_named(aTHX);
+   if (!SvROK(sv) || (obj = SvRV(sv), !SvOBJECT(obj)))
+      return def_pp_METHOD_NAMED(aTHX);
 
    HV* stash = SvSTASH(obj);
    SV* method_name = cSVOP_sv;
@@ -229,14 +232,15 @@ OP* pp_method_defined(pTHX)
       }
    } while ((mg = mg->mg_moremagic));
 
-   return Perl_pp_method_named(aTHX);
+   return def_pp_METHOD_NAMED(aTHX);
 }
 
 OP* pp_method_call(pTHX)
 {
    dSP; dTOPss;
    SV* obj;
-   if (!SvROK(sv) || (obj=SvRV(sv), !SvOBJECT(obj))) return Perl_pp_method_named(aTHX);
+   if (!SvROK(sv) || (obj=SvRV(sv), !SvOBJECT(obj)))
+      return def_pp_METHOD_NAMED(aTHX);
 
    HV* stash=SvSTASH(obj);
    SV* method_name=cSVOP_sv;
@@ -250,7 +254,7 @@ OP* pp_method_call(pTHX)
       }
    } while ((mg=mg->mg_moremagic));
 
-   return Perl_pp_method_named(aTHX);
+   return def_pp_METHOD_NAMED(aTHX);
 }
 
 OP* intercept_ck_aassign(pTHX_ OP* o)
@@ -412,8 +416,14 @@ PPCODE:
    SV* obj = SvRV(obj_ref);
    method_info info, *infop = &info;
    I32 index = CvDEPTH(cv);
-   OP* o = method_named_op(PL_op);
-   OP* next_op = PL_op->op_next;
+   OP* this_op = PL_op;
+   OP* o = method_named_op(this_op);
+   OP* next_op = this_op->op_next;
+   // sometimes optimization seems to be skipped, we have to pass through nullified LIST and RV2CV ops
+   while (next_op->op_type == OP_NULL) {
+      next_op = next_op->op_next;
+      this_op->op_next = next_op;
+   }
    SV* fallback = GvSV(CvGV(cv));
    if (fallback) {
       if (SvROK(fallback)) fallback = SvRV(fallback);
@@ -436,7 +446,7 @@ PPCODE:
       if (!mg) {
          info.field_index = index;
          info.filter = nullptr;
-         info.next_op = PL_op;
+         info.next_op = this_op;
          info.fallback = fallback;
          info.accessor = cv;
 
@@ -463,7 +473,7 @@ PPCODE:
                o->op_ppaddr = &pp_method_call;
                break;
             default:
-               o->op_ppaddr = PL_op->op_private & OPpLVAL_INTRO ? &pp_access : &pp_method_access;
+               o->op_ppaddr = this_op->op_private & OPpLVAL_INTRO ? &pp_access : &pp_method_access;
                break;
             }
          } else {
@@ -501,8 +511,8 @@ PPCODE:
       break;
    case OP_ENTERSUB:
       if (!o) {
-         info.fallback=fallback;
-         info.next_op=PL_op;
+         info.fallback = fallback;
+         info.next_op = this_op;
       }
       if (find_method(aTHX_ index, infop)) {
          if (next_op->op_ppaddr==&pp_hide_orig_object)
@@ -665,6 +675,7 @@ BOOT:
       CvNODEBUG_on(get_cv("Polymake::Struct::mark_as_default", FALSE));
    }
    def_ck_AASSIGN=PL_check[OP_AASSIGN];
+   def_pp_METHOD_NAMED = PL_ppaddr[OP_METHOD_NAMED];
    namespace_register_plugin(aTHX_ catch_ptrs, reset_ptrs, &PL_sv_undef);
 }
 

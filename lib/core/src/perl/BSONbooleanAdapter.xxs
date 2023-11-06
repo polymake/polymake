@@ -26,6 +26,7 @@ CV *encode_cv = nullptr, *decode_cv = nullptr;
 XSUB_t encode_xsub = nullptr, decode_xsub = nullptr;
 HV *BSON_Doc_stash = nullptr, *Tie_IxHash_stash = nullptr;
 SV *boolean_pkg = nullptr;
+Perl_ppaddr_t def_pp_REF;
 
 void replace_booleans(pTHX_ SV* sv);
 
@@ -89,7 +90,7 @@ OP* intercept_pp_ref(pTHX)
          SETs(&PL_sv_no);
       return NORMAL;
    }
-   return Perl_pp_ref(aTHX);
+   return def_pp_REF(aTHX);
 }
 
 void replace_ref(pTHX_ OP* o)
@@ -175,6 +176,10 @@ PPCODE:
    replace_ref(aTHX_ CvROOT(encode_cv));
 }
 
+BOOT:
+{
+   def_pp_REF = PL_ppaddr[OP_REF];
+}
 
 =pod
 // Local Variables:

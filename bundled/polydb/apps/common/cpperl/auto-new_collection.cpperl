@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>", "void", "void", "void", "void"], "func": "new_collection", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "new_collection:M.x.x.x.x"},
+ null ],
+"version": 3}

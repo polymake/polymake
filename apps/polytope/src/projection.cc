@@ -23,50 +23,87 @@ namespace {
 
 
 template<typename Scalar>
-void process_facets(BigObject& p_in, const Array<Int>& indices, OptionSet& options, const Matrix<Scalar>& linear_span, const Set<Int>& coords_to_eliminate, BigObject& p_out)
+void process_facets(BigObject& p_in, const Array<Int>& indices, const Set<Int>& coords_to_eliminate, BigObject& p_out)
 {
-   Matrix<Scalar> Inequalities;
-   bool inequalities_read = false;
+   Matrix<Scalar> Inequalities, equations;
+   bool inequalities_read = false, equations_read = false;
+   inequalities_read = p_in.lookup("FACETS | INEQUALITIES") >> Inequalities;
+   equations_read = p_in.lookup("LINEAR_SPAN | EQUATIONS") >> equations;
   
-   if (!options["nofm"]) {
-      if (p_in.lookup("FACETS | INEQUALITIES") >> Inequalities) {
-         inequalities_read=true;
-         Inequalities /= linear_span / (-linear_span);
-      }
-    
-      if (inequalities_read) {
-         // perform Fourier-Motzkin elimination on coords
-         for (auto c=entire<reversed>(coords_to_eliminate); !c.at_end(); ++c) {
-            Set<Int> negative, zero, positive;
-            // normalize Inequalities such that there is a -1,0, or 1 in the next column to be eliminated
-            for (Int i = 0; i < Inequalities.rows(); ++i) {
-               const Scalar x = Inequalities(i, *c);
-               const Int s = sign(x);
-               if (s == 0) {
-                  zero += i;
-               } else {
-                  if (s < 0)
-                     negative += i;
-                  else
-                     positive += i;
-                  Inequalities[i] /= abs(x);
-               }
+   if(equations_read){
+
+      // We want to use equations to eliminate as many coordinates of
+      // coords_to_eliminate as possible. This is done in the following way:
+      // 1. Select a basis of rows such that the rank of the minor with
+      // coords_to_eliminate becomes maximal.
+      // 2. Select columns such that we have a basis in the corresponding minor
+      // 3. Transform such that the minor becomes the identity matrix.
+      // 4. Use this minor to eliminate as many columns as possible.
+      // 5. The unused equations give rise to equations of the projection,
+      // extract the corresponding minor in equations_result. There is a small
+      // argument here to make that equations_result cannot have non-zero
+      // entries in the columns of coords_to_eliminate. The key is that
+      // otherwise step 1 cannot have been a basis.
+      Set<Int> br(basis_rows(equations.minor(All, coords_to_eliminate)));
+      Set<Int> bc_tmp(basis_cols(equations.minor(br, coords_to_eliminate)));
+      Set<Int> bc(select(coords_to_eliminate, bc_tmp));
+      Matrix<Scalar> transform(inv(equations.minor(br, bc)));
+      Matrix<Scalar> U(unit_matrix<Scalar>(equations.rows()));
+      U.minor(br, br) = transform;
+      equations = U*equations;
+
+      // Now zip br+bc together and use these to eliminate cols.
+      auto diags = attach_operation(br, bc, operations::pair_maker());
+      Matrix<Scalar> equations_result(equations.minor(~br, All));
+
+      for(const auto p: diags){
+         if(inequalities_read){
+            for(Int jj=0; jj<Inequalities.rows(); jj++){
+               Scalar pivot(Inequalities(jj, p.second));
+               Inequalities.row(jj) -= pivot * equations.row(p.first);
             }
-            const Set<Int> remaining_coords = range(0, Inequalities.cols()-1)-(*c);
-            Inequalities = Inequalities.minor(All,remaining_coords);
-            ListMatrix< Vector<Scalar> > Combined_Ineqs=Inequalities.minor(zero,All);
-            for (auto i=entire(negative); !i.at_end(); ++i)
-               for (auto k=entire(positive); !k.at_end(); ++k)
-                  Combined_Ineqs /= Inequalities[*i]+Inequalities[*k];
-            // delete redundant rows
-            for (auto i=entire(rows(Combined_Ineqs)); !i.at_end(); ) {
-               const typename Rows< ListMatrix< Vector<Scalar> > >::iterator j(i++);
-               if (is_zero(*j)) Combined_Ineqs.delete_row(j);
-            }
-            Inequalities = Combined_Ineqs;
-         } 
-         p_out.take("INEQUALITIES") << Inequalities;
+         }
+         for(Int jj=0; jj<equations_result.rows(); jj++){
+            Scalar pivot(equations_result(jj, p.second));
+            equations_result.row(jj) -= pivot * equations.row(p.first);
+         }
       }
+      p_out.take("EQUATIONS") << remove_zero_rows(equations_result.minor(All, ~coords_to_eliminate));
+   }
+
+ 
+   if (inequalities_read) {
+      // perform Fourier-Motzkin elimination on coords
+      for (auto c=entire<reversed>(coords_to_eliminate); !c.at_end(); ++c) {
+         Set<Int> negative, zero, positive;
+         // normalize Inequalities such that there is a -1,0, or 1 in the next column to be eliminated
+         for (Int i = 0; i < Inequalities.rows(); ++i) {
+            const Scalar x = Inequalities(i, *c);
+            const Int s = sign(x);
+            if (s == 0) {
+               zero += i;
+            } else {
+               if (s < 0)
+                  negative += i;
+               else
+                  positive += i;
+               Inequalities[i] /= abs(x);
+            }
+         }
+         const Set<Int> remaining_coords = range(0, Inequalities.cols()-1)-(*c);
+         Inequalities = Inequalities.minor(All,remaining_coords);
+         ListMatrix< Vector<Scalar> > Combined_Ineqs=Inequalities.minor(zero,All);
+         for (auto i=entire(negative); !i.at_end(); ++i)
+            for (auto k=entire(positive); !k.at_end(); ++k)
+               Combined_Ineqs /= Inequalities[*i]+Inequalities[*k];
+         // delete redundant rows
+         for (auto i=entire(rows(Combined_Ineqs)); !i.at_end(); ) {
+            const typename Rows< ListMatrix< Vector<Scalar> > >::iterator j(i++);
+            if (is_zero(*j)) Combined_Ineqs.delete_row(j);
+         }
+         Inequalities = Combined_Ineqs;
+      } 
+      p_out.take("INEQUALITIES") << remove_zero_rows(Inequalities);
    }
 }
 
@@ -78,26 +115,23 @@ BigObject projection_cone_impl(BigObject p_in, const Array<Int> indices, OptionS
    if ( !p_in.exists("RAYS | INPUT_RAYS") &&
         !p_in.exists("FACETS | INEQUALITIES") )
       throw std::runtime_error("projection is not defined for combinatorially given cones");
+   if ( !p_in.exists("RAYS | INPUT_RAYS") && options["nofm"] )
+      throw std::runtime_error("projection: no rays found and Fourier-Motzkin elimination excluded");
    
-   Int first_coord = p_in.isa("Polytope") ? 1 : 0;
    const Int ambient_dim = p_in.give("CONE_AMBIENT_DIM");
    const Int dim = p_in.give("CONE_DIM");
    const Int codim = ambient_dim-dim;
    if (indices.empty() && codim==0) return p_in; // nothing to do
 
-   const Matrix<Scalar> linear_span = p_in.give("LINEAR_SPAN");
-   if (codim != linear_span.rows())
-      throw std::runtime_error("projection: LINEAR_SPAN has wrong number of rows");
-   const Int last_coord = ambient_dim-1;
-   const Set<Int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
+   const Set<Int> coords_to_eliminate = coordinates_to_eliminate<Scalar>(indices, ambient_dim, codim, p_in, options["revert"]);   // set of columns to project to
 
    BigObject p_out(p_in.type());
 
    if (p_in.exists("RAYS | INPUT_RAYS"))
-      process_rays(p_in, first_coord, indices, options, linear_span, coords_to_eliminate, p_out);
+      process_rays<Scalar>(p_in, indices, options, coords_to_eliminate, p_out);
 
-   if (p_in.exists("FACETS | INEQUALITIES"))
-      process_facets(p_in, indices, options, linear_span, coords_to_eliminate, p_out);
+   if (p_in.exists("FACETS | INEQUALITIES") && !options["nofm"])
+      process_facets<Scalar>(p_in, indices, coords_to_eliminate, p_out);
 
    return p_out;
 }
@@ -105,7 +139,6 @@ BigObject projection_cone_impl(BigObject p_in, const Array<Int> indices, OptionS
 template <typename Scalar>
 BigObject projection_vectorconfiguration_impl(BigObject p_in, const Array<Int>& indices, OptionSet options)
 {
-   Int first_coord = p_in.isa("PointConfiguration") ? 1 : 0;
    const Int ambient_dim = p_in.give("VECTOR_AMBIENT_DIM");
    const Int dim = p_in.give("VECTOR_DIM");
    const Int codim = ambient_dim-dim;
@@ -114,8 +147,7 @@ BigObject projection_vectorconfiguration_impl(BigObject p_in, const Array<Int>& 
    const Matrix<Scalar> linear_span = p_in.give("LINEAR_SPAN");
    if (codim != linear_span.rows())
       throw std::runtime_error("projection: LINEAR_SPAN has wrong number of rows");
-   const Int last_coord = ambient_dim-1;
-   const Set<Int> coords_to_eliminate = coordinates_to_eliminate(indices, first_coord, last_coord, codim, linear_span, options["revert"]);   // set of columns to project to
+   const Set<Int> coords_to_eliminate = coordinates_to_eliminate<Scalar>(indices, ambient_dim, codim, p_in, options["revert"]);   // set of columns to project to
 
    BigObject p_out(p_in.type());
 

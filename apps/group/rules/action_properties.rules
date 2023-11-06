@@ -400,21 +400,20 @@ object Action {
    # After permutation, the first elements will be the ones in the first orbit
    # (as ordered in [[ORBITS]]), and the ones after will be in the second orbit,
    # and so on.
-   # @example [application fan] Begin with a polyhedral fan, and consider its orbit fan
+   # @example [application fan] [nocompare] Begin with a polyhedral fan, and consider its orbit fan
    #          with respect to the linear symmetries of a square in
    #          homogenous coordinates. Then the following returns
    #          a permutation on the orbit fan's maximal cones, which encodes
-   #          the sequence 0 3 4 5 1 6 7 8 2 9 10 11 12 13 14 15, which
+   #          the sequence 0 6 9 10 11 12 13 15 1 2 3 4 5 7 8 14, which
    #          is a sequence respecting the orbit order.
    # > $f = new PolyhedralFan(RAYS=>[[1,1,1],[1,1,0],[1,1/2,1/4]],MAXIMAL_CONES=>[[0,2],[1,2]]);
    # > $of = orbit_fan($f,polytope::cube(2,group=>1)->GROUP->MATRIX_ACTION);
    # > $of->GROUP->RAYS_ACTION;
    # > print $of->GROUP->MAXIMAL_CONES_ACTION->ORBITS;
-   # | {0 3 4 5}
-   # | {1 6 7 8}
-   # | {2 9 10 11 12 13 14 15}
+   # | {0 6 9 10 11 12 13 15}
+   # | {1 2 3 4 5 7 8 14}
    # > print $of->GROUP->MAXIMAL_CONES_ACTION->PERMUTATION_TO_ORBIT_ORDER;
-   # | 0 4 8 1 2 3 5 6 7 9 10 11 12 13 14 15
+   # | 0 8 9 10 11 12 1 13 14 2 3 4 5 6 15 7
    property PERMUTATION_TO_ORBIT_ORDER : Array<Int>;
 
 }

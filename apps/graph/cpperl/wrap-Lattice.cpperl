@@ -1,5 +1,7 @@
 {"app": "graph", "embed": "Lattice.cc",
  "inst": [
   {"args": ["graph::lattice::BasicDecoration", "graph::lattice::Sequential", "void"], "func": "lattice_dual_faces", "include": ["polymake/graph/Decoration.h"], "sig": "lattice_dual_faces:T2.B", "tp": "2"},
+  {"args": ["graph::lattice::BasicDecoration", "void"], "func": "lattice_maximal_chains", "include": ["polymake/graph/Decoration.h"], "sig": "lattice_maximal_chains:T1.B", "tp": 1},
+  {"args": ["graph::lattice::BasicDecoration", "void"], "func": "lattice_comparability_graph", "include": ["polymake/graph/Decoration.h"], "sig": "lattice_comparability_graph:T1.B", "tp": 1},
  null ],
 "version": 3}

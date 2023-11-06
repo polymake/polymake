@@ -51,7 +51,7 @@ user_function wronski_polynomial(Matrix, Vector, Array<Rational>, $; {triangulat
 # @param Rational s additional Parameter in the polynomial
 # @option topaz::SimplicialComplex triangulation The triangulation of the pointset corresponding to the lifting function
 user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triangulation => undef}) {
-    my ($M, $lambda, $coeffs_array,$s, $options) = @_;
+    my ($M, $lambda, $coeffs_array, $s, $options) = @_;
     my ($n, $d) = ($M->rows(), $M->cols()-1);
 
     my $T = $options->{"triangulation"};
@@ -76,7 +76,7 @@ user_function wronski_system(Matrix, Vector, Array<Array<Rational> >, $; {triang
 # @param Matrix<Int> L lattice points
 # @param Vector<Int> lambda height function on lattice points
 user_function wronski_center_ideal(Matrix, Vector; {triangulation => undef}) {
-  my ($L,$lambda, $options) = @_;
+  my ($L, $lambda, $options) = @_;
 
   my $d=$L->cols()-1; # ambient dimension
   my $N=$L->rows();   # number of lattice points

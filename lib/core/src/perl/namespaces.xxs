@@ -25,8 +25,9 @@ namespace {
 
 Perl_check_t def_ck_CONST, def_ck_ENTERSUB, def_ck_LEAVESUB, def_ck_LEAVEEVAL,
    def_ck_GV, def_ck_RV2SV, def_ck_RV2AV, def_ck_RV2HV, def_ck_RV2CV, def_ck_ANONCODE, def_ck_PRINT, def_ck_SYSTEM, def_ck_COMPLEMENT;
-Perl_ppaddr_t def_pp_GV, def_pp_GVSV, def_pp_AELEMFAST, def_pp_PADAV, def_pp_SPLIT, def_pp_LEAVESUB, def_pp_ANONCODE,
-              def_pp_ENTEREVAL, def_pp_REGCOMP, def_pp_NEXTSTATE, def_pp_DBSTATE, def_pp_ANONLIST, def_pp_SASSIGN, def_pp_PRINT;
+Perl_ppaddr_t def_pp_GV, def_pp_GVSV, def_pp_AELEMFAST, def_pp_PADAV, def_pp_SPLIT, def_pp_LEAVESUB, def_pp_LEAVESUBLV, def_pp_ANONCODE,
+              def_pp_ENTEREVAL, def_pp_REGCOMP, def_pp_NEXTSTATE, def_pp_DBSTATE, def_pp_ANONLIST, def_pp_SASSIGN, def_pp_PRINT,
+              def_pp_NULL;
 
 #if PerlVersion >= 5220
 Perl_ppaddr_t def_pp_MULTIDEREF;
@@ -92,9 +93,9 @@ void set_lexical_scope_hint(pTHX)
    hint_mg.mg_len = HEf_SVKEY;
    if (new_hint != 0) {
       SvIVX(iv_hint) = new_hint;
-      Perl_magic_sethint(aTHX_ iv_hint, &hint_mg);
+      PL_vtbl_hintselem.svt_set(aTHX_ iv_hint, &hint_mg);
    } else {
-      Perl_magic_clearhint(aTHX_ &PL_sv_undef, &hint_mg);
+      PL_vtbl_hintselem.svt_clear(aTHX_ &PL_sv_undef, &hint_mg);
    }
 }
 
@@ -427,7 +428,7 @@ OP* switch_off_namespaces(pTHX)
       cur_lexical_import_ix = -1;
       cur_lexical_flags = 0;
    }
-   PL_op->op_ppaddr = &Perl_pp_null;
+   PL_op->op_ppaddr = def_pp_NULL;
    return NORMAL;
 }
 
@@ -586,25 +587,25 @@ void pull_repaired_gv(pTHX_ OP* o)
 OP* repaired_gv(pTHX)
 {
    pull_repaired_gv(aTHX_ OpSIBLING(PL_op));
-   return Perl_pp_gv(aTHX);
+   return def_pp_GV(aTHX);
 }
 
 OP* repaired_gvsv(pTHX)
 {
    pull_repaired_gv(aTHX_ OpSIBLING(PL_op));
-   return Perl_pp_gvsv(aTHX);
+   return def_pp_GVSV(aTHX);
 }
 
 OP* repaired_aelemefast(pTHX)
 {
    pull_repaired_gv(aTHX_ OpSIBLING(PL_op));
-   return Perl_pp_aelemfast(aTHX);
+   return def_pp_AELEMFAST(aTHX);
 }
 
 OP* repaired_split(pTHX)
 {
    pull_repaired_gv(aTHX_ OpSIBLING(PL_op));
-   return Perl_pp_split(aTHX);
+   return def_pp_SPLIT(aTHX);
 }
 
 #if PerlVersion >= 5220
@@ -617,7 +618,7 @@ OP* repaired_multideref(pTHX)
       assert(o->op_type==OP_CONST && cSVOPo->op_sv);
       pull_repaired_gv(aTHX_ o);
    } while (o->op_next==this_op);
-   return Perl_pp_multideref(aTHX);
+   return def_pp_MULTIDEREF(aTHX);
 }
 #endif
 
@@ -1246,11 +1247,16 @@ void resolve_hash_gv(pTHX_ pMultiDerefItem_ GV* var_gv, OP** pnext_op, OP* acces
 OP* intercept_pp_gv(pTHX)
 {
    OP* next_op = def_pp_GV(aTHX);
-   OP* orig_next_op = next_op;
    dSP;
    GV* var_gv = (GV*)TOPs;
    OP* this_op = PL_op;
-   int next_op_type = next_op->op_type;
+   int next_op_type;
+   // sometimes optimization seems to be skipped, we have to pass through nullified LIST and RV2CV ops
+   while ((next_op_type = next_op->op_type) == OP_NULL) {
+      next_op = next_op->op_next;
+      this_op->op_next = next_op;
+   }
+   OP* orig_next_op = next_op;
    if (next_op_type == OP_RV2GV
        && next_op->op_next->op_ppaddr == ops::local_ref) {
       // localizing via glob
@@ -1460,7 +1466,10 @@ AV* find_intercepted_op_descriptor(pTHX_ int opcode)
 
 OP* pp_assign_ro(pTHX)
 {
-   OP* next=def_pp_SASSIGN(aTHX);
+#if PerlVersion >= 5380
+   PL_op->op_private &= ~OPpASSIGN_CV_TO_GV;
+#endif
+   OP* next = def_pp_SASSIGN(aTHX);
    dSP;
    SvREADONLY_on(TOPs);
    return next;
@@ -1476,6 +1485,10 @@ OP* store_in_state_var(pTHX_ OP* what)
    OP* assign=OpSIBLING(cLOGOPx(cUNOPo->op_first)->op_first);
    assert(assign && assign->op_type == OP_SASSIGN);
    assign->op_ppaddr=&pp_assign_ro;
+#if PerlVersion >= 5380
+   // hinder optimizer from converting it to PAD_STORE
+   assign->op_private |= OPpASSIGN_CV_TO_GV;
+#endif
    return o;
 }
 
@@ -1741,7 +1754,7 @@ OP* pp_resolve_pkg(pTHX)
 
    dSP;
    XPUSHs(pkg);
-   o->op_ppaddr = &Perl_pp_const;
+   o->op_ppaddr = def_pp_CONST;
    RETURN;
 }
 
@@ -1912,7 +1925,7 @@ OP* intercept_ck_leavesub(pTHX_ OP* op)
          PL_check[OP_ENTERSUB] = def_ck_ENTERSUB;
          OP* call_typelist_sub = Perl_op_convert_list(aTHX_ OP_ENTERSUB, 0, newLISTOP(OP_LIST, 0, gvop2, nullptr));
          PL_check[OP_ENTERSUB] = intercept_ck_sub;
-         OP* localize_op = newBINOP(OP_SASSIGN, OPf_STACKED, Perl_scalar(aTHX_ call_typelist_sub), Perl_scalar(aTHX_ gvop1));
+         OP* localize_op = newBINOP(OP_SASSIGN, OPf_STACKED, op_scalar_context(call_typelist_sub), op_scalar_context(gvop1));
          localize_op->op_ppaddr = ops::local_ref;
          localize_op->op_flags = U8((localize_op->op_flags & ~OPf_WANT) | OPf_WANT_VOID);
          PmOpCopySibling(localize_op, o);
@@ -1941,8 +1954,8 @@ OP* start_type_op_subtree(pTHX_ const char* name, const char* name_end, bool& ca
    if ((name_len > 2 && name[0] == ':' && name[1] == ':') ||
        (name_len > 6 && name[4] == ':' && !strncmp(name, "main::", 6))) {
       // absolute package name
-      OP* const_op=newSVOP(OP_CONST, OPf_WANT_SCALAR, newSVpvn_share(name, I32(name_len), 0));
-      const_op->op_ppaddr=&Perl_pp_const;
+      OP* const_op = newSVOP(OP_CONST, OPf_WANT_SCALAR, newSVpvn_share(name, I32(name_len), 0));
+      const_op->op_ppaddr = def_pp_CONST;
       return newLISTOP(OP_LIST, 0, const_op, nullptr);
    }
    OP* result = fetch_type_param_proto_pvn(aTHX_ name, name_len);
@@ -2152,15 +2165,15 @@ int parse_instanceof_kw(pTHX_ OP** op_ptr)
             if (type_op->op_type == OP_LIST) {
                // a single package or type name without parameters
                strip_off_pushmark(aTHX_ type_op);
-               op_append_elem(OP_LIST, type_op, Perl_scalar(aTHX_ expr.release()));
+               op_append_elem(OP_LIST, type_op, op_scalar_context(expr.release()));
                type_op->op_type = OP_CUSTOM;
             } else {
                // a type placeholder or a type expression with parameters
                if (can_be_cached)
                   type_op = store_in_state_var(aTHX_ type_op);
-               type_op = PmNewCustomOP(UNOP, 0, Perl_scalar(aTHX_ type_op));
+               type_op = PmNewCustomOP(UNOP, 0, op_scalar_context(type_op));
                type_op->op_ppaddr = &pp_retrieve_pkg;
-               type_op = PmNewCustomOP(BINOP, OPf_STACKED, Perl_scalar(aTHX_ type_op), Perl_scalar(aTHX_ expr.release()));
+               type_op = PmNewCustomOP(BINOP, OPf_STACKED, op_scalar_context(type_op), op_scalar_context(expr.release()));
             }
             type_op->op_ppaddr = &pp_instance_of;
             *op_ptr = type_op.release();
@@ -2179,7 +2192,7 @@ int parse_operation(pTHX_ Perl_ppaddr_t op_func, OP** op_ptr)
       op_keeper<OP> expr(aTHX_ parse_termexpr(0));
       if (read_spaces(aTHX) && *PL_parser->bufptr == ')') {
          lex_read_to(PL_parser->bufptr+1);
-         OP* o = PmNewCustomOP(UNOP, 0, Perl_scalar(aTHX_ expr.release()));
+         OP* o = PmNewCustomOP(UNOP, 0, op_scalar_context(expr.release()));
          o->op_ppaddr = op_func;
          *op_ptr = o;
          return KEYWORD_PLUGIN_EXPR;
@@ -2229,7 +2242,7 @@ int parse_static_method_call(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
       {
          const char* first_name = PL_parser->linestart + start_pos;
          const I32 first_name_len = I32(end_pos - start_pos);
-         if (!Perl_keyword(aTHX_ first_name, first_name_len, false)) {
+         if (!glue::Perl_keyword(aTHX_ first_name, first_name_len, false)) {
             const auto gvs = lookup_sub_gv(aTHX_ PL_curstash, first_name, first_name_len, cur_lexical_import_ix,
                                            bad_filehandle_gv | bad_constant_gv | dont_cache | dont_create_dummy_sub);
             if (!gvs.first && !gvs.second)
@@ -2859,7 +2872,7 @@ int keyword_func(pTHX_ char* kw, STRLEN kw_len, OP** op_ptr)
       break;
    }
 
-   if (Perl_keyword(aTHX_ kw, I32(kw_len), false))
+   if (glue::Perl_keyword(aTHX_ kw, I32(kw_len), false))
       return KEYWORD_PLUGIN_DECLINE;
 
    // recognize static method calls: METHOD TYPE(...) or METHOD TYPE<EXPR>(...)
@@ -3062,11 +3075,11 @@ OP* leave_with_magic_lvalue(pTHX)
    U32 retval_flags = SvTEMP(retval) && SvREFCNT(retval)==1 ? SvMAGICAL(retval) : 0;
    if (retval_flags != 0) {
       SvMAGICAL_off(retval);
-      OP* next_op = Perl_pp_leavesub(aTHX);
+      OP* next_op = def_pp_LEAVESUB(aTHX);
       SvFLAGS(retval) |= retval_flags;
       return next_op;
    }
-   return Perl_pp_leavesub(aTHX);
+   return def_pp_LEAVESUB(aTHX);
 }
 
 OP* pp_leave_with_magic_lvalue(pTHX)
@@ -3074,7 +3087,7 @@ OP* pp_leave_with_magic_lvalue(pTHX)
    if (cxstack[cxstack_ix].blk_gimme == G_SCALAR)
       return leave_with_magic_lvalue(aTHX);
    else
-      return Perl_pp_leavesub(aTHX);
+      return def_pp_LEAVESUB(aTHX);
 }
 
 OP* pp_leave_maybe_with_lvalue(pTHX)
@@ -3083,10 +3096,10 @@ OP* pp_leave_maybe_with_lvalue(pTHX)
       OP* flag_op = PL_op->op_next;
       SV* flag_sv = PAD_SVl(flag_op->op_targ);
       if (SvIOK(flag_sv) && SvIVX(flag_sv) != no_lvalue) {
-         return SvIVX(flag_sv) == magic_lvalue ? leave_with_magic_lvalue(aTHX) : Perl_pp_leavesublv(aTHX);
+         return SvIVX(flag_sv) == magic_lvalue ? leave_with_magic_lvalue(aTHX) : def_pp_LEAVESUBLV(aTHX);
       }
    }
-   return Perl_pp_leavesub(aTHX);
+   return def_pp_LEAVESUB(aTHX);
 }
 
 OP* intercept_pp_anoncode(pTHX)
@@ -3094,7 +3107,8 @@ OP* intercept_pp_anoncode(pTHX)
    OP* next_op = def_pp_ANONCODE(aTHX);
    if (next_op == PL_op->op_next) {   // not died
       dSP;
-      CV* sub = (CV*)TOPs;
+      SV* sv = TOPs;
+      CV* sub = (CV*)(SvROK(sv) ? SvRV(sv) : sv);
       OP* leave = CvROOT(sub);
       OP* flag_op = leave->op_next;
       auto pad_list = CvPADLIST(sub);
@@ -3155,7 +3169,7 @@ void store_anon_lvalue_flag(pTHX_ SV* flag_sv)
    MAGIC hint_mg;
    hint_mg.mg_len = HEf_SVKEY;
    hint_mg.mg_ptr = reinterpret_cast<char*>(anon_lvalue_key);
-   Perl_magic_sethint(aTHX_ flag_sv, &hint_mg);
+   PL_vtbl_hintselem.svt_set(aTHX_ flag_sv, &hint_mg);
    PL_check[OP_ANONCODE] = &intercept_ck_anoncode;
 }
 
@@ -4265,7 +4279,7 @@ PPCODE:
       }
       hint_mg.mg_ptr = (char*)scope_type_params_key;
       SvUVX(uv_hint) = (size_t)list_gv;
-      Perl_magic_sethint(aTHX_ uv_hint, &hint_mg);
+      PL_vtbl_hintselem.svt_set(aTHX_ uv_hint, &hint_mg);
 
    } else {
       // sub level
@@ -4310,7 +4324,7 @@ PPCODE:
       }
       hint_mg.mg_ptr = (char*)sub_type_params_key;
       SvUVX(uv_hint) = (size_t)list_gv;
-      Perl_magic_sethint(aTHX_ uv_hint, &hint_mg);
+      PL_vtbl_hintselem.svt_set(aTHX_ uv_hint, &hint_mg);
    }
    if (store_names_in) {
       av_fill(store_names_in, items-first_name-1);
@@ -4433,6 +4447,7 @@ BOOT:
    def_pp_PADAV     = PL_ppaddr[OP_PADAV];
    def_pp_SPLIT     = PL_ppaddr[OP_SPLIT];
    def_pp_LEAVESUB  = PL_ppaddr[OP_LEAVESUB];
+   def_pp_LEAVESUBLV= PL_ppaddr[OP_LEAVESUBLV];
    def_pp_ENTEREVAL = PL_ppaddr[OP_ENTEREVAL];
    def_pp_REGCOMP   = PL_ppaddr[OP_REGCOMP];
    def_pp_NEXTSTATE = PL_ppaddr[OP_NEXTSTATE];
@@ -4444,6 +4459,7 @@ BOOT:
 #if PerlVersion >= 5220
    def_pp_MULTIDEREF = PL_ppaddr[OP_MULTIDEREF];
 #endif
+   def_pp_NULL      = PL_ppaddr[OP_NULL];
    def_ck_CONST     = PL_check[OP_CONST];
    def_ck_ENTERSUB  = PL_check[OP_ENTERSUB];
    def_ck_LEAVESUB  = PL_check[OP_LEAVESUB];

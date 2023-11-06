@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>", "void"], "func": "drop_collection", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "drop_collection:M.x"},
+ null ],
+"version": 3}

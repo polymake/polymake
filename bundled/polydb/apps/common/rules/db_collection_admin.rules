@@ -1,0 +1,166 @@
+#  Copyright (c) 1997-2023
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------    ------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Andreas Paffenholz
+#   (c) 2015 - 2023
+#   https://polydb.org
+#   https://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
+package PolyDB::Client;
+
+# @category Database Administration
+# Starts a new collection by creating the necessary roles 
+# and distributing them to the appropriate users 
+# and adding it to the default polymakeUser role if the 
+# collection is public
+# @option String collection fully qualified collection name
+# @option Bool public whether the collection can be read by the default polymake user, default true
+# @option ARRAY users an array of users that can read the collection (not necessary if collection is public)
+# @option ARRAY admin_users an array of users that can edit the collection
+user_method new_collection ({collection=>$PolyDB::default::db_collection_name, \
+                             public=>true, \
+                             users=>[], \
+                             admin_users=>[] \
+   }) {
+   my ($self, $options) = @_;
+   croak "collection must be given\n" if !$options->{collection};
+
+   return $self->client->new_collection($options->{collection}, \
+                                        $options->{public}, \
+                                        @{$options->{users}}, \
+                                        @{$options->{admin_users}});
+}
+
+# @category Database Administration
+# Remove a collection toegther with its documentation and the associated rules
+# @option String section section
+# @option String collection collection
+user_method remove_collection ({collection=>$PolyDB::default::db_collection_name}) {
+   my ($self,$options) = @_;
+   $self->client->drop_collection($options->{collection});
+}
+
+# @category Database Administration
+# Remove a section toegther with its documentation
+# The section must be empty, i.e. no subsections and no collections
+# @option String section section
+# @option Bool verbose default true 
+user_method remove_section (;$) {
+   my ($self,$section) = @_;
+   $section = $PolyDB::default::db_section_name if not defined($section);
+   return $self->client->drop_section($options->{section});
+}
+
+# @category Database Administration
+# checks if a collection with the given name exists in the database
+# this tests for the corresponding roles, 
+# as the collection is only defined in the database if at least one object is inserted
+# @param String collection the name of the collection
+user_method collection_exists($) {
+   my ($self,$collection) = @_;
+   return $self->client->collection_exists($collection);
+}
+
+# @category Database Administration
+# checks if a section with the given name exists in the database
+# this tests whether there is dicumentation for the section inserted into the database
+# @param String section the name of the section
+user_method section_exists($) {
+   my ($self,$section) = @_;
+   return $self->client->section_exists($section);
+}
+
+user_method get_client_id() {
+   my $self = shift;
+   return $self->client->get_client_id();
+}
+
+
+package PolyDB::Collection;
+
+# @category Database Collection Administration
+# Add an index to a collection
+# @param String name of the index
+# @param HASH index definition
+# @option String name index name
+user_method add_index($,$; { unique => false}) {
+   my ($self, $name, $index, $options) = @_;
+
+   $self->collection->add_index($name,$index,$options);
+}
+
+# @category Database Collection Administration
+# Add an index to a collection for a property
+# @param String property
+# @option Bool ascending sort documents ascending wrt the property, default true
+# @option Bool unique set true if the property is unique, default false
+user_method add_index_from_property($, { ascending => true, unique => false }) {
+   my ($self,$property,$options) = @_;
+
+   $self->collection->add_index_from_property($property,$options );
+}
+
+# @category Database Collection Administration
+# Add many indices to a collection
+# @param ARRAY index definitions, must include the name of the index
+user_method add_indices($) {
+   my ($self,$indices) = @_;
+
+   $self->collection->add_indices($indices);
+}
+
+# @category Database Collection Administration
+# Add an index to a collection for a property
+# @param ARRAY property names
+# @option Bool ascending sort documents ascending wrt the property, default true
+# @option Bool unique set true if the property is unique, default false
+user_method add_indices_from_properties($, { ascending => true, unique => false }) {
+   my ($self,$properties,$options) = @_;
+
+   $self->collection->add_indices_from_properties($properties,$options);
+}
+
+
+# @category Database Collection Administration
+# Get a list of the names of indices defined for the collection
+user_method get_index_names() {
+   my $self = shift;
+   return $self->collection->get_index_names();
+}
+
+# @category Database Collection Administration
+# Get a list of indices defined for the collection
+user_method get_indexes() {
+   my $self = shift;
+
+   my $json = JSON->new();
+   my @indexes;
+   my $indexes_string = $self->collection->get_indexes();
+   foreach my $index (@$indexes_string) {
+      push @indexes, $json->decode($index);
+   }
+   return \@indexes;
+}
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

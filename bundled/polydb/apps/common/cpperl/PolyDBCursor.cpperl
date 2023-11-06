@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"class": "polymake::common::polydb::PolyDBCursor", "guard_name": "APP_WRAPPERS_common_PolyDBCursor", "include": ["polymake/common/PolyDBCursor.h"], "pkg": "Polymake::common::PolyDBCursor", "wrapper_file": "bundled/polydb/include/app-wrappers/polymake/common/PolyDBCursor.h"},
+  {"args": ["polymake::common::polydb::PolyDBCursor", "perl::Canned<const polymake::common::polydb::PolyDBCursor&>"], "include": ["polymake/common/PolyDBCursor.h"], "op": "new", "sig": "new.X"},
+ null ],
+"version": 3}

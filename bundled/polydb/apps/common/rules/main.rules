@@ -1,0 +1,237 @@
+#  Copyright (c) 1997-2021
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Andreas Paffenholz
+#   (c) 2015 - 2023
+#   https://polydb.org
+#   https://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
+
+CREDIT PolyDB
+   Access to the polyDB database for combinatorial objects.
+   (c) 2013-2023 Andreas Paffenholz
+   http://www.mathematik.tu-darmstadt.de/~paffenholz
+
+HELP
+  db_help.rules
+
+require PolyDB;
+
+declare property_type PolyDBClient : c++ ( name => "polymake::common::polydb::PolyDBClient", default_constructor => false, include => [ "polymake/common/PolyDBClient.h"]) {
+
+  method construct($,$,$,$,$,$,$,$,$,$,$,$,$,$;{ssl=>false}) : c++;
+
+  ## methods used in rule files
+  method change_password(String) : c++;
+
+  method add_collection_for_user($,$,$) : c++;
+
+  method drop_section($) : c++;
+
+  method set_defaults($,$,$,$,$) : c++;
+
+  method create_roles_for_collection($) : c++;
+
+  method create_user($,$,$) : c++;
+
+  method user_exists($) : c++;
+
+  method new_collection($,$,$,$) : c++;
+
+  method remove_user(String) : c++;
+  
+  method remove_collection_for_user($,$) : c++;
+  
+  method get_user_names() : c++;
+
+  method get_users($) : c++;
+
+  method add_role_to_user($,$) :c++;
+
+  method create_default_user_and_role() : c++;
+
+  method collection_exists($) : c++;
+ 
+  method section_exists($) : c++;
+
+  method drop_collection($) : c++;
+
+  # no convenicence rule defined, use on client
+  method close_connection() : c++;
+  
+  ## methods used in Client.pm
+  
+  method get_collection(String) : c++;
+
+  method get_section(String) : c++;
+
+  method get_allowed_collection_names($,$,$,$,$,$,$) : c++;
+
+  method get_client_id() : c++;
+}
+
+
+declare property_type PolyDBCollection : c++ ( name => "polymake::common::polydb::PolyDBCollection", default_constructor => false, include => [ "polymake/common/PolyDBCollection.h"]) {
+
+    method construct(*,String) : c++;
+
+    method name() : c++;
+
+    method find_one(String;{projection=>undef, sort_by=>undef}) : c++;
+
+    method find(String;{limit=>0, skip=>0, projection=>undef, sort_by=>undef, batch_size=>0, hint=>undef, noCursorTimeout=>undef, batchSize=>undef}) : c++;
+
+    method count(String;{limit=>0, skip=>0}) : c++;
+
+    method distinct(String,String;{}) : c++;
+
+    method aggregate(String) : c++;
+
+    method insert_one(String) : c++;
+
+    method insert_many(*) : c++;
+
+    method replace_one(String,String) : c++;
+
+    method update_one(String,String) : c++;
+
+    method delete_one(String) : c++;
+
+    method delete_many(String) : c++;
+
+    method drop() : c++;
+
+    method close_connection() : c++;
+
+    method add_index($$$) : c++;
+
+    method add_indices($) : c++;
+
+    method add_index_from_property($$) : c++;
+
+    method add_indices_from_properties($$) : c++;
+
+    method get_index_names() : c++;
+
+    method get_indexes() : c++;
+
+    method get_info() : c++;
+
+    method get_schema() : c++;
+
+    method set_doc($$) : c++;
+
+    method set_schema($$) : c++;
+
+    method set_info($$) : c++;
+}
+
+
+
+declare property_type PolyDBCursor : c++ ( name => "polymake::common::polydb::PolyDBCursor", default_constructor => false, include => [ "polymake/common/PolyDBCursor.h"]) {
+
+    method construct(PolyDBCursor) : c++;
+
+    method has_next() : c++;
+
+    method next(&) : c++;
+
+    method all() : c++;
+}
+
+declare property_type PolyDBSection : c++ ( name => "polymake::common::polydb::PolyDBSection", default_constructor => false, include => [ "polymake/common/PolyDBSection.h"]) {
+
+    method construct(*,String) : c++;
+
+    method name() : c++;
+
+    method get_info($) : c++;
+
+    method check_for_id($) : c++;
+
+    method insert(String) : c++;
+
+    method update(String,String) : c++;
+
+    method replace(String,String) : c++;
+
+    method set_doc($$) : c++;
+}
+
+INCLUDE
+  db_query.rules
+  db_info.rules
+  db_user_admin.rules
+  db_collection_admin.rules
+  db_templates.rules
+  db_insert.rules
+
+# @category Database Access
+# Connect to PolyDB server, create a session object
+#
+# @param String host Host address of the PolyDB server in form "hostname" or "hostname:port";
+#        default location is db.polymake.org, can be customized in $PolyDB::default::db_host
+# @option String user user name for the database;
+#         default is "polymake" with read-only access to all public collections, can be customized in $PolyDB::default::db_user
+# @option String password password for the database; when omitted, will be prompted for in the polymake shell;
+#         can be customized in $PolyDB::default::db_pwd
+# @option String auth_db name of the authentication database where the user is defined;
+#         default is "admin", can be customized in $PolyDB::default::db_auth_db
+# @option Bool useSSL use tls for connection;
+#         default is true, can be customized in $PolyDB::default::useSSL
+# @option Bool tlsAllowInvalidHostnames validate ;
+#         default is true, can be customized in $PolyDB::default::tlsAllowInvalidHostnames
+# @option Bool tlsAllowInvalidCertificates validate ;
+#         default is true, can be customized in $PolyDB::default::tlsAllowInvalidCertificates
+# @option String port of the database;
+#         default is 27017, can be customized in $PolyDB::default::db_port
+# @option Int serverSelectionTimeout timeout for new server connections;
+#         default is 0 to use mongodb default, can be customized in $PolyDB::default::serverSelectionTimeout
+# @return PolyDB::Client
+#
+# @example [notest]
+# Connect to the public polymake server as a user "polymake" with read-only permissions
+# > $polyDB=polyDB();
+# Connect to a local PolyDB server for testing purposes without authentication
+# > $testDB=polyDB("localhost");
+# Connect to a custom server with authentication, prompting for a password input
+# > $otherDB=polyDB("otherdb.my.domain", user=>"myname");
+
+user_function polyDB(;{ host => undef, \
+                        port => undef, \
+                        useSSL => undef, \
+                        tlsAllowInvalidHostnames => undef, \
+                        tlsAllowInvalidCertificates => undef, \
+                        serverSelectionTimeout => undef, \
+                        socket_timeout => undef, \
+                        user => undef, \
+                        password => undef, \
+                        default_user => undef, \
+                        default_password => undef, \
+                        auth_db => undef, \
+                        db_name=> undef, \
+                        polydb_version => undef }) {
+   my ($options) = @_;
+   my $client;
+   $client = new PolyDB::Client($options);
+
+   $client->client->set_defaults($PolyDB::default::db_section_name, $PolyDB::default::db_collection_name,$PolyDB::default::pretty_print_doc,$PolyDB::default::db_section_color,$PolyDB::default::db_collection_color);
+   return $client;
+}
+

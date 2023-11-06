@@ -1,0 +1,111 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Andreas Paffenholz
+#   (c) 2015 - 2023
+#   https://polydb.org
+#   https://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
+package PolyDB::Collection;
+
+# @category Database Collection Administration
+# Common options for writing collection info and schema
+options %common_options = (
+   # String section collection name
+   collection => $PolyDB::default::db_collection_name,
+   # Bool update default false
+   update => false,
+   # Bool verbose default false
+   verbose => false,
+   # Bool replace default false
+   replace => false
+);
+
+# @category Database Collection Administration
+# Options for writing collection info
+options %info_options = (
+   %common_options,
+   # String schema_id id of the associated schema doc
+   schema_id => undef, 
+);
+
+# @category Database Collection Administration
+# Options for writing collection schema
+options %schema_options = (
+   %common_options,
+   # String schema_id id 
+   schema_id => undef, 
+);
+
+# @category Database Collection Administration
+# Set the info doc
+# @param HASH info the info document
+# @param String id the id of the info
+user_method set_info($;$) {
+my ($self, $info, $info_id) = @_;
+
+   # we set the id of the info document in the function
+   # there should none be present, but in the old version it
+   # was allowed to have one in the infd document
+   # so remove it if present
+   if ( $info->{'_id'} ) { delete($info->{'_id'}); }
+   $info_id = "schema.".$PolyDB::default::db_polydb_version if not defined($info_id);
+   my $json = JSON->new();
+   $self->collection->set_info($json->encode($info), $info_id);
+}
+
+
+# @category Database Collection Administration
+# Set the info doc
+# @param HASH schema the schema document
+# @param String id the id of the schema
+user_method set_schema($;$="") {
+   my ($self, $schema, $id) = @_;
+
+   if ( ref($schema) eq "Polymake::Schema" ) {
+      $schema = $schema->source;
+   }
+
+   $schema = Schema::schema2document($schema);
+   my $json = JSON->new;
+   $self->collection->set_schema($json->encode($schema),$id);
+}
+
+# FIXME
+# @category Database Collection Administration
+# list all indices defined for a collection
+user_method indices () {
+   my ($self) = @_;
+
+   my $indexes = $self->indexes->list;
+   while ( my $index = $indexes->next ) {
+      print $index->{name}, "\n";
+      foreach (keys %{$index->{key}} ) {
+         print "   ", $_, ": ";
+         print $index->{key}->{$_} == 1 ? "ascending" : "descending";
+         print "\n";
+      }
+   }
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

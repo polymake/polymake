@@ -18,7 +18,6 @@
 
 INCLUDE
   test_filters
-  db_test.rules
 
 sub get_detected_version {
    state %ConfigFlags;

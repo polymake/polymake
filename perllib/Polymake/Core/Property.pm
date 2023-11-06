@@ -516,7 +516,6 @@ RefHash::allow(__PACKAGE__);
 my $prop_key=\(1);
 my $subobj_key=\(2);
 my $defined_for_key=\(3);
-my $in_twins_key=\(4);
 
 sub new {
    my ($pkg, $prop, $prop_down, $subobj_prop)=@_;
@@ -536,7 +535,6 @@ sub property { $_[0]->{$prop_key} }
 sub subobject_property { $_[0]->{$subobj_key} }
 sub defined_for { $_[0]->{$defined_for_key} }
 sub property_key { &property->key }
-*produced_in_twins=\&Property::produced_in_twins;
 
 ####################################################################################
 package Polymake::Core::Property;
@@ -551,20 +549,6 @@ sub get_prod_key {
       $this_level=$hash=($hash->{$_->key} //= new SubobjKey($self, $this_level, $_));
    }
    $hash
-}
-
-sub memorize_produced_in_twin {
-   my ($self, $hash)=@_;
-   $hash->{$in_twins_key}->{$self->key} //= $self;
-}
-
-sub produced_in_twins {
-   my ($self)=@_;
-   if (defined (my $twins=$self->key->{$in_twins_key})) {
-      values %$twins
-   } else {
-      ()
-   }
 }
 
 ####################################################################################

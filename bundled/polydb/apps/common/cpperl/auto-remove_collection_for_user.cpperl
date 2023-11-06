@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>", "void", "void"], "func": "remove_collection_for_user", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "remove_collection_for_user:M.x.x"},
+ null ],
+"version": 3}

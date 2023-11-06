@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBCollection&>", "std::string(std::string)", "std::string(std::string)"], "func": "update_one", "include": ["polymake/common/PolyDBCollection.h"], "kind": "meth", "sig": "update_one:M.std::string.std::string"},
+ null ],
+"version": 3}

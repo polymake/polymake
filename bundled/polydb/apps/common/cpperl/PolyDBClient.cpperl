@@ -1,0 +1,6 @@
+{"app": "common",
+ "inst": [
+  {"class": "polymake::common::polydb::PolyDBClient", "guard_name": "APP_WRAPPERS_common_PolyDBClient", "include": ["polymake/common/PolyDBClient.h"], "pkg": "Polymake::common::PolyDBClient", "wrapper_file": "bundled/polydb/include/app-wrappers/polymake/common/PolyDBClient.h"},
+  {"args": ["polymake::common::polydb::PolyDBClient", "void", "void", "void", "void", "void", "void", "void", "void", "void", "void", "void", "void", "void", "void", "void"], "include": ["polymake/common/PolyDBClient.h"], "op": "new", "sig": "new.x.x.x.x.x.x.x.x.x.x.x.x.x.x.o"},
+ null ],
+"version": 3}

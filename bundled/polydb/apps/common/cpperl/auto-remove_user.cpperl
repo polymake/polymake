@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>", "std::string(std::string)"], "func": "remove_user", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "remove_user:M.std::string"},
+ null ],
+"version": 3}

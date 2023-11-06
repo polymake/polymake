@@ -40,8 +40,8 @@ void centroid_volume(BigObject p, const GenericMatrix<MatrixTop>& Points, const 
          b+=*i;
       centroid+=v*b;
    }
-   centroid/=volume*(d+1);
-   volume /= Integer::fac(d);
+   centroid/=volume*static_cast<Coord>(d+1);
+   volume /= static_cast<Coord>(Integer::fac(d));
 
    p.take("CENTROID")<<centroid;
    p.take("VOLUME") << volume;

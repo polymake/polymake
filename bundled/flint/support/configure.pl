@@ -46,7 +46,11 @@ sub proceed {
       fmpq_poly_t fp;
       fmpq_poly_init(fp);
       fmpq_poly_clear(fp);
-      cout << "version " << FLINT_VERSION << endl;
+      // some flint 3 installations have FLINT_VERSION == ""
+      if (sizeof(FLINT_VERSION) > 1)
+         cout << "version " << FLINT_VERSION << endl;
+      else
+         cout << "version " << __FLINT_VERSION << "." << __FLINT_VERSION_MINOR << "." << __FLINT_VERSION_PATCHLEVEL << endl;
       return 0;
    }
 ---
@@ -81,6 +85,6 @@ sub proceed {
    $Polymake::Configure::CXXFLAGS .= $cxxflags;
    $Polymake::Configure::LDFLAGS .= $ldflags;
    $Polymake::Configure::LIBS .= " -lflint";
-   return "ok ($flint_version @ ".($flint_path//"system").")";
+   return "$flint_version @ ".($flint_path//"system");
 }
 

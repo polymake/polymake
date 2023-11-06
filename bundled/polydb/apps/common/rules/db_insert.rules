@@ -1,0 +1,230 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Andreas Paffenholz
+#   (c) 2015 - 2023
+#   https://polydb.org
+#   https://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
+use namespaces qw(+ PolyDB);
+
+CREDIT PolyDB
+
+package PolyDB::Collection;
+
+# @category Database Collection Administration
+# Common options for database insertions
+options %insert_options = (
+   # Bool use_schema use the schema for to collection stored in the database 
+   # to project the object so that it contains 
+   # precisely the required properties
+   use_schema => true,
+   # HASH schema provide a schema for the object
+   schema => undef, 
+   # HASH info provide all meta infmation for the object
+   info => undef, 
+   # String creation_date specify a creation date, can also be set in info, object, or current date will be used
+   # precedence options > info > object > current date
+   creation_date => undef, 
+   # String uri A uri with a description of the object and the collection it belongs to, can also be set in object or collection info
+   # precedence options > info > object
+   uri => undef,
+   # String polymake_version The minimal version needed to read the object from the database, can also be set in collection info
+   # precedence: options > info > current version
+   polymake_version => undef,
+   # Bool verbose if true provides some status output for the insert
+   verbose => false
+);
+
+# @category Database Collection Administration
+# Additional options if objects are added one by one
+options %insert_one_options = (
+   %insert_options,
+   # String id provide an id for the object to be written. 
+   # Can only be used if a single object is written into the database. 
+   # If not given, or for arrays of objects the name of the object is used as id
+   id => undef, 
+   # Bool noinsert if true the object is only prepared according to the schema, 
+   # but not written into the database
+   # useful for testing
+   noinsert => false 
+);
+
+sub prepare_schema_and_info {
+   my ($self, $options) = @_;
+
+   $options->{use_schema} = false if defined($options->{schema});
+   if ($options->{use_schema} ) {
+      croak "options use_schema and info cannot be used together\n"   if defined($options->{info});
+      croak "options use_schema and schema cannot be used together\n" if defined($options->{schema});
+
+      $options->{info}   = $self->get_info();
+      $options->{schema} = $self->get_schema();
+
+      $options->{creation_date} //= $options->{info}->{creation_date};
+      $options->{uri} //= $options->{info}->{uri};
+      $options->{polymake_version} //= $options->{info}->{polymake_version};
+   }
+}
+
+sub prepare_metadata {
+   my ($self, $obj, $options) = @_;
+   my $metadata = $obj->get_attachment("polyDB");   
+   ($metadata->{section}, $metadata->{collection}) = $self->name =~ /([\w.]+)\.([\w-]+)/;
+   if ( defined($options->{uri}) ) {
+      $metadata->{uri} = $options->{uri};
+   }
+   if ( defined($options->{creation_date}) ) {
+      $metadata->{creation_date} = $options->{creation_date};
+   }
+   $metadata->{creation_date} //= get_date();
+   $metadata->{version} = $PolyDB::default::db_polydb_version;
+
+   $obj->remove_attachment("polyDB");
+   $obj->attach("_polyDB",$metadata);
+}
+
+
+###########
+
+# @category Database Collection Administration
+# Insert one object into the collection
+# @param Core::BigObject object to be inserted 
+# @options %insert_one_options
+user_method insert_one($, %insert_one_options) {
+   my ($self, $obj, $options) = @_;
+
+   # prepare schema and info
+   prepare_schema_and_info($self,$options);
+
+   # prepare metadata
+   prepare_metadata($self, $obj, $options);
+
+   # serialize the polymake object
+   my $polymake_object = $options->{schema} ? Core::Serializer::serialize($obj, { schema => $options->{schema} } ) : Core::Serializer::serialize($obj);
+
+   # set the id, if given
+   if ( defined($options->{id}) ) { $polymake_object->{_id} = $options->{id}; }
+
+   # adjust the polymake version, so that the object can be read by older polymake versions
+   $polymake_object->{_ns}->{polymake}->[1] = $options->{polymake_version} // $Polymake::Version;
+
+   # insert into polydb
+   my $json = JSON->new;
+   $options->{noinsert} || $self->collection->insert_one($json->encode($polymake_object));
+}
+
+# @category Database Collection Administration
+# Insert one object into the collection
+# @param Core::BigObject array of objects to be inserted 
+# @options %insert_options
+user_method insert_many($, %insert_options) {
+   my ($self, $obj_array_ref, $options) = @_;
+
+   # prepare schema and info
+   prepare_schema_and_info($self,$options);
+
+   my $metadata = ();
+   ($metadata->{section}, $metadata->{collection}) = $self->name =~ /([\w.]+)\.([\w-]+)/;
+   if ( defined($options->{uri}) ) {
+      $metadata->{uri} = $options->{uri};
+   }
+
+   $metadata->{creation_date} = defined($options->{creation_date}) ? $options->{creation_date} : get_date();
+   $metadata->{version} = $PolyDB::default::db_polydb_version;
+
+   my $json = JSON->new;
+   my $polymake_object_array = [];
+   foreach my $obj (@$obj_array_ref) {
+      print "adding ".$obj->name."\n" if $options->{verbose};
+      $obj->remove_attachment("polyDB");
+      $obj->attach("_polyDB",$metadata);
+      my $polymake_object = $options->{schema} ? Core::Serializer::serialize($obj, { schema => $options->{schema} } ) : Core::Serializer::serialize($obj);
+      $polymake_object->{_ns}->{polymake}->[1] = $options->{polymake_version} // $Polymake::Version;
+      $polymake_object->{_id} = $obj->name; # objects must have a unique name in the collection. This is not checked!
+      push @$polymake_object_array, $json->encode($polymake_object);
+   }
+
+   print "writing to database\n" if $options->{verbose};
+   $self->collection->insert_many($polymake_object_array);
+}
+
+# @category Database Collection Administration
+# Replaces one object in the collection based on the id
+# @param Core::BigObject object to be inserted 
+# @options %insert_one_options
+user_method replace_one($, %insert_one_options) {
+   my ($self, $obj, $options) = @_;
+
+   # prepare schema and info
+   prepare_schema_and_info($self,$options);
+
+   # prepare metadata
+   prepare_metadata($self, $obj, $options);
+
+   # serialize the polymake object
+   my $polymake_object = $options->{schema} ? Core::Serializer::serialize($obj, { schema => $options->{schema} } ) : Core::Serializer::serialize($obj);
+
+   # set the id, if given
+   if ( defined($options->{id}) ) { $polymake_object->{_id} = $options->{id}; }
+
+   # adjust the polymake version, so that the object can be read by older polymake versions
+   $polymake_object->{_ns}->{polymake}->[1] = $options->{polymake_version} // $Polymake::Version;
+
+   # insert into polydb
+   my $json = JSON->new;
+   $options->{noinsert} || $self->collection->replace_one($json->encode($polymake_object));
+}
+
+# @category Database Collection Administration
+# Remove one object from a collection identified by its id
+# @param String id the id of the object to remove
+user_method remove_one($) {
+   my ($self, $id) = @_;
+   $self->collection->delete_one($id);
+}
+
+# @category Database Collection Administration
+# Remove all objects from a collection matching the given filter, default is all
+user_method remove_all(;$) {
+   my ($self, $filter) = @_;
+
+   $filter = {} if not defined($filter);
+   my $json = JSON->new;
+   $self->collection->delete_many($json->encode($filter));
+}
+
+user_method update_one(;$$) {
+   my ($self, $id, $update) = @_;
+
+   my $filter = {
+      "_id" => $id,
+   };
+
+   my $json = JSON->new;
+   $self->collection->update_one($json->encode($filter), $json->encode($update));
+}
+
+
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

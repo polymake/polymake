@@ -1,0 +1,224 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Andreas Paffenholz
+#   (c) 2015 - 2023
+#   https://polydb.org
+#   https://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
+# FIXME all functions implemented
+
+use namespaces qw(+ PolyDB);
+
+CREDIT PolyDB
+
+package PolyDB::default;
+
+# @category Database Access
+# polyDB: The hostname of the database, default 'polymake.org'
+custom $db_host = "db.polymake.org";
+
+# polyDB: The port of the database, default 27017
+custom $db_port = "27017";
+
+# polyDB: The name of the database for the collections
+custom $db_name = "polydb";
+
+# polyDB: The database username, default 'polymake'
+custom $db_user = "polymake";
+
+# polyDB: The database username, default 'polymake'
+custom $db_default_user = "polymake";
+
+# polyDB: The database username, default 'polymake'
+# do not use anymore
+custom $db_public_user = "polymake";
+
+# polyDB: The database password, default 'database'
+custom $db_pwd = "database";
+
+# polyDB: The database password, default 'database'
+custom $db_default_pwd = "database";
+
+# polyDB: The name of the section you want to access. Set this if you want to access a certain section all (or most of) the time.
+custom $db_section_name = "";
+
+# polyDB: The name of the collection you want to access. Set this if you want to access a certain collection all (or most of) the time.
+custom $db_collection_name = "";
+
+# polyDB: the version of polyDB used
+custom $db_polydb_version = "2.1";
+
+# polyDB: The timeout for waiting to get a socket connection to the db server
+custom $db_socket_timeout = 120000;
+
+# polyDB: The color for section names in info output
+custom $db_section_color = 'bold red';
+
+# polyDB: The color for collection names in info output
+custom $db_collection_color = 'bold yellow';
+
+# polyDB: timeout to block for server selection, in milliseconds. 
+custom $serverSelectionTimeout = 0;
+
+# polyDB: Whether to use SSL
+custom $useSSL = true;
+
+# polyDB: validate the hostname
+custom $tlsAllowInvalidHostnames = false;
+
+# polyDB: validate the certificate
+custom $tlsAllowInvalidCertificates = false;
+
+# polyDB: whether some pretty printing should be applied for the info method
+#         needs to be switched off for testing
+custom $pretty_print_doc = true;
+
+# polyDB: The name of the authentication database, default 'admin'
+custom $db_auth_db = "admin";
+
+package PolyDB::Collection;
+
+# @category Database Query Operations
+# Common options for database queries
+options %query_options = (
+   # [complete PolyDB::query(grouped)] ARRAY sort returned objects by given properties
+   #  sort criteria are specified as list of pairs (PROPERTY_NAME => 1|-1), -1 meaning descending order.
+   #  By default, objects are sorted by _id
+   sort_by => { _id => 1 },
+   # [complete PolyDB::query(grouped)] HASH filter for properties in returned objects: { PROPERTY_NAME => 0|1, ... }
+   #  All values in the filter must be either 0's or 1's.
+   #  A filter with zero values suppresses the specified properties and allows all others,
+   #  while a filter with ones allows the specified properties and suppresses all others.
+   #  By default, objects are returned with all properties stored in the database.
+   projection => undef,
+   # Bool  return the raw json document; default is false
+   raw => false
+);
+
+# @category Database Query Operations
+# Options for database queries returning a cursor
+options %cursor_options = (
+   %query_options,
+   # Int  maximal number of objects to be returned; by default, no limit
+   limit => 0,
+   # Bool noCursorTimeout prevents the cursor from disconnecting if no new batch of documents is requested from the server for some time. By default, the cursor requests about 100 documents in each batch, and colses the connection if no new batch s requested for about 10min. So set this option to true, if your computations take more time than 10 min per 100 documents. Note that the server also implements a timeout of about 30min, which cannot be influenced by a client. If the time between successive requests is longer then the connection will still close. You can use the option batchSize to request fewer documents in each request to prevent this. 
+   noCursorTimeout => false,
+   # Int batchSize is the number of documents returned with each request to the server. The default is 100.
+   batchSize => 100,
+   # Int  skip that many first elements; default is 0
+   skip => 0,
+);
+
+# @category Database Query Operations
+# Retrieve all objects satisfying the given search criteria
+# @param [complete PolyDB::query(grouped)] HASH query search criteria written in Mongo query language
+#  an empty hash map will retrieve all objects in this collection
+# @options %cursor_options
+# @return PolyDB::Cursor cursor over results
+user_method find ($, %cursor_options) {
+   my ($collection, $query, $options) = @_;
+   return $collection->make_cursor($query, $options);
+}
+
+# @category Database Query Operations
+# Retrieve the first object satisfying the given search criteria.
+# @param [complete PolyDB::query(grouped)] HASH query search criteria written in Mongo query language
+#  an empty hash map will retrieve a random object from this collection
+# @return Core::BigObject
+user_method find_one ($, \%query_options) {
+   my ($self, $query, $options) = @_;
+   my $json = JSON->new->allow_nonref;
+
+   if (defined($options->{projection})) {
+      $options->{projection} = $json->encode(sanitize_projection($options->{projection}));
+   } 
+
+   if (defined($options->{sort_by})) {
+      $options->{sort_by} = $json->encode($options->{sort_by});
+   }
+
+   my $result = $self->collection->find_one($json->encode($query), $options);
+   if ( $result ) {
+      if ( $options->{raw} ) {
+         $json->decode($result);
+      } else {
+         deserialize_safe($json->decode($result))
+      }
+   }
+}
+
+user_method name() {
+   my ($collection) = @_;
+   return $collection->collection->name();
+}
+
+# @category Database Query Operations
+# Retrieve a list of distinct values of a given property.
+# The values are returned in arbitrary order.
+# @param [complete PolyDB::query(grouped)] HASH query search criteria for objects to be inspected, written in Mongo query language
+#  an empty hash map will collect property values from all objects in this collection
+# @param [complete PolyDB::query] String property name of the property of interest
+# @return ARRAY
+user_method distinct ($$) { 
+   my ($self, $property, $query) = @_;
+
+   my $json = JSON->new;
+   $json->decode($self->collection->distinct($property,$json->encode($query)));
+}
+
+# @category Database Query Operations
+# Return the number of objects satisfying the given search criteria.
+# @param [complete PolyDB::query(grouped)] HASH query search criteria written in Mongo query language
+user_method count ($) { 
+   my ($self, $query) = @_;
+   my $json = JSON->new;
+   $self->collection->count($json->encode($query));
+}
+
+# @category Database Query Operations
+# Count the distinct property values in objects satisfying the given search criteria.
+# @param [complete PolyDB::query(grouped)] HASH query search criteria for objects to be inspected, written in Mongo query language
+#  an empty hash map will collect property values from all objects in this collection
+# @param [complete PolyDB::query] String property name of the property of interest
+user_method count_distinct ($$) {
+   my ($self, $query, $property) = @_;
+
+   my $pipeline = [
+         keys %$query ? ({ '$match' => $query }) : (),
+         { '$group' => { _id => "\$$property" } },
+         { '$count' => 'count' }
+   ];
+
+   my $json = JSON->new;
+   my $cursor = $self->collection->aggregate($json->encode($pipeline));
+   $json->decode($cursor->next)->{count};
+}
+
+user_method aggregate($, %cursor_options) {
+   my ($self, $query, $options) = @_;
+   my $json = JSON->new;
+   new Cursor($self->collection->aggregate($json->encode($query)), \&deserialize_safe);
+}
+
+# Local Variables:
+# mode: perl
+# cperl-indent-level:3
+# indent-tabs-mode:nil
+# End:

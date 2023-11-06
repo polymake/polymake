@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBClient&>", "std::string(std::string)"], "func": "get_section", "include": ["polymake/common/PolyDBClient.h"], "kind": "meth", "sig": "get_section:M.std::string"},
+ null ],
+"version": 3}

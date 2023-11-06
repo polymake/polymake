@@ -164,7 +164,7 @@ object PolyhedralFan {
    weight 1.10;
 
    rule GROUP.RAYS_ACTION.GENERATORS : GROUP.MAXIMAL_CONES_ACTION.GENERATORS, MAXIMAL_CONES_THRU_RAYS {
-      $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "MAXIMAL_CONES_ACTION", "MAXIMAL_CONES_THRU_RAYS", "ray_action", "induced from maximal cones action", 0);
+      $this->GROUP->RAYS_ACTION->GENERATORS = group::induce_permutation_action($this, "MAXIMAL_CONES_ACTION", "MAXIMAL_CONES_THRU_RAYS", "ray_action", "induced from maximal cones action", 0)->GENERATORS;
    }
    weight 1.10;
 
@@ -174,7 +174,7 @@ object PolyhedralFan {
    weight 1.10;
 
    rule GROUP.RAYS_ACTION.GENERATORS : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, RAYS {
-      $this->GROUP->RAYS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "RAYS", "ray_action", "induced from homogeneous coordinate action", 1);
+      $this->GROUP->RAYS_ACTION->GENERATORS = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "RAYS", "ray_action", "induced from homogeneous coordinate action", 1)->GENERATORS;
    }
    weight 1.10;
 
@@ -188,7 +188,7 @@ object PolyhedralFan {
    #
 
    rule GROUP.MAXIMAL_CONES_ACTION.GENERATORS : GROUP.RAYS_ACTION.GENERATORS, MAXIMAL_CONES {
-      $this->GROUP->MAXIMAL_CONES_ACTION = group::induce_permutation_action($this, "RAYS_ACTION", "MAXIMAL_CONES", "maximal_cones_action", "induced from ray action", 0);
+      $this->GROUP->MAXIMAL_CONES_ACTION->GENERATORS = group::induce_permutation_action($this, "RAYS_ACTION", "MAXIMAL_CONES", "maximal_cones_action", "induced from ray action", 0)->GENERATORS;
    }
    weight 1.10;
 
@@ -222,7 +222,7 @@ object PolyhedralFan {
    #
 
    rule GROUP.FACET_NORMALS_ACTION.GENERATORS : GROUP.HOMOGENEOUS_COORDINATE_ACTION.GENERATORS, FACET_NORMALS {
-      $this->GROUP->FACET_NORMALS_ACTION = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACET_NORMALS", "facet_normals_action", "induced from homogeneous_coordinate_action", 1, \&canonicalize_facets);
+      $this->GROUP->FACET_NORMALS_ACTION->GENERATORS = group::induce_permutation_action($this, "HOMOGENEOUS_COORDINATE_ACTION", "FACET_NORMALS", "facet_normals_action", "induced from homogeneous_coordinate_action", 1, \&canonicalize_facets)->GENERATORS;
    }
    weight 1.10;
 
@@ -289,9 +289,8 @@ object PolyhedralFan {
    weight 2.10;
    incurs RaysPerm;
                            
-   rule MAXIMAL_CONES, GROUP.MAXIMAL_CONES_ACTION.GENERATORS : RAYS, GROUP.RAYS_ACTION.GENERATORS, GROUP.MAXIMAL_CONES_ACTION.MAXIMAL_CONES_GENERATORS {
+   rule MAXIMAL_CONES : RAYS, GROUP.RAYS_ACTION.GENERATORS, GROUP.MAXIMAL_CONES_ACTION.MAXIMAL_CONES_GENERATORS {
        my $gens = $this->GROUP->RAYS_ACTION->GENERATORS;
-       $this->GROUP->MAXIMAL_CONES_ACTION->GENERATORS = $gens;
        my $all_cones = new HashSet<Set<Int>>;
        foreach (@{$this->GROUP->MAXIMAL_CONES_ACTION->MAXIMAL_CONES_GENERATORS}) {
            foreach(@{group::orbit($gens, new Set($_))}) {
@@ -378,7 +377,7 @@ object PolyhedralComplex {
    # induced actions
 
    rule GROUP.POINTS_ACTION.GENERATORS : GROUP.COORDINATE_ACTION.GENERATORS , POINTS {
-      $this->GROUP->POINTS_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "POINTS", "points_action", "induced from coordinate_action");
+      $this->GROUP->POINTS_ACTION->GENERATORS = group::induce_permutation_action($this, "COORDINATE_ACTION", "POINTS", "points_action", "induced from coordinate_action")->GENERATORS;
    }
    weight 1.10;
 
@@ -395,7 +394,7 @@ object PolyhedralComplex {
    precondition : GROUP.PERMUTATION_ACTION.DEGREE, N_POINTS { $this->GROUP->PERMUTATION_ACTION->DEGREE == $this->N_POINTS }
 
    rule GROUP.VERTICES_ACTION.GENERATORS : GROUP.COORDINATE_ACTION.GENERATORS, VERTICES {
-      $this->GROUP->VERTICES_ACTION = group::induce_permutation_action($this, "COORDINATE_ACTION", "VERTICES", "vertices_action", "induced from coordinate_action");
+      $this->GROUP->VERTICES_ACTION->GENERATORS = group::induce_permutation_action($this, "COORDINATE_ACTION", "VERTICES", "vertices_action", "induced from coordinate_action")->GENERATORS;
    }
    weight 1.10;
 

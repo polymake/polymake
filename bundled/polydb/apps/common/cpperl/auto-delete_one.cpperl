@@ -1,0 +1,5 @@
+{"app": "common",
+ "inst": [
+  {"args": ["perl::Canned<const polymake::common::polydb::PolyDBCollection&>", "std::string(std::string)"], "func": "delete_one", "include": ["polymake/common/PolyDBCollection.h"], "kind": "meth", "sig": "delete_one:M.std::string"},
+ null ],
+"version": 3}

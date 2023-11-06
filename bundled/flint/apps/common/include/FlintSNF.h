@@ -29,6 +29,7 @@
 #pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
 #endif
 
+#include <flint/fmpz.h>
 #include <flint/fmpz_mat.h>
 
 #if defined(__clang__)

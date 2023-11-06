@@ -1,0 +1,321 @@
+#  Copyright (c) 1997-2022
+#  Ewgenij Gawrilow, Michael Joswig, and the polymake team
+#  Technische Universität Berlin, Germany
+#  https://polymake.org
+#
+#  This program is free software; you can redistribute it and/or modify it
+#  under the terms of the GNU General Public License as published by the
+#  Free Software Foundation; either version 2, or (at your option) any
+#  later version: http://www.gnu.org/licenses/gpl.txt.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#-------------------------------------------------------------------------------
+#
+#  This file is part of the polymake database interface polyDB.
+#
+#   @author Andreas Paffenholz
+#   (c) 2015 - 2023
+#   https://polydb.org
+#   https://www.mathematik.tu-darmstadt.de/~paffenholz
+#
+
+# FIXME
+# missing functions
+# - set_section_doc
+# - set_collection_doc
+#
+# not fully working
+# list_collections only works for admins
+# see:
+# https://jira.mongodb.org/projects//issues/-2392
+
+use namespaces qw(+ PolyDB);
+
+CREDIT PolyDB
+
+package PolyDB::Client;
+use Term::ANSIColor;
+use Text::Wrap;
+
+# only to get terminal width, fallback to 80
+eval {
+   require Term::ReadKey;
+};
+
+# @category Database Access
+# Get a list of all collection names
+# @param String section only return names of collections from the given section
+# @option String filter regular expression for more complex filtering of collection names, may not be used with filter_sections or filter_collections
+# @option String filter_sections filter for sections containing given substring, no regular expression, may not be used with filter
+# @option String filter_collections filter for collections containing given substring, no regular expression, may not be used with filter
+# @option String section only list collections below section
+# @option Bool recursive recursively list all collections 
+#  Think of correct escaping of special characters: \\. for a literal dot, \\w for a name character.
+user_method list_collections({ section=>undef, filter_sections=>undef, filter_collections=>undef, filter => undef, recursive => false }) {
+   my ($self,$options) = @_;
+   $options->{only_sections} = false;
+   $options->{only_collections} = true;
+   return @{$self->get_allowed_collection_names($options)};
+#   &get_collection_names;
+}
+
+# @category Database Access
+# Get a list of section names
+# @param String section return names of sub-sections of the given section;
+#   by default, names of top-level sections are returned
+# @option Bool recursive return names of sub-sections  on all levels
+# @option String filter regular expression for more complex filtering of section names, may not be used with filter_sections 
+# @option String filter_sections filter for sections containing given substring, no regular expression, may not be used with filter
+# @option String section only list sections below section
+# @option Bool recursive recursively list all collections in subsections
+#  Think of correct escaping of special characters: \\. for a literal dot, \\w for a name character.
+user_method list_sections({ section=>undef, filter_sections=>undef, filter => undef, recursive => false }) {
+   my ($self,$options) = @_;
+   $options->{only_sections} = true;
+   $options->{only_collections} = false;
+   $options->{filter_collections} = undef;
+   return @{$self->get_allowed_collection_names($options)};
+#   &get_collection_names;
+}
+
+# @category Database Administration
+# Set documentation for a section
+# @param String section the section
+# @param HASH doc the documentation
+# @option Bool update default false
+user_method set_section_doc($$; $) {
+   my ($self, $section, $doc, $update) = @_;
+
+   $update = false if not defined($update);
+   my $section_col = $self->get_section($section);
+   my $json = JSON->new;
+   $section_col->section->set_doc($json->encode($doc),$update);
+}
+
+
+
+# @category Database Access
+# Print information about available databases and collections.
+# @option String section name of the section, default: all available sections
+# @option String collection name of the collection, default: all available collections
+# @option Int info_level 0: only names, 
+#                        1: short description (default if no collection is given),
+#                        2: description, 
+#                        3: description, authors, maintainers, 
+#                        4: full info
+# @option Bool colored
+user_method info(; {section => undef, collection => undef, info_level => undef, colored => true}) {
+   my ($self, $options) = @_;
+   $options->{info_level} = defined($options->{collection}) ? 5 : 1;
+   if ( !defined($options->{section}) && defined($options->{collection}) ) {
+      ($options->{section}, $options->{collection}) = $options->{collection} =~ /([\w.]+)\.([\w]+)/;
+   }
+
+   print "===============\navailable polydb collections\n===============\n";
+
+   $self->print_sections_at_level($options->{section}, $options->{collection}, $self, $options->{info_level}, 0, $options->{colored});
+}
+
+sub print_formatted {
+   my ($indent, $text, $colored) = @_;
+   state $in_terminal = ( -t STDIN &&  $PolyDB::default::pretty_print_doc ) ? true : false;
+
+   if ( $in_terminal ) {   
+      my $initial_tab = "\t"x$indent;
+      my $subsequent_tab = "\t"x$indent;
+      $subsequent_tab .= "  ";
+      my $w = eval { (GetTerminalSize())[0] } // 80;
+      local($Text::Wrap::columns) = $w;
+
+      if ( $colored ) {
+         if ( $text =~ /SECTION/ ) { 
+            print color($PolyDB::default::db_section_color);
+         } elsif ($text =~ /COLLECTION/) {
+            print color($PolyDB::default::db_collection_color);
+         } else {
+            print color('reset');
+         }
+      }
+      print wrap($initial_tab, $subsequent_tab, $text);
+      print color('reset');
+   } else {
+      print $text;
+   }
+   print "\n";
+}
+
+sub print_name_with_info {
+   my ($name) = @_;
+   my $ret = "  ".$name->{name};
+   for my $tag (("affiliation", "email")) {
+      $ret .= ", ".$name->{$tag} if defined($name->{$tag});
+   }
+   $ret .= " (".$name->{remark}.")" if defined($name->{remark});
+   return $ret;
+}
+
+sub print_list_of_names {
+   my ($names, $title, $indent) = @_;
+   if ( ref($names) eq "ARRAY" ) {
+      print_formatted($indent, $title.": ");
+      foreach my $name (@{$names}) {
+         print_formatted($indent, print_name_with_info($name));
+      }
+   } else {
+      print_formatted($indent, $title.": ".$names);
+   }
+}
+
+sub print_references {
+   my ($res,$indent) = @_;
+   foreach my $ref (@$res) {
+      print_formatted($indent, "Cite:" );
+      if ( ref($ref) eq "HASH" ) {
+         print_formatted($indent+1, $ref->{authors}.", ".$ref->{title}.", ".$ref->{bib});
+         if ( defined($ref->{links}) ) {
+            print_formatted($indent+1, "  obtain at:");
+            foreach my $link (@{$ref->{links}}) {
+               print_formatted($indent+2,$link->{type}.": ".$link->{link});
+            }
+         }
+      } else {
+         print_formatted($indent,$ref);
+      }
+   }
+}
+
+sub print_webpage {
+   my ($res,$indent) = @_;
+
+   foreach my $ref (@$res) {
+      print_formatted($indent,"Online Resources:");
+      if ( ref($ref) eq "HASH" ) {
+         print_formatted($indent+1,$ref->{description}.": ".$ref->{address});
+      } else {
+         print_formatted($indent+1,$ref);
+      }
+   }
+}
+
+sub print_collections_at_level {
+   my ($self,$top_sectionname, $collectionname, $idb, $info_level, $indent, $colored) = @_;
+
+   my $filter = "[^.]+\$";
+   if(length($collectionname)) {
+      $filter = "[^.]*".$collectionname."[\\w]*\$";
+   }
+
+   my @collections = $self->list_collections({ section=>$top_sectionname, filter=>$filter, recursive => 0} );
+
+   my $polydb_version = $PolyDB::default::db_polydb_version;
+
+   return if !scalar(@collections);
+
+   foreach my $colname (sort { lc($a) cmp lc($b) } @collections) {
+      my $id = $colname.".".$polydb_version;
+      $id =~ s/_collectionInfo.//;
+      my $icol = $self->get_collection("_collectionInfo.".$colname);
+
+      my $json = JSON->new;
+      # use the mongo collection method directly
+      my $ret = $icol->collection->find_one("{ \"_id\" : \"".$id."\" }");
+
+      next if !defined($ret);
+      my $res  = $json->decode($ret);
+
+      print "\n";
+      print_formatted($indent,"COLLECTION: ".$res->{collection}, $colored);
+
+      next if $info_level < 1;
+      print_formatted($indent, $info_level == 1 ? $res->{short_description} : $res->{description}, $colored);
+
+      next if $info_level < 3;
+      print_list_of_names($res->{author},     "Author(s)",     $indent) if defined($res->{author});
+      print_list_of_names($res->{contributor},"Contributor(s)",$indent) if defined($res->{contributor});
+      print_list_of_names($res->{maintainer}, "Maintainer(s)", $indent) if defined($res->{maintainer});
+
+      next if $info_level < 4;
+      print_references($res->{references}) if defined($res->{references});
+      print_webpage($res->{webpage}, $indent) if defined($res->{webpage});
+   }
+}
+
+sub print_section {
+   my ($self, $sectionname, $info_level, $indent, $colored, $polydb_version) = @_;
+
+   my $id = "$sectionname.$polydb_version";
+   my $icol = $self->get_section($sectionname);
+   my $json = JSON->new;
+   # use the mongo collection method directly
+   my $ret = $icol->section->get_info($id);
+   # next if !defined($ret);
+
+   my $res  = $json->decode($ret);
+   print "\n";
+   print_formatted($indent, "SECTION: ".$sectionname, $colored);
+   if ( $info_level > 0 ) {
+      print_formatted($indent, $info_level == 1 ? $res->{short_description} : $res->{description}, $colored);
+   }
+}
+
+sub print_sections_at_level {
+   my ($self, $top_sectionname, $collectionname, $idb, $info_level, $indent, $colored) = @_;
+
+   my $polydb_version = $PolyDB::default::db_polydb_version;
+   
+   if ( $indent == 0 && length($top_sectionname)) {
+      $self->print_section($top_sectionname, $info_level, $indent, $colored,$polydb_version);
+   }
+
+   my $rec = $indent == 0 ? 0 : 1;
+   foreach my $sectionname (sort { lc($a) cmp lc($b) } $self->list_sections({ section=>$top_sectionname, recursive=> $rec }) ) {
+      $self->print_section($sectionname, $info_level, $indent, $colored,$polydb_version);
+      $self->print_sections_at_level($sectionname, $collectionname, $idb, $info_level,$indent+1, $colored);
+   }
+   $self->print_collections_at_level($top_sectionname,  $collectionname, $idb, $info_level,$indent+1, $colored);
+
+}
+
+
+
+package PolyDB::Collection;
+
+# @category Database Access
+# Get a JSON validation schema for objects stored in the collection
+# @return Schema
+user_method get_schema() { 
+   my ($self) = @_;
+   my $json = JSON->new;
+   my $schema_doc = $json->decode($self->collection->get_schema());
+   if (defined($schema_doc) && is_hash($schema_doc->{schema})) {
+      new Polymake::Schema( Schema::document2schema($schema_doc->{schema}) )
+   } else {
+      die "schema not found - corrupt metadata?\n";
+   }
+}
+
+sub get_info {
+   my ($self) = @_;
+   my $json = JSON->new;
+   my $info_string = $self->collection->get_info();
+   return $json->decode($info_string);
+}
+
+# @category Database Collection Administration
+# Set documentation for a collection
+# @param HASH doc the documentation
+# @option Bool update default false
+user_method set_doc($; { update=>false}) {
+   my ($self, $doc, $options ) = @_;
+
+   # we set the id of the document in the function
+   # there should none be present, but in the old version it
+   # was allowed to submit one
+   # so remove it if present
+   if ( $doc->{'_id'} ) { delete($doc->{'_id'}); }
+   my $json = JSON->new;
+   $self->collection->set_doc($json->encode($doc), $options);
+}

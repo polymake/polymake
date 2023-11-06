@@ -95,7 +95,7 @@ $Core::CPlusPlus::cpperl_src_root = "$cpperl_root/$$" if defined($cpperl_root);
 
 # include test.rules from application common for polydb
 application("common")->include_rules("*/test.rules");
-application("common")->configured->{"db_test.rules"} > 0 && PolyDB::Test::prepare();
+application("common")->configured->{"db_test.rules\@bundled:polydb"} > 0 && PolyDB::Test::prepare();
 
 
 $env->start_testsuite($jenkins_report, "tutorials");

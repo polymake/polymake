@@ -34,11 +34,11 @@ BigObject project_full_fan_impl(BigObject p_in, OptionSet options)
    if (codim == 0) return p_in; // nothing to do
 
    Array<Int> indices;
-   const Set<Int> coords_to_eliminate = polytope::coordinates_to_eliminate(indices, 0, linear_span.cols(), codim, linear_span, options["revert"]);   // set of columns to project to
+   const Set<Int> coords_to_eliminate = polytope::coordinates_to_eliminate<Scalar>(indices, linear_span.cols(), codim, p_in, options["revert"]);   // set of columns to project to
 
    BigObject p_out(p_in.type());
 
-   polytope::process_rays(p_in, 0, indices, options, linear_span, coords_to_eliminate, p_out);
+   polytope::process_rays<Scalar>(p_in, indices, options, coords_to_eliminate, p_out);
 
    IncidenceMatrix<> MC;
    if (p_in.lookup("MAXIMAL_CONES") >> MC)

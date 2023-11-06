@@ -30,6 +30,7 @@
 #endif
 
 #include <flint/fmpz.h>
+#include <flint/fmpz_factor.h>
 
 #if defined(__clang__)
 #pragma clang diagnostic pop

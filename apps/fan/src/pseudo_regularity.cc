@@ -46,7 +46,7 @@ Matrix<Scalar> pseudo_regular(BigObject fan)
   const Int num_rays_cone0 = max_cones.row(0).size();
   const Int num_rays_not_cone0 =  num_rays - num_rays_cone0;
 
-  SparseMatrix<Rational> L( num_rays_cone0 , lp_dim );
+  SparseMatrix<Scalar> L( num_rays_cone0 , lp_dim );
   Int r = 0;
   for (const Int it : max_cones.row(0)) {
     for (Int i = 0; i < dim; ++i) {
@@ -58,7 +58,7 @@ Matrix<Scalar> pseudo_regular(BigObject fan)
 
   const auto all_rays = sequence(0, num_rays);
 
-  SparseMatrix<Rational> I( num_rays_not_cone0+num_rays+2 , lp_dim );
+  SparseMatrix<Scalar> I( num_rays_not_cone0+num_rays+2 , lp_dim );
   // epsilon >= 0 & epsilon <= 1
   I[0][lp_dim-1] = -1;
   I[1][lp_dim-1] = 1;
@@ -84,7 +84,7 @@ Matrix<Scalar> pseudo_regular(BigObject fan)
     const Int num_rays_cone_i = max_cones.row(i).size();
     const Int num_rays_not_cone_i =  num_rays - num_rays_cone_i;
 
-    SparseMatrix<Rational> L_i( num_rays_cone_i, lp_dim);
+    SparseMatrix<Scalar> L_i( num_rays_cone_i, lp_dim);
     Int a = 0;
     for (const Int it : max_cones.row(i)) {
       for (Int j = 0 ; j < dim ; ++j) {
@@ -95,7 +95,7 @@ Matrix<Scalar> pseudo_regular(BigObject fan)
     }
     L /= L_i;
 
-    SparseMatrix<Rational> I_i( num_rays_not_cone_i , lp_dim );
+    SparseMatrix<Scalar> I_i( num_rays_not_cone_i , lp_dim );
     Int aa = 0;
     for (const Int it : all_rays - max_cones.row(i)) {
       for (Int j = 0 ; j < dim ; ++j) {
@@ -112,7 +112,7 @@ Matrix<Scalar> pseudo_regular(BigObject fan)
   // each rays should be the normal of a FACET, not just representing a suppoting hyperplane through the corr. vertices
   // we make sure of this by demanding each facet-centroid to lie only on its facet defining hyperplane, that is NOT on the other hyperplanes
   for (Int i = 0 ; i < num_rays ; ++i) {
-    SparseMatrix<Rational> I_i(num_rays-1 , lp_dim);
+    SparseMatrix<Scalar> I_i(num_rays-1 , lp_dim);
     const auto& cones_with_ray_i = max_cones.col(i);
     const Int num_cones_with_ray_i = cones_with_ray_i.size();
     Int curr = 0;
